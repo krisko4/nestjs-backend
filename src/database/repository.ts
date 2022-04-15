@@ -4,6 +4,7 @@ import {
   FilterQuery,
   Document,
   UpdateQuery,
+  Types,
 } from 'mongoose';
 
 export abstract class IRepository<T extends Document> {
@@ -15,6 +16,19 @@ export abstract class IRepository<T extends Document> {
   ): Promise<T | null> {
     return this.entityModel
       .findOne(entityFilterQuery, {
+        __v: 0,
+        ...projection,
+      })
+      .exec();
+  }
+
+  async findById(
+    id: string,
+    entityFilterQuery?: FilterQuery<T>,
+    projection?: Record<string, unknown>,
+  ): Promise<T | null> {
+    return this.entityModel
+      .findById(id, entityFilterQuery, {
         __v: 0,
         ...projection,
       })

@@ -34,6 +34,7 @@ export class RegistrationService {
       expiresAt,
       userId,
     };
+    console.log(token);
     return this.confirmationTokenRepository.create(token, session);
   }
 }

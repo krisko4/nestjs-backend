@@ -9,6 +9,9 @@ import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { RegistrationModule } from './registration/registration.module';
 import { VisitModule } from './visit/visit.module';
+import { OpinionModule } from './opinion/opinion.module';
+import { ContactModule } from './contact/contact.module';
+import { PlaceModule } from './place/place.module';
 
 @Module({
   imports: [
@@ -20,6 +23,9 @@ import { VisitModule } from './visit/visit.module';
     AuthModule,
     RegistrationModule,
     VisitModule,
+    OpinionModule,
+    ContactModule,
+    PlaceModule,
   ],
   controllers: [AppController],
   providers: [AppService],

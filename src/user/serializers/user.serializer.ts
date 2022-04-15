@@ -1,4 +1,4 @@
-import { Exclude, Expose } from 'class-transformer';
+import { Expose } from 'class-transformer';
 
 export class UserSerializer {
   @Expose()
@@ -11,4 +11,6 @@ export class UserSerializer {
   birthdate: Date;
   @Expose()
   img: string;
+  @Expose()
+  _id: string;
 }
