@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CreatePlaceDto } from './dto/create-place.dto';
 import { UpdatePlaceDto } from './dto/update-place.dto';
 import { PlaceRepository } from './place.repository';
+import { PlaceFilterQuery } from './query/place.filter.query';
 
 @Injectable()
 export class PlaceService {
@@ -12,6 +13,18 @@ export class PlaceService {
 
   findAll() {
     return this.placeRepository.find();
+  }
+
+  findActive() {
+    return this.placeRepository.findActive();
+  }
+
+  findRecentlyAdded(placeFilterQuery: PlaceFilterQuery) {
+    return this.placeRepository.findRecentlyAdded(placeFilterQuery);
+  }
+
+  findPopular(placeFilterQuery: PlaceFilterQuery) {
+    return this.placeRepository.findPopular(placeFilterQuery);
   }
 
   findOne(id: number) {

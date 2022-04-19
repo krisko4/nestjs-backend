@@ -6,10 +6,12 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { PlaceService } from './place.service';
 import { CreatePlaceDto } from './dto/create-place.dto';
 import { UpdatePlaceDto } from './dto/update-place.dto';
+import { PlaceFilterQuery } from './query/place.filter.query';
 
 @Controller('places')
 export class PlaceController {
@@ -23,6 +25,16 @@ export class PlaceController {
   @Get()
   findAll() {
     return this.placeService.findAll();
+  }
+  
+  @Get('/active')
+  findActive() {
+    return this.placeService.findActive();
+  }
+
+  @Get()
+  findPopular(@Query() placeFilterQuery: PlaceFilterQuery ) {
+    return this.placeService.findPopular(placeFilterQuery);
   }
 
   @Get(':id')

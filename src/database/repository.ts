@@ -41,11 +41,11 @@ export abstract class IRepository<T extends Document> {
 
   async findAndSort(
     entityFilterQuery?: FilterQuery<T>,
-    sortFilterQuery?: FilterQuery<T>,
+    sortQuery?: FilterQuery<T>,
   ): Promise<T[] | null> {
     return this.entityModel
       .find(entityFilterQuery)
-      .sort(sortFilterQuery)
+      .sort(sortQuery)
       .exec();
   }
 

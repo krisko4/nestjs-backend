@@ -8,7 +8,8 @@ import * as bcrypt from 'bcrypt';
 @Injectable()
 export class UserService {
   constructor(private readonly userRepository: UserRepository) {}
-  async create(createUserDto: CreateUserDto, session: ClientSession) {
+
+  async create(createUserDto: CreateUserDto, session?: ClientSession) {
     const { email, password } = createUserDto;
     const duplicateUser = await this.findByEmail(email);
     if (duplicateUser)
@@ -37,11 +38,4 @@ export class UserService {
     return this.userRepository.findById(id);
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} user`;
-  }
 }

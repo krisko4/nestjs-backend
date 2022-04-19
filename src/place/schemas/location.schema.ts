@@ -30,4 +30,6 @@ export class Location {
   isActive: boolean;
   @Prop({ type: mongoose.Schema.Types.ObjectId, required: true })
   userId: string;
+  @Prop({default: 0})
+  visitCount: number
 }
