@@ -69,6 +69,10 @@ export abstract class IRepository<T extends Document> {
     );
   }
 
+  async findOneAndDelete(entityFilterQuery: FilterQuery<T>): Promise<boolean> {
+    return this.entityModel.findOneAndDelete(entityFilterQuery);
+  }
+
   async deleteMany(entityFilterQuery: FilterQuery<T>): Promise<boolean> {
     const deleteResult = await this.entityModel.deleteMany(entityFilterQuery);
     return deleteResult.deletedCount >= 1;

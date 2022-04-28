@@ -17,6 +17,12 @@ export class RefreshTokenService {
     );
   }
 
+  delete(uid: string) {
+    return this.refreshTokenRepository.findOneAndDelete({
+      user: uid,
+    });
+  }
+
   findByUserId(uid: string) {
     return this.refreshTokenRepository.findOne({
       user: new Types.ObjectId(uid),

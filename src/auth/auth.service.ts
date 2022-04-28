@@ -38,6 +38,10 @@ export class AuthService {
     return this.login(user);
   }
 
+  async logout(uid: string) {
+    return this.refreshTokenService.delete(uid);
+  }
+
   async login(user: UserDocument) {
     const payload: IJWTPayload = {
       email: user.email,

@@ -36,4 +36,16 @@ export class AuthController {
   async refresh(@Req() request: IRefresh) {
     return this.authService.refresh(request.user.uid);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('/logout')
+  async logout(
+    @Req() request: IRefresh,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    await this.authService.logout(request.user.uid);
+    response.clearCookie('access_token');
+    response.clearCookie('refresh_token');
+    return 'Logout successful';
+  }
 }
