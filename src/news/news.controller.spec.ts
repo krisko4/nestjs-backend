@@ -55,22 +55,6 @@ describe('NewsController', () => {
       });
     });
   });
-  describe('findByLocationId', () => {
-    describe('when findByLocationId is called', () => {
-      let result: News[];
-      let stub: ReturnType<typeof newsStub>;
-      beforeEach(async () => {
-        stub = newsStub();
-        result = await controller.findByLocationId(stub.locationId);
-      });
-      it('should call service method', () => {
-        expect(service.findByLocationId).toHaveBeenCalledWith(stub.locationId);
-      });
-      it('should return a news', async () => {
-        expect(result).toEqual(stub);
-      });
-    });
-  });
   describe('createNews', () => {
     describe('when createNews is called', () => {
       let result: News;

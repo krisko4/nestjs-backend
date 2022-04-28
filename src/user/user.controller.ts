@@ -24,5 +24,8 @@ export class UserController {
       excludeExtraneousValues: true,
     });
   }
-
+  @Get(':id')
+  findById(@Param('id') id: string) {
+    return this.userService.findById(id);
+  }
 }

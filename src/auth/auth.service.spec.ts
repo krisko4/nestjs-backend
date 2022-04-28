@@ -4,8 +4,7 @@ import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
   let service: AuthService;
-  let userService: UserService
-
+  let userService: UserService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -23,10 +22,8 @@ describe('AuthService', () => {
     describe('when validateUser is called', () => {
       beforeEach(() => {
         // service.validateUser();
-      })
-      it('should call userService', () => {
-
-      })
-    })
-  })
+      });
+      it('should call userService', () => {});
+    });
+  });
 });

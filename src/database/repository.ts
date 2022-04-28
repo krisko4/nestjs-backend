@@ -28,10 +28,14 @@ export abstract class IRepository<T extends Document> {
     projection?: Record<string, unknown>,
   ): Promise<T | null> {
     return this.entityModel
-      .findById(id, entityFilterQuery, {
-        __v: 0,
-        ...projection,
-      })
+      .findById(
+        id,
+        {
+          __v: 0,
+          ...projection,
+        },
+        entityFilterQuery,
+      )
       .exec();
   }
 
@@ -43,10 +47,7 @@ export abstract class IRepository<T extends Document> {
     entityFilterQuery?: FilterQuery<T>,
     sortQuery?: FilterQuery<T>,
   ): Promise<T[] | null> {
-    return this.entityModel
-      .find(entityFilterQuery)
-      .sort(sortQuery)
-      .exec();
+    return this.entityModel.find(entityFilterQuery).sort(sortQuery).exec();
   }
 
   async create(createEntityData: unknown, session?: ClientSession): Promise<T> {
@@ -63,6 +64,7 @@ export abstract class IRepository<T extends Document> {
       updateEntityData,
       {
         new: true,
+        upsert: true,
       },
     );
   }

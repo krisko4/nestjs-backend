@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { BusinessTypeModule } from './business-type/business-type.module';
 import { NewsModule } from './news/news.module';
@@ -12,6 +11,8 @@ import { VisitModule } from './visit/visit.module';
 import { OpinionModule } from './opinion/opinion.module';
 import { ContactModule } from './contact/contact.module';
 import { PlaceModule } from './place/place.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
   imports: [
@@ -26,8 +27,10 @@ import { PlaceModule } from './place/place.module';
     OpinionModule,
     ContactModule,
     PlaceModule,
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'public'),
+    }),
   ],
-  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
