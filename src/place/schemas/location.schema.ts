@@ -1,10 +1,12 @@
-import { Schema, Prop } from '@nestjs/mongoose';
+import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
+import { Exclude, Transform } from 'class-transformer';
 import mongoose from 'mongoose';
-import { OpeningHours } from './opening-hours.schema';
+import { AverageNote, AverageNoteSchema } from './average-note.schema';
+import { OpeningHours, OpeningHoursSchema } from './opening-hours.schema';
 
 @Schema()
 export class Location {
-  @Prop({ type: mongoose.Schema.Types.ObjectId, auto: true })
+  @Transform((params) => params.obj._id.toString())
   _id: string;
   @Prop({ required: true })
   address: string;
@@ -17,6 +19,8 @@ export class Location {
   @Prop()
   facebook: string;
   @Prop()
+  instagram: string;
+  @Prop()
   email: string;
   @Prop()
   website: string;
@@ -24,12 +28,14 @@ export class Location {
   alwaysOpen: boolean;
   @Prop({ default: 'closed', enum: ['open', 'closed'] })
   status: string;
-  @Prop()
+  @Prop({ type: OpeningHoursSchema })
   openingHours: OpeningHours;
   @Prop({ default: false })
   isActive: boolean;
-  @Prop({ type: mongoose.Schema.Types.ObjectId, required: true })
-  userId: string;
   @Prop({ default: 0 })
   visitCount: number;
+  @Prop({ type: AverageNoteSchema })
+  averageNote: AverageNote;
 }
+
+export const LocationSchema = SchemaFactory.createForClass(Location);

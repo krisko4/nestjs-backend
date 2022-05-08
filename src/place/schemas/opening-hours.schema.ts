@@ -1,29 +1,33 @@
-import { Prop, Schema } from '@nestjs/mongoose';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
-@Schema()
+@Schema({ _id: false })
 class OpeningDay {
-  @Prop()
+  @Prop({ required: true })
   start: Date;
-  @Prop()
+  @Prop({ required: true })
   end: Date;
   @Prop({ default: true })
   open: boolean;
 }
 
-@Schema()
+const OpeningDaySchema = SchemaFactory.createForClass(OpeningDay);
+
+@Schema({ _id: false })
 export class OpeningHours {
-  @Prop()
+  @Prop({ type: OpeningDaySchema })
   monday: OpeningDay;
-  @Prop()
+  @Prop({ type: OpeningDaySchema })
   tuesday: OpeningDay;
-  @Prop()
+  @Prop({ type: OpeningDaySchema })
   wednesday: OpeningDay;
-  @Prop()
+  @Prop({ type: OpeningDaySchema })
   thursday: OpeningDay;
-  @Prop()
+  @Prop({ type: OpeningDaySchema })
   friday: OpeningDay;
-  @Prop()
+  @Prop({ type: OpeningDaySchema })
   saturday: OpeningDay;
-  @Prop()
+  @Prop({ type: OpeningDaySchema })
   sunday: OpeningDay;
 }
+
+export const OpeningHoursSchema = SchemaFactory.createForClass(OpeningHours);

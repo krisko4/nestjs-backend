@@ -21,6 +21,7 @@ export class AuthController {
   @Post('/login')
   async login(@Request() req, @Res({ passthrough: true }) response: Response) {
     const userData = await this.authService.login(req.user);
+    response.cookie('uid', userData.uid);
     response.cookie('access_token', userData.access_token);
     response.cookie('refresh_token', userData.refresh_token);
     return userData;
@@ -46,6 +47,7 @@ export class AuthController {
     await this.authService.logout(request.user.uid);
     response.clearCookie('access_token');
     response.clearCookie('refresh_token');
+    response.clearCookie('uid');
     return 'Logout successful';
   }
 }

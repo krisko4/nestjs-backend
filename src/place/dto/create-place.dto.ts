@@ -1,4 +1,11 @@
-import { IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { Transform } from 'class-transformer';
+import {
+  IsNotEmpty,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { CreateLocationDto } from './create-location.dto';
 
 export class CreatePlaceDto {
@@ -12,9 +19,13 @@ export class CreatePlaceDto {
   subtitle: string;
   @IsString()
   @MaxLength(1000)
+  @IsString()
+  @IsNotEmpty()
+  type: string;
   @MinLength(1)
   description: string;
-  @Matches(/^(true|false)$/)
+  @Transform(({ value }) => JSON.parse(value))
   isBusinessChain: boolean;
+  @Transform(({ value }) => JSON.parse(value))
   locations: CreateLocationDto[];
 }

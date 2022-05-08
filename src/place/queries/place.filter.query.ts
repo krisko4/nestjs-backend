@@ -1,10 +1,4 @@
-import {
-  IsNumberString,
-  IsOptional,
-  IsString,
-  Max,
-  Min,
-} from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 import { PaginationQuery } from './pagination.query';
 
 export class PlaceFilterQuery extends PaginationQuery {

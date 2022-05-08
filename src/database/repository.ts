@@ -4,10 +4,10 @@ import {
   FilterQuery,
   Document,
   UpdateQuery,
-  Types,
+  QueryOptions,
 } from 'mongoose';
 
-export abstract class IRepository<T extends Document> {
+export abstract class MongoRepository<T extends Document> {
   constructor(protected readonly entityModel: Model<T>) {}
 
   async findOne(
@@ -40,7 +40,7 @@ export abstract class IRepository<T extends Document> {
   }
 
   async find(entityFilterQuery?: FilterQuery<T>): Promise<T[] | null> {
-    return this.entityModel.find(entityFilterQuery).exec();
+    return this.entityModel.find(entityFilterQuery, { __v: 0 }).exec();
   }
 
   async findAndSort(
@@ -55,9 +55,24 @@ export abstract class IRepository<T extends Document> {
     return entity.save({ session });
   }
 
+  async findByIdAndUpdate(
+    id: string,
+    updateEntityData: UpdateQuery<unknown>,
+    options?: QueryOptions,
+    session?: ClientSession,
+  ): Promise<T | null> {
+    return this.entityModel.findByIdAndUpdate(id, updateEntityData, {
+      ...options,
+      new: true,
+      upsert: true,
+      runValidators: true,
+      session,
+    });
+  }
   async findOneAndUpdate(
     entityFilterQuery: FilterQuery<T>,
     updateEntityData: UpdateQuery<unknown>,
+    session?: ClientSession,
   ): Promise<T | null> {
     return this.entityModel.findOneAndUpdate(
       entityFilterQuery,
@@ -65,6 +80,8 @@ export abstract class IRepository<T extends Document> {
       {
         new: true,
         upsert: true,
+        runValidators: true,
+        session,
       },
     );
   }

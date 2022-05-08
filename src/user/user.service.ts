@@ -1,6 +1,9 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
 import { UserRepository } from './user.repository';
 import { ClientSession } from 'mongoose';
 import * as bcrypt from 'bcrypt';
@@ -24,6 +27,11 @@ export class UserService {
       },
       session,
     );
+  }
+
+  checkIfUserIsSubscriber(id: string, locationId: string, uid: string) {
+    if (id !== uid) throw new BadRequestException('Invalid uid');
+    return this.userRepository.checkIfUserIsSubscriber(id, locationId);
   }
 
   findAll() {

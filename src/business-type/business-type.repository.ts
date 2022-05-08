@@ -1,4 +1,4 @@
-import { IRepository } from '../database/repository';
+import { MongoRepository } from '../database/repository';
 import {
   BusinessType,
   BusinessTypeDocument,
@@ -8,7 +8,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class BusinessTypeRepository extends IRepository<BusinessTypeDocument> {
+export class BusinessTypeRepository extends MongoRepository<BusinessTypeDocument> {
   constructor(
     @InjectModel(BusinessType.name)
     businessTypeModel: Model<BusinessTypeDocument>,

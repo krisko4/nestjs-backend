@@ -1,4 +1,4 @@
-import { IRepository } from 'src/database/repository';
+import { MongoRepository } from 'src/database/repository';
 import {
   ConfirmationToken,
   ConfirmationTokenDocument,
@@ -6,7 +6,7 @@ import {
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 
-export class ConfirmationTokenRepository extends IRepository<ConfirmationTokenDocument> {
+export class ConfirmationTokenRepository extends MongoRepository<ConfirmationTokenDocument> {
   constructor(
     @InjectModel(ConfirmationToken.name)
     private readonly confirmationTokenModel: Model<ConfirmationTokenDocument>,

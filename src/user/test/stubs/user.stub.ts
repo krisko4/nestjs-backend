@@ -7,7 +7,7 @@ export const userStub = (): User => {
     email: 'test@user.com',
     birthdate: new Date(2000, 1, 1, 1),
     img: 'image',
-    _id: 'any',
+    // _id: 'any',
     isActive: false,
     password: 'password',
     notificationToken: 'token',

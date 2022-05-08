@@ -13,6 +13,8 @@ import { ContactModule } from './contact/contact.module';
 import { PlaceModule } from './place/place.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
+import { SubscriptionModule } from './subscription/subscription.module';
 
 @Module({
   imports: [
@@ -30,6 +32,8 @@ import { join } from 'path';
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
     }),
+    CloudinaryModule,
+    SubscriptionModule,
   ],
   providers: [AppService],
 })

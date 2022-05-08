@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Query } from '@nestjs/common';
 import { VisitService } from './visit.service';
 import { CreateVisitDto } from './dto/create-visit.dto';
+import { FindVisitsQuery } from './queries/find-visits.query';
 
 @Controller('visits')
 export class VisitController {
@@ -10,9 +11,10 @@ export class VisitController {
   create(@Body() createVisitDto: CreateVisitDto) {
     return this.visitService.create(createVisitDto);
   }
+
   @Get('/search')
-  findByLocationId(@Query('locationId') locationId: string) {
-    return this.visitService.findByLocationId(locationId);
+  findByQuery(@Query() findVisitsQuery: FindVisitsQuery) {
+    return this.visitService.findByQuery(findVisitsQuery);
   }
 
   @Get()

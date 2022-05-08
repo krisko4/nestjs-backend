@@ -1,17 +1,7 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-} from '@nestjs/common';
+import { Controller, Get, Param, Req } from '@nestjs/common';
 import { UserService } from './user.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
 import { plainToInstance } from 'class-transformer';
-import { UserSerializer } from './serializers/user.serializer';
+import { User } from './schemas/user.schema';
 
 @Controller('users')
 export class UserController {
@@ -20,12 +10,19 @@ export class UserController {
   @Get()
   async findAll() {
     const users = await this.userService.findAll();
-    return plainToInstance(UserSerializer, users, {
-      excludeExtraneousValues: true,
-    });
+    return users.map((user) => plainToInstance(User, user.toObject()));
   }
   @Get(':id')
   findById(@Param('id') id: string) {
     return this.userService.findById(id);
+  }
+  @Get(':id/subscriptions/:locationId')
+  checkIfUserIsSubscriber(
+    @Req() req,
+    @Param('id') id: string,
+    @Param('locationId') locationId: string,
+  ) {
+    const { uid } = req.cookies;
+    return this.userService.checkIfUserIsSubscriber(id, locationId, uid);
   }
 }
