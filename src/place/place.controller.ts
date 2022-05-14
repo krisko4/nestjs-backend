@@ -34,25 +34,10 @@ export class PlaceController {
 
   @Put()
   @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'logo', maxCount: 1 },
-        { name: 'images', maxCount: 4 },
-      ],
-      {
-        dest: '/tmp/',
-        limits: {
-          fileSize: 2000000,
-        },
-        fileFilter: function (req, file, callback) {
-          const mimetype = file.mimetype;
-          if (!mimetype.startsWith('image/')) {
-            return callback(new Error('Only images are allowed'), false);
-          }
-          callback(null, true);
-        },
-      },
-    ),
+    FileFieldsInterceptor([
+      { name: 'logo', maxCount: 1 },
+      { name: 'images', maxCount: 4 },
+    ]),
   )
   @UseGuards(JwtAuthGuard)
   update(
@@ -71,25 +56,10 @@ export class PlaceController {
   }
   @Post()
   @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'logo', maxCount: 1 },
-        { name: 'images', maxCount: 4 },
-      ],
-      {
-        dest: '/tmp/',
-        limits: {
-          fileSize: 2000000,
-        },
-        fileFilter: function (req, file, callback) {
-          const mimetype = file.mimetype;
-          if (!mimetype.startsWith('image/')) {
-            return callback(new Error('Only images are allowed'), false);
-          }
-          callback(null, true);
-        },
-      },
-    ),
+    FileFieldsInterceptor([
+      { name: 'logo', maxCount: 1 },
+      { name: 'images', maxCount: 4 },
+    ]),
   )
   @UseGuards(JwtAuthGuard)
   create(

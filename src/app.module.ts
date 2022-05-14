@@ -15,6 +15,10 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { SubscriptionModule } from './subscription/subscription.module';
+import { EventModule } from './event/event.module';
+import { MulterConfigModule } from './multer-config/multer-config.module';
+import { MulterModule } from '@nestjs/platform-express';
+import { MulterConfigService } from './multer-config/multer-config.service';
 
 @Module({
   imports: [
@@ -34,6 +38,8 @@ import { SubscriptionModule } from './subscription/subscription.module';
     }),
     CloudinaryModule,
     SubscriptionModule,
+    EventModule,
+    MulterConfigModule,
   ],
   providers: [AppService],
 })

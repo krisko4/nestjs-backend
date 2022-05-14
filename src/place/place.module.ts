@@ -8,6 +8,8 @@ import { UserModule } from 'src/user/user.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
+import { MulterConfigService } from 'src/multer-config/multer-config.service';
+import { MulterModule } from '@nestjs/platform-express';
 
 @Module({
   imports: [
@@ -16,6 +18,9 @@ import { SubscriptionModule } from 'src/subscription/subscription.module';
     AuthModule,
     CloudinaryModule,
     SubscriptionModule,
+    MulterModule.registerAsync({
+      useClass: MulterConfigService,
+    }),
   ],
   controllers: [PlaceController],
   providers: [PlaceService, PlaceRepository],
