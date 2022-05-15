@@ -7,6 +7,7 @@ import { EventRepository } from './event.repository';
 import { PlaceModule } from 'src/place/place.module';
 import { EventSchema } from './schemas/event.schema';
 import { MongooseModule } from '@nestjs/mongoose';
+import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { MongooseModule } from '@nestjs/mongoose';
     }),
     MongooseModule.forFeature([{ name: Event.name, schema: EventSchema }]),
     PlaceModule,
+    CloudinaryModule,
   ],
   controllers: [EventController],
   providers: [EventService, EventRepository],
