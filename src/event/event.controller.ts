@@ -41,7 +41,8 @@ export class EventController {
 
   @Get(':id')
   async findById(@Param('id') id: string) {
-    return this.eventService.findById(id);
+    const event = await this.eventService.findById(id);
+    return plainToInstance(EventDto, event.toObject());
   }
 
   @Patch(':id')
@@ -55,11 +56,11 @@ export class EventController {
     return this.eventService.unparticipate(id, uid);
   }
 
-  @Get('search/popular')
+  @Get('/search/popular')
   async findPopular(@Query() paginationQuery: PaginationQuery) {
     return this.eventService.findPopular(paginationQuery);
   }
-  @Get('search/today')
+  @Get('/search/today')
   async findToday(@Query() paginationQuery: PaginationQuery) {
     const events = await this.eventService.findToday(paginationQuery);
     const { metadata, data } = events;

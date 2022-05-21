@@ -1,5 +1,6 @@
-import { Transform } from 'class-transformer';
+import { Exclude, Transform } from 'class-transformer';
 import { format } from 'date-fns';
+import { User } from 'src/user/schemas/user.schema';
 import { Event } from '../schemas/event.schema';
 
 export class EventDto extends Event {

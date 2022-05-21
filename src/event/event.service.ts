@@ -4,13 +4,11 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { plainToClass } from 'class-transformer';
 import { isBefore } from 'date-fns';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { PlaceService } from 'src/place/place.service';
 import { PaginationQuery } from 'src/place/queries/pagination.query';
 import { CreateEventDto } from './dto/create-event.dto';
-import { UpdateEventDto } from './dto/update-event.dto';
 import { EventRepository } from './event.repository';
 import { EventFilterQuery } from './queries/event-filter.query';
 
@@ -39,7 +37,6 @@ export class EventService {
   }
 
   async findById(id: string) {
-    console.log(id);
     return this.eventRepository.findEventById(id);
   }
 
@@ -47,7 +44,6 @@ export class EventService {
     if (!uid) throw new InternalServerErrorException('uid is required');
     const participatedEvent =
       await this.eventRepository.findByIdAndParticipatorId(id, uid);
-    console.log(participatedEvent);
     if (participatedEvent)
       throw new InternalServerErrorException(
         `User with id: ${uid} is already a participator of the event`,

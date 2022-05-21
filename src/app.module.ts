@@ -19,6 +19,7 @@ import { EventModule } from './event/event.module';
 import { MulterConfigModule } from './multer-config/multer-config.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { MulterConfigService } from './multer-config/multer-config.service';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { MulterConfigService } from './multer-config/multer-config.service';
     SubscriptionModule,
     EventModule,
     MulterConfigModule,
+    NotificationModule,
   ],
   providers: [AppService],
 })

@@ -4,7 +4,6 @@ import { Injectable } from '@nestjs/common';
 import { MongoRepository } from '../database/repository';
 import { EventDocument } from './schemas/event.schema';
 import { CreateEventDto } from './dto/create-event.dto';
-import { EventFilterQuery } from './queries/event-filter.query';
 import { PaginationQuery } from 'src/place/queries/pagination.query';
 import { endOfDay, startOfDay } from 'date-fns';
 import { getPaginatedEventData } from './aggregations/paginated-event-data';
