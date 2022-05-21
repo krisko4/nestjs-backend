@@ -17,7 +17,6 @@ export class EventRepository extends MongoRepository<EventDocument> {
     super(eventModel);
   }
   createEvent(createEventDto: CreateEventDto, imageId?: string) {
-    console.log(imageId);
     return this.create({ ...createEventDto, img: imageId });
   }
   findByLocationId(locationId: string) {
@@ -33,6 +32,27 @@ export class EventRepository extends MongoRepository<EventDocument> {
       startDate: { $gte: startOfDay(today), $lt: endOfDay(today) },
     };
     return this.findPaginated(paginationQuery, filterQuery);
+  }
+  participate(id: string, userId: string) {
+    return this.findByIdAndUpdate(id, { $push: { participators: userId } });
+  }
+
+  unparticipate(id: string, userId: string) {
+    return this.findByIdAndUpdate(id, { $pull: { participators: userId } });
+  }
+  findByIdAndParticipatorId(id: string, uid: string) {
+    return this.findOne({
+      _id: new Types.ObjectId(id),
+      participators: new Types.ObjectId(uid),
+    });
+  }
+
+  findEventById(id: string) {
+    return this.eventModel.findById(id).populate('participators');
+  }
+
+  findAll() {
+    return this.eventModel.find();
   }
 
   private async findPaginated(

@@ -9,7 +9,7 @@ export type EventDocument = Event & Document;
 
 @Schema()
 export class Event {
-  @Prop({ type: mongoose.Schema.Types.ObjectId })
+  // @Prop({ type: mongoose.Schema.Types.ObjectId, auto:  })
   @Transform((params) => params.obj._id.toString())
   _id: string;
   @Prop({ required: true })
@@ -26,7 +26,7 @@ export class Event {
   @Transform((params) => params.obj.locationId.toString())
   locationId: string;
   @Prop({ type: [mongoose.Schema.Types.ObjectId], ref: User.name })
-  subscribers: User[];
+  participators: User[];
 }
 
 export const EventSchema = SchemaFactory.createForClass(Event);

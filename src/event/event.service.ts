@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
@@ -9,6 +10,7 @@ import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { PlaceService } from 'src/place/place.service';
 import { PaginationQuery } from 'src/place/queries/pagination.query';
 import { CreateEventDto } from './dto/create-event.dto';
+import { UpdateEventDto } from './dto/update-event.dto';
 import { EventRepository } from './event.repository';
 import { EventFilterQuery } from './queries/event-filter.query';
 
@@ -36,11 +38,32 @@ export class EventService {
     return this.eventRepository.createEvent(createEventDto, imageId);
   }
 
+  async findById(id: string) {
+    console.log(id);
+    return this.eventRepository.findEventById(id);
+  }
+
+  async participate(id: string, uid: string) {
+    if (!uid) throw new InternalServerErrorException('uid is required');
+    const participatedEvent =
+      await this.eventRepository.findByIdAndParticipatorId(id, uid);
+    console.log(participatedEvent);
+    if (participatedEvent)
+      throw new InternalServerErrorException(
+        `User with id: ${uid} is already a participator of the event`,
+      );
+    return this.eventRepository.participate(id, uid);
+  }
+
+  async unparticipate(id: string, uid: string) {
+    if (!uid) throw new InternalServerErrorException('uid is required');
+    return this.eventRepository.unparticipate(id, uid);
+  }
+
   findByQuery(eventFilterQuery: EventFilterQuery) {
     const { locationId } = eventFilterQuery;
-    console.log(locationId);
     if (locationId) return this.eventRepository.findByLocationId(locationId);
-    return this.eventRepository.find();
+    return this.eventRepository.findAll();
   }
 
   findPopular(paginationQuery: PaginationQuery) {

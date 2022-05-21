@@ -9,6 +9,7 @@ import {
   UseInterceptors,
   Query,
   UploadedFile,
+  Req,
 } from '@nestjs/common';
 import { EventService } from './event.service';
 import { CreateEventDto } from './dto/create-event.dto';
@@ -38,11 +39,27 @@ export class EventController {
     return events.map((event) => plainToInstance(EventDto, event.toObject()));
   }
 
-  @Get('/popular')
+  @Get(':id')
+  async findById(@Param('id') id: string) {
+    return this.eventService.findById(id);
+  }
+
+  @Patch(':id')
+  async participate(@Param('id') id: string, @Req() req) {
+    const { uid } = req.cookies;
+    return this.eventService.participate(id, uid);
+  }
+  @Delete(':id')
+  async unparticipate(@Param('id') id: string, @Req() req) {
+    const { uid } = req.cookies;
+    return this.eventService.unparticipate(id, uid);
+  }
+
+  @Get('search/popular')
   async findPopular(@Query() paginationQuery: PaginationQuery) {
     return this.eventService.findPopular(paginationQuery);
   }
-  @Get('/today')
+  @Get('search/today')
   async findToday(@Query() paginationQuery: PaginationQuery) {
     const events = await this.eventService.findToday(paginationQuery);
     const { metadata, data } = events;
