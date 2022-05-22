@@ -1,7 +1,8 @@
-import { Controller, Get, Param, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Req } from '@nestjs/common';
 import { UserService } from './user.service';
 import { plainToInstance } from 'class-transformer';
 import { User } from './schemas/user.schema';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Controller('users')
 export class UserController {
@@ -16,6 +17,15 @@ export class UserController {
   findById(@Param('id') id: string) {
     return this.userService.findById(id);
   }
+
+  @Patch(':id')
+  setNotificationToken(
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    return this.userService.setNotificationToken(id, updateUserDto);
+  }
+
   @Get(':id/subscriptions/:locationId')
   checkIfUserIsSubscriber(
     @Req() req,

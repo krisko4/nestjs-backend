@@ -45,14 +45,22 @@ export class SubscriptionService {
     return this.subscriptionRepository.deleteByLocationId(locationId);
   }
 
+  findByLocationId(locationId: string) {
+    return this.subscriptionRepository.findByLocationId(locationId);
+  }
+
+  findByUserId(userId: string) {
+    return this.subscriptionRepository.findByUserId(userId);
+  }
+
   async find(subscriptionFilterQuery: SubscriptionFilterQuery) {
     const { userId, locationId } = subscriptionFilterQuery;
     if (userId && locationId) {
       return this.findByUserIdAndLocationId(userId, locationId);
     }
     if (userId) {
-      return this.subscriptionRepository.findByUserId(userId);
+      return this.findByUserId(userId);
     }
-    return this.subscriptionRepository.findByLocationId(locationId);
+    return this.findByLocationId(locationId);
   }
 }

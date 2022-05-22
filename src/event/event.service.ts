@@ -1,13 +1,18 @@
 import {
   BadRequestException,
+  forwardRef,
+  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { isBefore } from 'date-fns';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
+import { NotificationService } from 'src/notification/notification.service';
 import { PlaceService } from 'src/place/place.service';
 import { PaginationQuery } from 'src/place/queries/pagination.query';
+import { SubscriptionDocument } from 'src/subscription/schemas/subscription.schema';
+import { SubscriptionService } from 'src/subscription/subscription.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { EventRepository } from './event.repository';
 import { EventFilterQuery } from './queries/event-filter.query';
@@ -18,22 +23,39 @@ export class EventService {
     private readonly eventRepository: EventRepository,
     private readonly placeService: PlaceService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly subscriptionService: SubscriptionService,
+    @Inject(forwardRef(() => NotificationService))
+    private readonly notificationService: NotificationService,
   ) {}
   async create(createEventDto: CreateEventDto, img?: Express.Multer.File) {
-    const { startDate, endDate, locationId } = createEventDto;
-    const place = await this.placeService.findByLocationId(locationId);
-    if (!place)
-      throw new NotFoundException(`location with id: ${locationId} not found`);
+    const { title, startDate, endDate, locationId } = createEventDto;
     if (isBefore(new Date(endDate), new Date(startDate))) {
       throw new BadRequestException(
         'Event should not end before it has started',
       );
     }
+    const place = await this.placeService.findByLocationId(locationId);
+    if (!place)
+      throw new NotFoundException(`location with id: ${locationId} not found`);
     let imageId: string;
     if (img) {
       imageId = await this.cloudinaryService.uploadImage(img.path, 'events');
     }
-    return this.eventRepository.createEvent(createEventDto, imageId);
+    const event = await this.eventRepository.createEvent(
+      createEventDto,
+      imageId,
+    );
+    const subs = await this.subscriptionService.findByLocationId(locationId);
+    const receivers = subs.map((sub) => sub.user._id);
+    if (receivers.length > 0) {
+      await this.notificationService.create({
+        title,
+        eventId: event._id.toString(),
+        locationId,
+        receivers,
+      });
+    }
+    return event;
   }
 
   async findById(id: string) {

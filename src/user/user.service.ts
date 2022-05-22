@@ -7,6 +7,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UserRepository } from './user.repository';
 import { ClientSession } from 'mongoose';
 import * as bcrypt from 'bcrypt';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UserService {
@@ -27,6 +28,11 @@ export class UserService {
       },
       session,
     );
+  }
+
+  setNotificationToken(id: string, updateUserDto: UpdateUserDto) {
+    const { notificationToken } = updateUserDto;
+    return this.userRepository.setNotificationToken(id, notificationToken);
   }
 
   checkIfUserIsSubscriber(id: string, locationId: string, uid: string) {

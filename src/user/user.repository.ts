@@ -12,6 +12,11 @@ export class UserRepository extends MongoRepository<UserDocument> {
   findByEmail(email: string) {
     return this.findOne({ email: email });
   }
+
+  setNotificationToken(id: string, token: string) {
+    return this.findByIdAndUpdate(id, { notificationToken: token });
+  }
+
   async checkIfUserIsSubscriber(id: string, locationId: string) {
     console.log(locationId);
     const user = await this.findOne({

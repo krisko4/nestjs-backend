@@ -8,6 +8,7 @@ import {
 import { Types, Model } from 'mongoose';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { SubscriptionFilterQuery } from './queries/subscription-filter.query';
+import { User } from 'src/user/schemas/user.schema';
 
 @Injectable()
 export class SubscriptionRepository extends MongoRepository<SubscriptionDocument> {
@@ -29,10 +30,13 @@ export class SubscriptionRepository extends MongoRepository<SubscriptionDocument
       user: new Types.ObjectId(uid),
     });
   }
-  findByLocationId(locationId: string) {
-    return this.find({
-      locationId: new Types.ObjectId(locationId),
-    });
+  findByLocationId(locationId: string): Promise<SubscriptionDocument[]> {
+    return this.subscriptionModel
+      .find({
+        locationId: new Types.ObjectId(locationId),
+      })
+      .populate('user')
+      .exec();
   }
   deleteByUserId(uid: string) {
     return this.deleteMany({

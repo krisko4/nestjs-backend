@@ -24,12 +24,14 @@ export class NotificationRepository extends MongoRepository<NotificationDocument
     return this.find({ receivers: new Types.ObjectId(receiverId) });
   }
   createNotification(createNotificationDto: CreateNotificationDto) {
-    const { receivers } = createNotificationDto;
+    const { receivers, eventId, title, locationId } = createNotificationDto;
     const mappedReceivers = receivers.map(
       (receiverId) => new Types.ObjectId(receiverId),
     );
     return this.create({
-      ...createNotificationDto,
+      event: new Types.ObjectId(eventId),
+      title,
+      locationId,
       receivers: mappedReceivers,
     });
   }
