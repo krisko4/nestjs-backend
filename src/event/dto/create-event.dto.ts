@@ -11,4 +11,6 @@ export class CreateEventDto {
   content: string;
   @IsMongoId()
   locationId: string;
+  @IsMongoId()
+  placeId: string;
 }

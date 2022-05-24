@@ -48,7 +48,7 @@ export class NotificationService {
       createNotificationDto,
     );
     const place = await this.placeService.findByLocationId(locationId);
-    const event = await this.eventService.findById(eventId);
+    const { event } = await this.eventService.findById(eventId);
     const { startDate, endDate, img } = event;
     await firebase.messaging().sendToDevice(
       tokens,

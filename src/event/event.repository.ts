@@ -16,21 +16,33 @@ export class EventRepository extends MongoRepository<EventDocument> {
     super(eventModel);
   }
   createEvent(createEventDto: CreateEventDto, imageId?: string) {
-    return this.create({ ...createEventDto, img: imageId });
+    return this.create({
+      ...createEventDto,
+      img: imageId,
+      place: createEventDto.placeId,
+    });
   }
   findByLocationId(locationId: string) {
-    return this.find({ locationId: new Types.ObjectId(locationId) });
+    return this.eventModel
+      .find({ locationId: new Types.ObjectId(locationId) })
+      .populate('place')
+      .populate('participators');
   }
   findPopular(paginationQuery: PaginationQuery) {
-    const { start, limit } = paginationQuery;
-    return this.eventModel.find().skip(start).limit(limit);
+    const sortQuery = {
+      participators: -1,
+    };
+    return this.findPaginated(paginationQuery, {}, sortQuery);
   }
   findToday(paginationQuery: PaginationQuery) {
     const today = new Date();
     const filterQuery = {
       startDate: { $gte: startOfDay(today), $lt: endOfDay(today) },
     };
-    return this.findPaginated(paginationQuery, filterQuery);
+    const sortQuery = {
+      startDate: -1,
+    };
+    return this.findPaginated(paginationQuery, filterQuery, sortQuery);
   }
   participate(id: string, userId: string) {
     return this.findByIdAndUpdate(id, { $push: { participators: userId } });
@@ -47,7 +59,10 @@ export class EventRepository extends MongoRepository<EventDocument> {
   }
 
   findEventById(id: string) {
-    return this.eventModel.findById(id).populate('participators');
+    return this.eventModel
+      .findById(id)
+      .populate('participators')
+      .populate('place');
   }
 
   findAll() {
@@ -57,10 +72,12 @@ export class EventRepository extends MongoRepository<EventDocument> {
   private async findPaginated(
     paginationQuery: PaginationQuery,
     entityFilterQuery: FilterQuery<Model<EventDocument>>,
+    sortQuery?: FilterQuery<Model<EventDocument>>,
   ) {
     const { start, limit } = paginationQuery;
     const result = await this.eventModel
       .aggregate()
+      .sort(sortQuery)
       .facet(getPaginatedEventData(start, limit, entityFilterQuery));
     return result[0];
   }

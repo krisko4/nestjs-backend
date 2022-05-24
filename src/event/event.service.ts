@@ -28,7 +28,8 @@ export class EventService {
     private readonly notificationService: NotificationService,
   ) {}
   async create(createEventDto: CreateEventDto, img?: Express.Multer.File) {
-    const { title, startDate, endDate, locationId } = createEventDto;
+    const { title, startDate, endDate, content, locationId, placeId } =
+      createEventDto;
     if (isBefore(new Date(endDate), new Date(startDate))) {
       throw new BadRequestException(
         'Event should not end before it has started',
@@ -58,8 +59,14 @@ export class EventService {
     return event;
   }
 
-  async findById(id: string) {
-    return this.eventRepository.findEventById(id);
+  async findById(id: string, uid?: string) {
+    const event = await this.eventRepository.findEventById(id);
+    return {
+      event,
+      isUserOwner: uid
+        ? event.place.userId.toString() === uid.toString()
+        : false,
+    };
   }
 
   async participate(id: string, uid: string) {

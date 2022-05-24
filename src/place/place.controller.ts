@@ -27,6 +27,7 @@ import {
   UpdateOpeningHoursDto,
 } from './dto/update-opening-hours.dto';
 import { PlaceDto } from './dto/place.dto';
+import { CoordsQuery } from './queries/coords.query';
 
 @Controller('places')
 export class PlaceController {
@@ -111,6 +112,12 @@ export class PlaceController {
     });
   }
 
+  @Get('/by-coords')
+  async findByLatLng(@Query() coordsQuery: CoordsQuery) {
+    const { lat, lng } = coordsQuery;
+    return this.placeService.findByLatLng(lat, lng);
+  }
+
   @Get('/popular')
   async findPopular(@Query() placeFilterQuery: PlaceFilterQuery) {
     return this.placeService.findPopular(placeFilterQuery);
@@ -186,12 +193,18 @@ export class PlaceController {
     const { uid } = req.cookies;
     const place = await this.placeService.findLocation(id, locationId);
     const placeDto = plainToInstance(PlaceDto, place);
-    placeDto.isUserOwner = place.userId === uid;
+    placeDto.isUserOwner = place.userId.toString() === uid.toString();
     return placeDto;
   }
 
   @Patch(':id/visit-count')
   incrementVisitCount(@Param('id') id: string) {
     return this.placeService.incrementVisitCount(id);
+  }
+
+  @Get(':id')
+  async findById(@Param('id') id: string) {
+    const place = await this.placeService.findById(id);
+    return plainToInstance(PlaceDto, place.toObject());
   }
 }

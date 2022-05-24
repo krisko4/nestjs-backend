@@ -145,7 +145,7 @@ export class PlaceService {
     return registeredPlace;
   }
 
-  private findById(id: string) {
+  findById(id: string) {
     return this.placeRepository.findById(id);
   }
 

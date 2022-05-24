@@ -4,6 +4,8 @@ import { ValidateNested } from 'class-validator';
 import mongoose from 'mongoose';
 import { Document } from 'mongoose';
 import { User } from 'src/user/schemas/user.schema';
+import { Location } from 'src/place/schemas/location.schema';
+import { Place } from 'src/place/schemas/place.schema';
 
 export type EventDocument = Event & Document;
 
@@ -27,6 +29,9 @@ export class Event {
   @Prop({ type: mongoose.Schema.Types.ObjectId })
   @Transform((params) => params.obj.locationId.toString())
   locationId: string;
+  @Transform((params) => plainToInstance(Place, params.obj.place))
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Place.name })
+  place: Place;
   @Prop({ type: [mongoose.Schema.Types.ObjectId], ref: User.name })
   @ValidateNested()
   @Transform((params) => {
