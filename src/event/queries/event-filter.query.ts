@@ -5,4 +5,7 @@ export class EventFilterQuery {
   @IsMongoId()
   @IsOptional()
   locationId?: string;
+  @IsMongoId()
+  @IsOptional()
+  participatorId?: string;
 }

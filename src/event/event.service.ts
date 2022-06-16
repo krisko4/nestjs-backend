@@ -86,7 +86,10 @@ export class EventService {
   }
 
   findByQuery(eventFilterQuery: EventFilterQuery) {
-    const { locationId } = eventFilterQuery;
+    const { locationId, participatorId } = eventFilterQuery;
+    if (participatorId) {
+      return this.eventRepository.findByParticipatorId(participatorId);
+    }
     if (locationId) return this.eventRepository.findByLocationId(locationId);
     return this.eventRepository.findAll();
   }

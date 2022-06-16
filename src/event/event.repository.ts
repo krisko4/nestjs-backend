@@ -57,6 +57,12 @@ export class EventRepository extends MongoRepository<EventDocument> {
       participators: new Types.ObjectId(uid),
     });
   }
+  findByParticipatorId(uid: string) {
+    return this.eventModel
+      .find({ participators: new Types.ObjectId(uid) })
+      .populate('place')
+      .populate('participators');
+  }
 
   findEventById(id: string) {
     return this.eventModel
