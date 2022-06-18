@@ -11,7 +11,6 @@ export type EventDocument = Event & Document;
 
 @Schema()
 export class Event {
-  // @Prop({ type: mongoose.Schema.Types.ObjectId, auto:  })
   @Transform((params) => params.obj._id.toString())
   _id: string;
   @Prop({ required: true })

@@ -11,7 +11,6 @@ import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { NotificationService } from 'src/notification/notification.service';
 import { PlaceService } from 'src/place/place.service';
 import { PaginationQuery } from 'src/place/queries/pagination.query';
-import { SubscriptionDocument } from 'src/subscription/schemas/subscription.schema';
 import { SubscriptionService } from 'src/subscription/subscription.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { EventRepository } from './event.repository';
@@ -28,8 +27,7 @@ export class EventService {
     private readonly notificationService: NotificationService,
   ) {}
   async create(createEventDto: CreateEventDto, img?: Express.Multer.File) {
-    const { title, startDate, endDate, content, locationId, placeId } =
-      createEventDto;
+    const { title, startDate, endDate, locationId } = createEventDto;
     if (isBefore(new Date(endDate), new Date(startDate))) {
       throw new BadRequestException(
         'Event should not end before it has started',
@@ -61,6 +59,7 @@ export class EventService {
 
   async findById(id: string, uid?: string) {
     const event = await this.eventRepository.findEventById(id);
+    if (!event) throw new InternalServerErrorException(`Event not found`);
     return {
       event,
       isUserOwner: uid
@@ -85,12 +84,23 @@ export class EventService {
     return this.eventRepository.unparticipate(id, uid);
   }
 
-  findByQuery(eventFilterQuery: EventFilterQuery) {
+  async findByQuery(eventFilterQuery: EventFilterQuery) {
     const { locationId, participatorId } = eventFilterQuery;
     if (participatorId) {
       return this.eventRepository.findByParticipatorId(participatorId);
     }
-    if (locationId) return this.eventRepository.findByLocationId(locationId);
+    if (locationId) {
+      const events = await this.eventRepository.findByLocationId(locationId);
+      const subs = await this.subscriptionService.findByLocationId(locationId);
+      events.forEach((event) => {
+        event.participators.forEach((participator) => {
+          participator['isSubscriber'] = subs.some(
+            (user) => user._id.toString() === participator._id.toString(),
+          );
+        });
+      });
+      return events;
+    }
     return this.eventRepository.findAll();
   }
 

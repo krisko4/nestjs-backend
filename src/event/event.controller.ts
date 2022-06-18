@@ -13,7 +13,6 @@ import {
 } from '@nestjs/common';
 import { EventService } from './event.service';
 import { CreateEventDto } from './dto/create-event.dto';
-import { UpdateEventDto } from './dto/update-event.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { EventFilterQuery } from './queries/event-filter.query';
 import { plainToInstance } from 'class-transformer';

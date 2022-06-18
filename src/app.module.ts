@@ -20,12 +20,16 @@ import { MulterConfigModule } from './multer-config/multer-config.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { MulterConfigService } from './multer-config/multer-config.service';
 import { NotificationModule } from './notification/notification.module';
+import { RewardModule } from './reward/reward.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { CodeModule } from './code/code.module';
 
 @Module({
   imports: [
     BusinessTypeModule,
     NewsModule,
     DatabaseModule,
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     UserModule,
     AuthModule,
@@ -42,6 +46,8 @@ import { NotificationModule } from './notification/notification.module';
     EventModule,
     MulterConfigModule,
     NotificationModule,
+    RewardModule,
+    CodeModule,
   ],
   providers: [AppService],
 })
