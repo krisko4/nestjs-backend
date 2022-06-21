@@ -24,22 +24,22 @@ export class RewardService {
   ) {}
 
   async find(rewardFilterQuery: RewardFilterQuery) {
-    const { userId, locationId } = rewardFilterQuery;
-    if (userId && locationId) {
-      return this.findByUserIdAndLocationId(userId, locationId);
+    const { userId, eventId } = rewardFilterQuery;
+    if (userId && eventId) {
+      return this.findByUserIdAndEventId(userId, eventId);
     }
     if (userId) {
       return this.findByUserId(userId);
     }
-    return this.findByEventId(locationId);
+    return this.findByEventId(eventId);
   }
 
-  private findByUserIdAndLocationId(uid: string, locationId: string) {
-    return this.rewardRepository.findByUserIdAndEventId(uid, locationId);
+  private findByUserIdAndEventId(uid: string, eventId: string) {
+    return this.rewardRepository.findByUserIdAndEventId(uid, eventId);
   }
 
-  findByEventId(locationId: string) {
-    return this.rewardRepository.findByEventId(locationId);
+  findByEventId(eventId: string) {
+    return this.rewardRepository.findByEventId(eventId);
   }
 
   findByUserId(userId: string) {
@@ -102,7 +102,7 @@ export class RewardService {
     const { scheduledFor, description, rewardPercentage, eventId } =
       createRewardDto;
     const duplicateEvent = await this.findByEventId(eventId);
-    if (!duplicateEvent) {
+    if (duplicateEvent) {
       throw new InternalServerErrorException(
         `This event does already have a reward drawing`,
       );

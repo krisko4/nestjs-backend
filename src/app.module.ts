@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { AppService } from './app.service';
 import { BusinessTypeModule } from './business-type/business-type.module';
 import { NewsModule } from './news/news.module';
 import { DatabaseModule } from './database/database.module';
@@ -17,8 +16,6 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { EventModule } from './event/event.module';
 import { MulterConfigModule } from './multer-config/multer-config.module';
-import { MulterModule } from '@nestjs/platform-express';
-import { MulterConfigService } from './multer-config/multer-config.service';
 import { NotificationModule } from './notification/notification.module';
 import { RewardModule } from './reward/reward.module';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -49,6 +46,5 @@ import { CodeModule } from './code/code.module';
     RewardModule,
     CodeModule,
   ],
-  providers: [AppService],
 })
 export class AppModule {}

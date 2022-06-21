@@ -6,5 +6,5 @@ export class RewardFilterQuery {
   userId?: string;
   @IsMongoId()
   @IsOptional()
-  locationId?: string;
+  eventId?: string;
 }
