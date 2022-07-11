@@ -27,7 +27,7 @@ export class User {
   birthdate: Date;
   @Prop()
   @Exclude()
-  notificationToken: string;
+  notificationTokens: string[];
   @Exclude()
   __v?: number;
 }

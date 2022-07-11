@@ -13,8 +13,13 @@ export class UserRepository extends MongoRepository<UserDocument> {
     return this.findOne({ email: email });
   }
 
-  setNotificationToken(id: string, token: string) {
-    return this.findByIdAndUpdate(id, { notificationToken: token });
+  async setNotificationToken(id: string, token: string) {
+    const { notificationTokens } = await this.findById(id);
+    const tokens = notificationTokens.filter(
+      (notificationToken) => notificationToken !== token,
+    );
+    tokens.push(token);
+    return this.findByIdAndUpdate(id, { notificationTokens: tokens });
   }
 
   async checkIfUserIsSubscriber(id: string, locationId: string) {

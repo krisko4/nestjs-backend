@@ -34,16 +34,19 @@ export class NotificationService {
   }
 
   async create(createNotificationDto: CreateNotificationDto) {
-    const { receivers, title, locationId, eventId } = createNotificationDto;
-    const tokens: string[] = [];
+    const { receivers, title, body, locationId, eventId } =
+      createNotificationDto;
+    let tokens: string[] = [];
     for (const receiverId of receivers) {
       const user = await this.userService.findById(receiverId);
       if (!user)
         throw new InternalServerErrorException(
           `User with id: ${receiverId} not found`,
         );
-      tokens.push(user.notificationToken);
+      tokens = tokens.concat(user.notificationTokens);
     }
+    if (tokens.length === 0)
+      throw new InternalServerErrorException('No receiver tokens found');
     const notification = await this.notificationRepository.createNotification(
       createNotificationDto,
     );
@@ -55,11 +58,17 @@ export class NotificationService {
       {
         data: {
           title,
+          body,
           startDate: format(startDate, 'yyyy-MM-dd hh:mm'),
           endDate: format(endDate, 'yyyy-MM-dd hh:mm'),
           eventId,
           locationName: place.name,
           img: `${process.env.CLOUDI_URL}/${img}`,
+        },
+        notification: {
+          title,
+          body,
+          imageUrl: `${process.env.CLOUDI_URL}/${img}`,
         },
       },
       {

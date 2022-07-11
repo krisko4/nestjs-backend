@@ -48,7 +48,8 @@ export class EventService {
     const receivers = subs.map((sub) => sub.user._id);
     if (receivers.length > 0) {
       await this.notificationService.create({
-        title,
+        title: `${place.name} has added a new event!`,
+        body: title,
         eventId: event._id.toString(),
         locationId,
         receivers,

@@ -10,6 +10,6 @@ export const userStub = (): User => {
     // _id: 'any',
     isActive: false,
     password: 'password',
-    notificationToken: 'token',
+    notificationTokens: ['token'],
   };
 };
