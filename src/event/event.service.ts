@@ -9,6 +9,7 @@ import {
 import { isBefore } from 'date-fns';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { NotificationService } from 'src/notification/notification.service';
+import { NotificationType } from 'src/notification/schemas/notification.schema';
 import { PlaceService } from 'src/place/place.service';
 import { PaginationQuery } from 'src/place/queries/pagination.query';
 import { SubscriptionService } from 'src/subscription/subscription.service';
@@ -53,6 +54,7 @@ export class EventService {
         eventId: event._id.toString(),
         locationId,
         receivers,
+        type: NotificationType.EVENT,
       });
     }
     return event;

@@ -1,4 +1,11 @@
-import { IsString, MaxLength, IsMongoId, IsArray } from 'class-validator';
+import { NotificationType } from './../schemas/notification.schema';
+import {
+  IsString,
+  MaxLength,
+  IsMongoId,
+  IsArray,
+  IsEnum,
+} from 'class-validator';
 
 export class CreateNotificationDto {
   @IsString()
@@ -14,4 +21,6 @@ export class CreateNotificationDto {
   receivers: string[];
   @IsMongoId()
   eventId: string;
+  @IsEnum(NotificationType)
+  type: NotificationType;
 }

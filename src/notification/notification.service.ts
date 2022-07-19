@@ -1,3 +1,4 @@
+import { NotificationUpdateQuery } from './queries/notification-update.query';
 import {
   BadRequestException,
   forwardRef,
@@ -14,6 +15,7 @@ import { UserService } from 'src/user/user.service';
 import { format } from 'date-fns';
 import { PlaceService } from 'src/place/place.service';
 import { EventService } from 'src/event/event.service';
+import _ from 'lodash/fp';
 
 @Injectable()
 export class NotificationService {
@@ -57,6 +59,7 @@ export class NotificationService {
       tokens,
       {
         data: {
+          _id: notification._id.toString(),
           title,
           body,
           startDate: format(startDate, 'yyyy-MM-dd hh:mm'),
@@ -79,12 +82,50 @@ export class NotificationService {
   }
 
   findByQuery(filterQuery: NotificationFilterQuery) {
-    const { locationId, receiverId } = filterQuery;
-    if (locationId && receiverId)
+    const { locationId, receiverId, eventId } = filterQuery;
+    if (Object.keys(filterQuery).length > 1)
       throw new BadRequestException('Only one query parameter can be provided');
     if (locationId) {
       return this.notificationRepository.findByLocationId(locationId);
     }
+    if (eventId) {
+      return this.findNotificationStatistics(eventId);
+    }
     return this.notificationRepository.findByReceiverId(receiverId);
+  }
+
+  async findNotificationStatistics(eventId: string) {
+    const notifications = await this.notificationRepository.findByEventId(
+      eventId,
+    );
+    console.log(notifications);
+    return notifications.map((notification) => {
+      let receivedCount = 0;
+      let clickedCount = 0;
+      for (const receiver of notification.receivers) {
+        if (receiver.received) {
+          receivedCount++;
+        }
+        if (receiver.clicked) {
+          clickedCount++;
+        }
+      }
+      return {
+        type: notification.type,
+        all: notification.receivers.length,
+        received: receivedCount,
+        clicked: clickedCount,
+      };
+    });
+  }
+
+  update(id: string, notificationUpdateQuery: NotificationUpdateQuery) {
+    const { clicked, receiverId } = notificationUpdateQuery;
+    const state = clicked ? 'clicked' : 'received';
+    return this.notificationRepository.updateNotificationState(
+      id,
+      receiverId,
+      state,
+    );
   }
 }

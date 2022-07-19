@@ -1,5 +1,4 @@
 import { IsMongoId, IsOptional } from 'class-validator';
-import { PaginationQuery } from 'src/place/queries/pagination.query';
 
 export class NotificationFilterQuery {
   @IsMongoId()
@@ -8,4 +7,7 @@ export class NotificationFilterQuery {
   @IsMongoId()
   @IsOptional()
   receiverId?: string;
+  @IsMongoId()
+  @IsOptional()
+  eventId?: string;
 }
