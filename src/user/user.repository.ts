@@ -23,12 +23,10 @@ export class UserRepository extends MongoRepository<UserDocument> {
   }
 
   async checkIfUserIsSubscriber(id: string, locationId: string) {
-    console.log(locationId);
     const user = await this.findOne({
       _id: id,
       'subscriptions.subscribedLocations._id': locationId,
     });
-    console.log(user);
     return user ? true : false;
   }
 }

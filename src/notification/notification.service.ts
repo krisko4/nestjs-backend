@@ -98,7 +98,6 @@ export class NotificationService {
     const notifications = await this.notificationRepository.findByEventId(
       eventId,
     );
-    console.log(notifications);
     return notifications.map((notification) => {
       let receivedCount = 0;
       let clickedCount = 0;

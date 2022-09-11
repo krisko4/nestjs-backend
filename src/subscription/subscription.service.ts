@@ -60,9 +60,7 @@ export class SubscriptionService {
           participator._id.toString() === sub.user._id.toString(),
       ),
     );
-    const winnersAmount = Math.round(
-      rewardPercentage * 0.01 * validSubs.length,
-    );
+    const winnersAmount = Math.ceil(rewardPercentage * 0.01 * validSubs.length);
     const shuffled = [...validSubs].sort(() => 0.5 - Math.random());
     return shuffled.slice(0, winnersAmount).map((sub) => sub.user._id);
   }

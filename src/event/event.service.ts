@@ -1,3 +1,4 @@
+import { EventDocument } from 'src/event/schemas/event.schema';
 import {
   BadRequestException,
   forwardRef,
@@ -63,6 +64,14 @@ export class EventService {
   async findById(id: string, uid?: string) {
     const event = await this.eventRepository.findEventById(id);
     if (!event) throw new InternalServerErrorException(`Event not found`);
+    const subs = await this.subscriptionService.findByLocationId(
+      event.locationId,
+    );
+    event.participators.forEach((participator) => {
+      participator['isSubscriber'] = subs.some(({ user }) => {
+        return user._id.toString() === participator._id.toString();
+      });
+    });
     return {
       event,
       isUserOwner: uid
@@ -97,9 +106,9 @@ export class EventService {
       const subs = await this.subscriptionService.findByLocationId(locationId);
       events.forEach((event) => {
         event.participators.forEach((participator) => {
-          participator['isSubscriber'] = subs.some(
-            (user) => user._id.toString() === participator._id.toString(),
-          );
+          participator['isSubscriber'] = subs.some(({ user }) => {
+            return user._id.toString() === participator._id.toString();
+          });
         });
       });
       return events;

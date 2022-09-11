@@ -28,4 +28,7 @@ export class CodeRepository extends MongoRepository<CodeDocument> {
       session,
     );
   }
+  findByRewardId(rewardId: string) {
+    return this.find({ reward: new Types.ObjectId(rewardId) });
+  }
 }

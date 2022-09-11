@@ -35,15 +35,16 @@ export class EventController {
   @Get()
   async find(@Query() eventFilterQuery: EventFilterQuery) {
     const events = await this.eventService.findByQuery(eventFilterQuery);
-    return events.map((event) => plainToInstance(EventDto, event.toObject()));
+    return events.map((event) => plainToInstance(EventDto, event));
   }
 
   @Get(':id')
   async findById(@Param('id') id: string, @Req() req) {
     const { uid } = req.cookies;
     const { event, isUserOwner } = await this.eventService.findById(id, uid);
+
     return {
-      ...plainToInstance(EventDto, event.toObject()),
+      ...plainToInstance(EventDto, event),
       isUserOwner,
     };
   }

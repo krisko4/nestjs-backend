@@ -7,7 +7,7 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { PaginationQuery } from 'src/place/queries/pagination.query';
 import { endOfDay, startOfDay } from 'date-fns';
 import { getPaginatedEventData } from './aggregations/paginated-event-data';
-
+import { Event } from './schemas/event.schema';
 @Injectable()
 export class EventRepository extends MongoRepository<EventDocument> {
   constructor(
@@ -26,7 +26,8 @@ export class EventRepository extends MongoRepository<EventDocument> {
     return this.eventModel
       .find({ locationId: new Types.ObjectId(locationId) })
       .populate('place')
-      .populate('participators');
+      .populate('participators')
+      .lean();
   }
   findPopular(paginationQuery: PaginationQuery) {
     const sortQuery = {
@@ -61,18 +62,21 @@ export class EventRepository extends MongoRepository<EventDocument> {
     return this.eventModel
       .find({ participators: new Types.ObjectId(uid) })
       .populate('place')
-      .populate('participators');
+      .populate('participators')
+      .lean();
   }
 
-  findEventById(id: string) {
+  findEventById(id: string): Promise<Event> {
     return this.eventModel
       .findById(id)
       .populate('participators')
-      .populate('place');
+      .populate('place')
+      .lean()
+      .exec();
   }
 
   findAll() {
-    return this.eventModel.find();
+    return this.eventModel.find().lean();
   }
 
   private async findPaginated(

@@ -9,7 +9,7 @@ import mongoose from 'mongoose';
 import { InjectConnection } from '@nestjs/mongoose';
 import { CodeService } from 'src/code/code.service';
 import { EventService } from 'src/event/event.service';
-import { EventDocument } from 'src/event/schemas/event.schema';
+import { Event, EventDocument } from 'src/event/schemas/event.schema';
 import { RewardDocument } from './schemas/reward.schema';
 
 @Injectable()
@@ -48,7 +48,7 @@ export class RewardService {
 
   private async createRewardWithCodes(
     description: string,
-    event: EventDocument,
+    event: Event,
     rewardPercentage: number,
     scheduledFor?: Date,
     rewardId?: string,
@@ -59,6 +59,7 @@ export class RewardService {
       locationId,
       participators,
     );
+
     const session = await this.connection.startSession();
     await session.withTransaction(async () => {
       let reward: RewardDocument;
@@ -73,7 +74,6 @@ export class RewardService {
           },
           session,
         );
-        console.log(reward);
       } else {
         reward = await this.rewardRepository.createReward(
           description,
@@ -126,7 +126,6 @@ export class RewardService {
         scheduledFor,
       );
       const job = new CronJob(new Date(scheduledFor), async () => {
-        console.log(reward._id);
         this.createRewardWithCodes(
           description,
           event,

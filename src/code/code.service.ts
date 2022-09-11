@@ -1,3 +1,4 @@
+import { CodeFilterQuery } from './queries/code-filter.query';
 import { Injectable } from '@nestjs/common';
 import { CodeRepository } from './code.repository';
 import { CreateCodeDto } from './dto/create-code.dto';
@@ -7,6 +8,7 @@ import { ClientSession } from 'mongoose';
 export class CodeService {
   constructor(private readonly codeRepository: CodeRepository) {}
   async create(createCodeDto: CreateCodeDto, session?: ClientSession) {
+    console.log(createCodeDto);
     let isDuplicate = true;
     let value = Math.random().toString(36).substring(2, 7);
     while (isDuplicate) {
@@ -21,5 +23,11 @@ export class CodeService {
   }
   findByCodeValue(value: string) {
     return this.codeRepository.findOne({ value });
+  }
+  findByQuery(codeFilterQuery: CodeFilterQuery) {
+    const { rewardId } = codeFilterQuery;
+    if (rewardId) {
+      return this.codeRepository.findByRewardId(rewardId);
+    }
   }
 }
