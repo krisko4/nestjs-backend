@@ -35,6 +35,10 @@ export class UserService {
     return this.userRepository.setNotificationToken(id, notificationToken);
   }
 
+  removeNotificationTokens(uid: string) {
+    return this.userRepository.removeNotificationTokens(uid);
+  }
+
   checkIfUserIsSubscriber(id: string, locationId: string, uid: string) {
     if (id !== uid) throw new BadRequestException('Invalid uid');
     return this.userRepository.checkIfUserIsSubscriber(id, locationId);

@@ -22,6 +22,10 @@ export class UserRepository extends MongoRepository<UserDocument> {
     return this.findByIdAndUpdate(id, { notificationTokens: tokens });
   }
 
+  async removeNotificationTokens(uid: string) {
+    return this.findByIdAndUpdate(uid, { notificationTokens: [] });
+  }
+
   async checkIfUserIsSubscriber(id: string, locationId: string) {
     const user = await this.findOne({
       _id: id,

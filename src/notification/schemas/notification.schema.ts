@@ -3,6 +3,7 @@ import { Exclude, Transform, Type } from 'class-transformer';
 import mongoose from 'mongoose';
 import { Document } from 'mongoose';
 import { Event } from 'src/event/schemas/event.schema';
+import { Reward } from 'src/reward/schemas/reward.schema';
 import { User } from 'src/user/schemas/user.schema';
 
 export type NotificationDocument = Notification & Document;
@@ -10,6 +11,7 @@ export type NotificationDocument = Notification & Document;
 export enum NotificationType {
   EVENT = 'event',
   REWARD = 'reward',
+  REMINDER = 'reminder',
 }
 
 @Schema()
@@ -43,7 +45,16 @@ export class Notification {
   receivers: Receiver[];
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Event.name })
   event: Event;
-  @Prop({ required: true, enum: ['event', 'reward'] })
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Reward.name })
+  reward: Reward;
+  @Prop({
+    required: true,
+    enum: [
+      NotificationType.EVENT,
+      NotificationType.REWARD,
+      NotificationType.REMINDER,
+    ],
+  })
   type: NotificationType;
 }
 

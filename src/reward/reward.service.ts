@@ -11,6 +11,9 @@ import { CodeService } from 'src/code/code.service';
 import { EventService } from 'src/event/event.service';
 import { Event, EventDocument } from 'src/event/schemas/event.schema';
 import { RewardDocument } from './schemas/reward.schema';
+import { NotificationService } from 'src/notification/notification.service';
+import { NotificationType } from 'src/notification/schemas/notification.schema';
+import { addSeconds, subMinutes } from 'date-fns';
 
 @Injectable()
 export class RewardService {
@@ -20,6 +23,7 @@ export class RewardService {
     private readonly eventService: EventService,
     private readonly subscriptionService: SubscriptionService,
     private readonly codeService: CodeService,
+    private readonly notificationService: NotificationService,
     @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
 
@@ -94,6 +98,16 @@ export class RewardService {
           ),
         ),
       );
+      if (happyWinners.length > 0) {
+        await this.notificationService.create({
+          title: `Congratulations! You have won a reward!`,
+          body: 'Whatever',
+          eventId: event._id.toString(),
+          locationId,
+          receivers: happyWinners,
+          type: NotificationType.REWARD,
+        });
+      }
     });
     await session.endSession();
   }
@@ -125,7 +139,19 @@ export class RewardService {
         undefined,
         scheduledFor,
       );
-      const job = new CronJob(new Date(scheduledFor), async () => {
+      const remindJob = new CronJob(
+        subMinutes(new Date(scheduledFor), 5),
+        async () => {
+          this.notificationService.create({
+            title: `A reward drawing will start in 5 minutes`,
+            body: 'Hello my friend',
+            eventId: event._id.toString(),
+            receivers: event.participators.map((u) => u._id),
+            type: NotificationType.REMINDER,
+          });
+        },
+      );
+      const createRewardJob = new CronJob(new Date(scheduledFor), async () => {
         this.createRewardWithCodes(
           description,
           event,
@@ -134,8 +160,13 @@ export class RewardService {
           reward._id,
         );
       });
-      this.schedulerRegistry.addCronJob(new Date().toString(), job);
-      job.start();
+      this.schedulerRegistry.addCronJob(new Date().toString(), createRewardJob);
+      this.schedulerRegistry.addCronJob(
+        addSeconds(new Date(), 1).toString(),
+        remindJob,
+      );
+      createRewardJob.start();
+      remindJob.start();
       return;
     }
     this.createRewardWithCodes(description, event, rewardPercentage);

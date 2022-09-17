@@ -15,12 +15,14 @@ export class CreateNotificationDto {
   @MaxLength(100)
   body: string;
   @IsMongoId()
-  locationId: string;
+  locationId?: string;
   @IsArray()
   @IsMongoId({ each: true })
   receivers: string[];
   @IsMongoId()
-  eventId: string;
+  eventId?: string;
+  @IsMongoId()
+  rewardId?: string;
   @IsEnum(NotificationType)
   type: NotificationType;
 }

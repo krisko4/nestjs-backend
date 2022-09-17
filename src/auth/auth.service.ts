@@ -39,6 +39,7 @@ export class AuthService {
   }
 
   async logout(uid: string) {
+    await this.userService.removeNotificationTokens(uid);
     return this.refreshTokenService.delete(uid);
   }
 

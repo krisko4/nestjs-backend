@@ -16,6 +16,10 @@ import { format } from 'date-fns';
 import { PlaceService } from 'src/place/place.service';
 import { EventService } from 'src/event/event.service';
 import _ from 'lodash/fp';
+import {
+  NotificationDocument,
+  NotificationType,
+} from './schemas/notification.schema';
 
 @Injectable()
 export class NotificationService {
@@ -35,27 +39,56 @@ export class NotificationService {
     });
   }
 
-  async create(createNotificationDto: CreateNotificationDto) {
-    const { receivers, title, body, locationId, eventId } =
-      createNotificationDto;
-    let tokens: string[] = [];
-    for (const receiverId of receivers) {
-      const user = await this.userService.findById(receiverId);
-      if (!user)
-        throw new InternalServerErrorException(
-          `User with id: ${receiverId} not found`,
-        );
-      tokens = tokens.concat(user.notificationTokens);
-    }
-    if (tokens.length === 0)
-      throw new InternalServerErrorException('No receiver tokens found');
-    const notification = await this.notificationRepository.createNotification(
-      createNotificationDto,
+  async sendReminderNotifications(
+    createNotificationDto: CreateNotificationDto,
+    notification: NotificationDocument,
+    tokens: string[],
+  ) {
+    const { title, body } = createNotificationDto;
+    return firebase.messaging().sendToDevice(
+      tokens,
+      {
+        notification: {
+          title,
+          body,
+        },
+      },
+      {
+        contentAvailable: true,
+      },
     );
+  }
+
+  async sendRewardNotifications(
+    createNotificationDto: CreateNotificationDto,
+    notification: NotificationDocument,
+    tokens: string[],
+  ) {
+    const { title, body } = createNotificationDto;
+    return firebase.messaging().sendToDevice(
+      tokens,
+      {
+        notification: {
+          title,
+          body,
+        },
+      },
+      {
+        contentAvailable: true,
+      },
+    );
+  }
+
+  async sendEventNotifications(
+    createNotificationDto: CreateNotificationDto,
+    notification: NotificationDocument,
+    tokens: string[],
+  ) {
+    const { title, body, locationId, eventId } = createNotificationDto;
     const place = await this.placeService.findByLocationId(locationId);
     const { event } = await this.eventService.findById(eventId);
     const { startDate, endDate, img } = event;
-    await firebase.messaging().sendToDevice(
+    return firebase.messaging().sendToDevice(
       tokens,
       {
         data: {
@@ -78,6 +111,46 @@ export class NotificationService {
         contentAvailable: true,
       },
     );
+  }
+
+  async create(createNotificationDto: CreateNotificationDto) {
+    const { receivers, type } = createNotificationDto;
+    let tokens: string[] = [];
+    for (const receiverId of receivers) {
+      const user = await this.userService.findById(receiverId);
+      if (!user)
+        throw new InternalServerErrorException(
+          `User with id: ${receiverId} not found`,
+        );
+      tokens = tokens.concat(user.notificationTokens);
+    }
+    if (tokens.length === 0) {
+      throw new InternalServerErrorException('No receiver tokens found');
+    }
+    const notification = await this.notificationRepository.createNotification(
+      createNotificationDto,
+    );
+    if (type === NotificationType.EVENT) {
+      await this.sendEventNotifications(
+        createNotificationDto,
+        notification,
+        tokens,
+      );
+    }
+    if (type === NotificationType.REWARD) {
+      await this.sendRewardNotifications(
+        createNotificationDto,
+        notification,
+        tokens,
+      );
+    }
+    if (type === NotificationType.REMINDER) {
+      await this.sendReminderNotifications(
+        createNotificationDto,
+        notification,
+        tokens,
+      );
+    }
     return notification;
   }
 

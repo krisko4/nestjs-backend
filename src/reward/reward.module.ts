@@ -1,3 +1,4 @@
+import { NotificationModule } from './../notification/notification.module';
 import { Module } from '@nestjs/common';
 import { RewardService } from './reward.service';
 import { RewardController } from './reward.controller';
@@ -14,6 +15,7 @@ import { EventModule } from 'src/event/event.module';
     EventModule,
     SubscriptionModule,
     CodeModule,
+    NotificationModule,
   ],
   controllers: [RewardController],
   providers: [RewardService, RewardRepository],
