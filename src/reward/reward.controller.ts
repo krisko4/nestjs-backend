@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Req, Query } from '@nestjs/common';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Req,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { RewardService } from './reward.service';
 import { CreateRewardDto } from './dto/create-reward.dto';
 import { RewardFilterQuery } from './queries/reward-filter.query';
@@ -7,14 +16,17 @@ import { RewardFilterQuery } from './queries/reward-filter.query';
 export class RewardController {
   constructor(private readonly rewardService: RewardService) {}
 
+  @UseGuards(JwtAuthGuard)
   @Post()
   create(@Req() req, @Body() createRewardDto: CreateRewardDto) {
-    const { uid } = req.cookies;
+    const { uid } = req.user;
     return this.rewardService.create(createRewardDto, uid);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get()
-  find(@Query() rewardFilterQuery: RewardFilterQuery) {
-    return this.rewardService.find(rewardFilterQuery);
+  find(@Query() rewardFilterQuery: RewardFilterQuery, @Req() req) {
+    const { uid } = req.user;
+    return this.rewardService.find(rewardFilterQuery, uid);
   }
 }

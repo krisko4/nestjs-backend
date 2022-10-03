@@ -1,4 +1,13 @@
-import { Controller, Post, Body, Get, Query } from '@nestjs/common';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { CodeService } from './code.service';
 import { CreateCodeDto } from './dto/create-code.dto';
 import { CodeFilterQuery } from './queries/code-filter.query';
@@ -12,10 +21,14 @@ export class CodeController {
     return this.codeService.create(createCodeDto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get()
-  async find(@Query() codeFilterQuery: CodeFilterQuery) {
-    const res = await this.codeService.findByQuery(codeFilterQuery);
-    console.log(res);
+  async find(@Query() codeFilterQuery: CodeFilterQuery, @Req() req) {
+    console.log(req.user.uid);
+    const res = await this.codeService.findByQuery(
+      codeFilterQuery,
+      req.user.uid,
+    );
     return res;
   }
 }

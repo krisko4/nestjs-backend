@@ -15,7 +15,7 @@ export class RewardRepository extends MongoRepository<RewardDocument> {
   findByUserIdAndEventId(uid: string, eventId: string) {
     return this.findOne({
       user: new Types.ObjectId(uid),
-      eventId: new Types.ObjectId(eventId),
+      event: new Types.ObjectId(eventId),
     });
   }
   findByUserId(uid: string) {
@@ -24,7 +24,7 @@ export class RewardRepository extends MongoRepository<RewardDocument> {
     });
   }
   findByEventId(eventId: string) {
-    return this.findOne({ eventId: new Types.ObjectId(eventId) });
+    return this.findOne({ event: new Types.ObjectId(eventId) });
   }
 
   createReward(
@@ -37,7 +37,7 @@ export class RewardRepository extends MongoRepository<RewardDocument> {
     const reward = {
       description,
       rewardPercentage,
-      eventId,
+      event: eventId,
       scheduledFor,
     };
     if (!scheduledFor) reward['date'] = new Date();

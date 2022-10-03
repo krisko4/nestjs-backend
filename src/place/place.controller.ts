@@ -69,12 +69,11 @@ export class PlaceController {
     @UploadedFiles()
     files: { logo?: Express.Multer.File[]; images?: Express.Multer.File[] },
   ) {
-    const { uid } = req.cookies;
     return this.placeService.create(
       createPlaceDto,
       files.logo,
       files.images,
-      uid,
+      req.user.uid,
     );
   }
 
@@ -133,13 +132,14 @@ export class PlaceController {
     return this.placeService.findTopRated(placeFilterQuery);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('/subscribed')
   async findSubscribed(
     @Req() req,
     @Query() placeFilterQuery: PlaceFilterQuery,
   ) {
-    const { uid } = req.cookies;
-    return this.placeService.findSubscribed(placeFilterQuery, uid);
+    console.log(req.user);
+    return this.placeService.findSubscribed(placeFilterQuery, req.user.uid);
   }
 
   @Get('/favorite')

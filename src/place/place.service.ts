@@ -174,6 +174,7 @@ export class PlaceService {
   }
 
   async findSubscribed(placeFilterQuery: PlaceFilterQuery, uid: string) {
+    console.log(uid);
     const user = await this.validateUser(uid);
     const subscriptions = (await this.subscriptionService.find({
       userId: user._id,

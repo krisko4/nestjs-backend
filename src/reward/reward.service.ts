@@ -27,8 +27,8 @@ export class RewardService {
     @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
 
-  async find(rewardFilterQuery: RewardFilterQuery) {
-    const { userId, eventId } = rewardFilterQuery;
+  async find(rewardFilterQuery: RewardFilterQuery, userId: string) {
+    const { eventId } = rewardFilterQuery;
     if (userId && eventId) {
       return this.findByUserIdAndEventId(userId, eventId);
     }

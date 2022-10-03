@@ -31,4 +31,26 @@ export class CodeRepository extends MongoRepository<CodeDocument> {
   findByRewardId(rewardId: string) {
     return this.find({ reward: new Types.ObjectId(rewardId) });
   }
+  async findByUserId(userId: string) {
+    const codes = await this.codeModel
+      .find({ user: new Types.ObjectId(userId) })
+      .populate({
+        path: 'reward',
+        populate: {
+          path: 'event',
+          populate: {
+            path: 'place',
+          },
+        },
+      });
+    return codes.map((code) => {
+      return {
+        _id: code._id,
+        value: code.value,
+        description: code.reward.description,
+        date: code.reward.date,
+        placeLogo: `${process.env.CLOUDI_URL}/${code.reward.event.place.logo}`,
+      };
+    });
+  }
 }

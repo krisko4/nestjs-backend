@@ -24,10 +24,11 @@ export class CodeService {
   findByCodeValue(value: string) {
     return this.codeRepository.findOne({ value });
   }
-  findByQuery(codeFilterQuery: CodeFilterQuery) {
+  findByQuery(codeFilterQuery: CodeFilterQuery, uid: string) {
     const { rewardId } = codeFilterQuery;
     if (rewardId) {
       return this.codeRepository.findByRewardId(rewardId);
     }
+    return this.codeRepository.findByUserId(uid);
   }
 }
