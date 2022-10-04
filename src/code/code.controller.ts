@@ -24,7 +24,6 @@ export class CodeController {
   @UseGuards(JwtAuthGuard)
   @Get()
   async find(@Query() codeFilterQuery: CodeFilterQuery, @Req() req) {
-    console.log(req.user.uid);
     const res = await this.codeService.findByQuery(
       codeFilterQuery,
       req.user.uid,

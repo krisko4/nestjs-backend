@@ -138,7 +138,7 @@ export class PlaceController {
     @Req() req,
     @Query() placeFilterQuery: PlaceFilterQuery,
   ) {
-    console.log(req.user);
+    dd(req.user);
     return this.placeService.findSubscribed(placeFilterQuery, req.user.uid);
   }
 

@@ -8,7 +8,6 @@ import { ClientSession } from 'mongoose';
 export class CodeService {
   constructor(private readonly codeRepository: CodeRepository) {}
   async create(createCodeDto: CreateCodeDto, session?: ClientSession) {
-    console.log(createCodeDto);
     let isDuplicate = true;
     let value = Math.random().toString(36).substring(2, 7);
     while (isDuplicate) {
