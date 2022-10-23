@@ -1,3 +1,6 @@
+import { NotificationType } from 'src/notification/schemas/notification.schema';
+import { startOfDay, endOfDay } from 'date-fns';
+import { Place } from './../place/schemas/place.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, Types } from 'mongoose';
 import { Injectable } from '@nestjs/common';
@@ -20,23 +23,57 @@ export class NotificationRepository extends MongoRepository<NotificationDocument
   findByLocationId(locationId: string) {
     return this.find({ locationId: new Types.ObjectId(locationId) });
   }
-  findByReceiverId(receiverId: string) {
-    return this.find({ receivers: new Types.ObjectId(receiverId) });
+  async findByReceiverId(receiverId: string) {
+    const notifications = await this.notificationModel
+      .aggregate()
+      .match({ 'receivers.receiver': new Types.ObjectId(receiverId) })
+      .lookup({
+        from: 'places',
+        localField: 'locationId',
+        foreignField: 'locations._id',
+        as: 'place',
+      })
+      .lookup({
+        from: 'events',
+        localField: 'event',
+        foreignField: '_id',
+        as: 'event',
+      })
+      .unwind('event')
+      .unwind('place')
+      .project({
+        _id: 1,
+        title: 1,
+        date: 1,
+        event: 1,
+        placeLogo: { $concat: [process.env.CLOUDI_URL, '/', '$place.logo'] },
+      });
+    return notifications;
   }
   findById(id: string) {
     return this.notificationModel.findById(new Types.ObjectId(id)).exec();
   }
+  hasUserAlreadyReceivedNearbyNotification(userId: string, date: Date) {
+    return this.findOne({
+      'receivers.receiver': userId,
+      'receivers.received': true,
+      date: { $gte: startOfDay(date), $lt: endOfDay(date) },
+      type: NotificationType.EVENT_TODAY_NEARBY,
+    });
+  }
   findByEventId(eventId: string) {
-    return this.find({ event: new Types.ObjectId(eventId) });
+    const id = new Types.ObjectId(eventId);
+    return this.find({ $or: [{ event: id }, { events: id }] });
   }
   createNotification(createNotificationDto: CreateNotificationDto) {
-    const { receivers, eventId, title, type, locationId } =
+    const { receivers, eventId, eventIds, title, type, locationId } =
       createNotificationDto;
     const mappedReceivers = receivers.map((receiverId) => ({
       receiver: new Types.ObjectId(receiverId),
     }));
     return this.create({
-      event: new Types.ObjectId(eventId),
+      event: eventId && new Types.ObjectId(eventId),
+      events: eventIds && eventIds.map((id) => new Types.ObjectId(id)),
       title,
       locationId,
       receivers: mappedReceivers,

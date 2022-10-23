@@ -28,6 +28,14 @@ export class Event {
   @Prop({ type: mongoose.Schema.Types.ObjectId })
   @Transform((params) => params.obj.locationId.toString())
   locationId: string;
+  @Prop({ required: true })
+  address: string;
+  @Prop({ required: true })
+  addressId: string;
+  @Prop({ required: true })
+  lat: number;
+  @Prop({ required: true })
+  lng: number;
   @Transform((params) => plainToInstance(Place, params.obj.place))
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Place.name })
   place: Place;

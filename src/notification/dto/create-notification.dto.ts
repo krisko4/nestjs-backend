@@ -21,6 +21,7 @@ export class CreateNotificationDto {
   receivers: string[];
   @IsMongoId()
   eventId?: string;
+  eventIds?: string[];
   @IsMongoId()
   rewardId?: string;
   @IsEnum(NotificationType)

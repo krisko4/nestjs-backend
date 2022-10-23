@@ -1,3 +1,4 @@
+import { JwtAuthGuard } from './../auth/jwt-auth.guard';
 import { NotificationUpdateQuery } from './queries/notification-update.query';
 import {
   Controller,
@@ -7,6 +8,8 @@ import {
   Query,
   Patch,
   Param,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
@@ -21,9 +24,11 @@ export class NotificationController {
     return this.notificationService.create(createNotificationDto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get()
-  findByQuery(@Query() filterQuery: NotificationFilterQuery) {
-    return this.notificationService.findByQuery(filterQuery);
+  findByQuery(@Req() req, @Query() filterQuery: NotificationFilterQuery) {
+    const { user } = req;
+    return this.notificationService.findByQuery(filterQuery, user.uid);
   }
 
   @Patch(':id')

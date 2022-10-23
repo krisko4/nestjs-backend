@@ -20,6 +20,8 @@ import { NotificationModule } from './notification/notification.module';
 import { RewardModule } from './reward/reward.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CodeModule } from './code/code.module';
+import { GeolocationModule } from './geolocation/geolocation.module';
+// import { HaversineModule } from './haversine/haversine.module';
 
 @Module({
   imports: [
@@ -45,6 +47,8 @@ import { CodeModule } from './code/code.module';
     NotificationModule,
     RewardModule,
     CodeModule,
+    GeolocationModule,
+    // HaversineModule,
   ],
 })
 export class AppModule {}

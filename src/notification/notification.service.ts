@@ -39,7 +39,7 @@ export class NotificationService {
     });
   }
 
-  async sendReminderNotifications(
+  async sendRewardNotifications(
     createNotificationDto: CreateNotificationDto,
     notification: NotificationDocument,
     tokens: string[],
@@ -48,6 +48,9 @@ export class NotificationService {
     return firebase.messaging().sendToDevice(
       tokens,
       {
+        data: {
+          _id: notification._id.toString(),
+        },
         notification: {
           title,
           body,
@@ -59,7 +62,7 @@ export class NotificationService {
     );
   }
 
-  async sendRewardNotifications(
+  async sendNearbyEventsNotifications(
     createNotificationDto: CreateNotificationDto,
     notification: NotificationDocument,
     tokens: string[],
@@ -68,6 +71,32 @@ export class NotificationService {
     return firebase.messaging().sendToDevice(
       tokens,
       {
+        data: {
+          _id: notification._id.toString(),
+        },
+        notification: {
+          title,
+          body,
+        },
+      },
+      {
+        contentAvailable: true,
+      },
+    );
+  }
+
+  async sendReminderNotifications(
+    createNotificationDto: CreateNotificationDto,
+    notification: NotificationDocument,
+    tokens: string[],
+  ) {
+    const { title, body } = createNotificationDto;
+    return firebase.messaging().sendToDevice(
+      tokens,
+      {
+        data: {
+          _id: notification._id.toString(),
+        },
         notification: {
           title,
           body,
@@ -113,16 +142,27 @@ export class NotificationService {
     );
   }
 
+  async hasUserAlreadyReceivedNearbyNotification(userId: string, date: Date) {
+    return this.notificationRepository.hasUserAlreadyReceivedNearbyNotification(
+      userId,
+      date,
+    );
+  }
+
   async create(createNotificationDto: CreateNotificationDto) {
     const { receivers, type } = createNotificationDto;
-    let tokens: string[] = [];
+    const tokens: string[] = [];
     for (const receiverId of receivers) {
       const user = await this.userService.findById(receiverId);
       if (!user)
         throw new InternalServerErrorException(
           `User with id: ${receiverId} not found`,
         );
-      tokens = tokens.concat(user.notificationTokens);
+      user.notificationTokens.forEach((token) => {
+        if (!tokens.includes(token)) {
+          tokens.push(token);
+        }
+      });
     }
     if (tokens.length === 0) {
       throw new InternalServerErrorException('No receiver tokens found');
@@ -130,7 +170,7 @@ export class NotificationService {
     const notification = await this.notificationRepository.createNotification(
       createNotificationDto,
     );
-    if (type === NotificationType.EVENT) {
+    if (type === NotificationType.NEW_EVENT) {
       await this.sendEventNotifications(
         createNotificationDto,
         notification,
@@ -151,12 +191,20 @@ export class NotificationService {
         tokens,
       );
     }
+    if (type === NotificationType.EVENT_TODAY_NEARBY) {
+      await this.sendNearbyEventsNotifications(
+        createNotificationDto,
+        notification,
+        tokens,
+      );
+    }
     return notification;
   }
 
-  findByQuery(filterQuery: NotificationFilterQuery) {
-    const { locationId, receiverId, eventId } = filterQuery;
-    if (Object.keys(filterQuery).length > 1)
+  findByQuery(filterQuery: NotificationFilterQuery, userId: string) {
+    const { locationId, eventId } = filterQuery;
+    const queryLength = Object.keys(filterQuery).length;
+    if (queryLength > 1)
       throw new BadRequestException('Only one query parameter can be provided');
     if (locationId) {
       return this.notificationRepository.findByLocationId(locationId);
@@ -164,13 +212,14 @@ export class NotificationService {
     if (eventId) {
       return this.findNotificationStatistics(eventId);
     }
-    return this.notificationRepository.findByReceiverId(receiverId);
+    return this.notificationRepository.findByReceiverId(userId);
   }
 
   async findNotificationStatistics(eventId: string) {
     const notifications = await this.notificationRepository.findByEventId(
       eventId,
     );
+    console.log(notifications);
     return notifications.map((notification) => {
       let receivedCount = 0;
       let clickedCount = 0;

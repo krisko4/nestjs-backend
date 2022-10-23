@@ -9,9 +9,10 @@ import { User } from 'src/user/schemas/user.schema';
 export type NotificationDocument = Notification & Document;
 
 export enum NotificationType {
-  EVENT = 'event',
+  NEW_EVENT = 'event',
   REWARD = 'reward',
   REMINDER = 'reminder',
+  EVENT_TODAY_NEARBY = 'event_today_nearby',
 }
 
 @Schema()
@@ -45,12 +46,15 @@ export class Notification {
   receivers: Receiver[];
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Event.name })
   event: Event;
+  @Prop({ type: [mongoose.Schema.Types.ObjectId], ref: Event.name })
+  events?: Event[];
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Reward.name })
   reward: Reward;
   @Prop({
     required: true,
     enum: [
-      NotificationType.EVENT,
+      NotificationType.NEW_EVENT,
+      NotificationType.EVENT_TODAY_NEARBY,
       NotificationType.REWARD,
       NotificationType.REMINDER,
     ],

@@ -1,3 +1,4 @@
+import { UserModule } from 'src/user/user.module';
 import { forwardRef, Module } from '@nestjs/common';
 import { EventService } from './event.service';
 import { EventController } from './event.controller';
@@ -18,6 +19,7 @@ import { NotificationModule } from 'src/notification/notification.module';
     }),
     MongooseModule.forFeature([{ name: Event.name, schema: EventSchema }]),
     PlaceModule,
+    UserModule,
     CloudinaryModule,
     SubscriptionModule,
     forwardRef(() => NotificationModule),

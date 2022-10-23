@@ -9,7 +9,7 @@ import mongoose from 'mongoose';
 import { InjectConnection } from '@nestjs/mongoose';
 import { CodeService } from 'src/code/code.service';
 import { EventService } from 'src/event/event.service';
-import { Event, EventDocument } from 'src/event/schemas/event.schema';
+import { Event } from 'src/event/schemas/event.schema';
 import { RewardDocument } from './schemas/reward.schema';
 import { NotificationService } from 'src/notification/notification.service';
 import { NotificationType } from 'src/notification/schemas/notification.schema';
@@ -101,7 +101,7 @@ export class RewardService {
       if (happyWinners.length > 0) {
         await this.notificationService.create({
           title: `Congratulations! You have won a reward!`,
-          body: 'Whatever',
+          body: event.place.name,
           eventId: event._id.toString(),
           locationId,
           receivers: happyWinners,
@@ -143,8 +143,8 @@ export class RewardService {
         subMinutes(new Date(scheduledFor), 5),
         async () => {
           this.notificationService.create({
-            title: `A reward drawing will start in 5 minutes`,
-            body: 'Hello my friend',
+            title: `A reward drawing will start in 5 minutes!`,
+            body: event.title,
             eventId: event._id.toString(),
             receivers: event.participators.map((u) => u._id),
             type: NotificationType.REMINDER,
@@ -169,6 +169,6 @@ export class RewardService {
       remindJob.start();
       return;
     }
-    this.createRewardWithCodes(description, event, rewardPercentage);
+    await this.createRewardWithCodes(description, event, rewardPercentage);
   }
 }

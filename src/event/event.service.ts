@@ -1,4 +1,9 @@
+import { Haversine } from './../haversine/haversine';
+import { CreateNotificationDto } from './../notification/dto/create-notification.dto';
+import { UserService } from 'src/user/user.service';
+import { GeolocationDto } from './../geolocation/dto/geolocation.dto';
 import { EventDocument } from 'src/event/schemas/event.schema';
+
 import {
   BadRequestException,
   forwardRef,
@@ -7,7 +12,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { isBefore } from 'date-fns';
+import { format, isBefore, isToday } from 'date-fns';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { NotificationService } from 'src/notification/notification.service';
 import { NotificationType } from 'src/notification/schemas/notification.schema';
@@ -23,6 +28,7 @@ export class EventService {
   constructor(
     private readonly eventRepository: EventRepository,
     private readonly placeService: PlaceService,
+    private readonly userService: UserService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly subscriptionService: SubscriptionService,
     @Inject(forwardRef(() => NotificationService))
@@ -55,7 +61,7 @@ export class EventService {
         eventId: event._id.toString(),
         locationId,
         receivers,
-        type: NotificationType.EVENT,
+        type: NotificationType.NEW_EVENT,
       });
     }
     return event;
@@ -78,6 +84,57 @@ export class EventService {
         ? event.place.userId.toString() === uid.toString()
         : false,
     };
+  }
+
+  async findNearbyEventsToday(geolocationDto: GeolocationDto) {
+    const { lat, lng, uid } = geolocationDto;
+    const user = await this.userService.findById(uid);
+    if (!user) {
+      throw new InternalServerErrorException(`User with uid: ${uid} not found`);
+    }
+    if (
+      await this.notificationService.hasUserAlreadyReceivedNearbyNotification(
+        user._id,
+        new Date(),
+      )
+    ) {
+      return;
+    }
+    const maxDistanceInMetres = 1000;
+    const userEvents = await this.eventRepository.findByParticipatorId(uid);
+    const nearbyEventsToday = userEvents.filter((event) => {
+      const a = { lat, lng };
+      const b = {
+        lat: event.lat,
+        lng: event.lng,
+      };
+      const distance = Haversine.calculateDistance(a, b);
+      return isToday(event.startDate) && distance <= maxDistanceInMetres;
+    });
+    let createNotificationDto: CreateNotificationDto;
+    if (nearbyEventsToday.length === 0) {
+      return;
+    }
+    if (nearbyEventsToday.length === 1) {
+      const event = nearbyEventsToday[0];
+      createNotificationDto = {
+        title: `${event.title} will take place in your neighbourhood today!`,
+        body: `Starts: ${format(event.startDate, 'yyyy-MM-dd hh:mm')}`,
+        receivers: [user._id],
+        eventId: event._id,
+        type: NotificationType.EVENT_TODAY_NEARBY,
+      };
+    }
+    if (nearbyEventsToday.length > 1) {
+      createNotificationDto = {
+        title: `${nearbyEventsToday.length} events will take place in your neighbourhood today!`,
+        body: `Click me to find out`,
+        receivers: [user._id],
+        eventIds: nearbyEventsToday.map((e) => e._id),
+        type: NotificationType.EVENT_TODAY_NEARBY,
+      };
+    }
+    this.notificationService.create(createNotificationDto);
   }
 
   async participate(id: string, uid: string) {
