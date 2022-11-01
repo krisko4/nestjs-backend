@@ -29,7 +29,7 @@ export class Place {
   subtitle: string;
   @Prop({ default: false })
   isBusinessChain: boolean;
-  @Prop({ default: new Date() })
+  @Prop({ default: Date.now })
   createdAt: Date;
   @Prop({ type: mongoose.Schema.Types.ObjectId, required: true })
   userId: string;

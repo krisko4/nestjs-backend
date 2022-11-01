@@ -36,7 +36,7 @@ export class Notification {
   _id: string;
   @Prop({ required: true })
   title: string;
-  @Prop({ default: new Date() })
+  @Prop({ default: Date.now })
   date: Date;
   @Prop({ type: mongoose.Schema.Types.ObjectId })
   @Transform((params) => params.obj.locationId.toString())

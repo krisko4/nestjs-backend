@@ -9,7 +9,7 @@ export class Subscription {
   user: User;
   @Prop({ required: true, type: Types.ObjectId })
   locationId: string;
-  @Prop({ type: Date, default: new Date() })
+  @Prop({ default: new Date() })
   subscribedAt: Date;
 }
 

@@ -201,6 +201,10 @@ export class NotificationService {
     return notification;
   }
 
+  findById(id: string) {
+    return this.notificationRepository.findById(id);
+  }
+
   findByQuery(filterQuery: NotificationFilterQuery, userId: string) {
     const { locationId, eventId } = filterQuery;
     const queryLength = Object.keys(filterQuery).length;

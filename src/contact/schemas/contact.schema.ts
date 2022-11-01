@@ -7,7 +7,7 @@ export type ContactDocument = Contact & Document;
 export class Contact {
   @Prop({ required: true })
   name: string;
-  @Prop({ default: new Date() })
+  @Prop({ default: Date.now })
   date: Date;
   @Prop({ required: true })
   content: string;

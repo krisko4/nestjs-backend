@@ -6,7 +6,7 @@ export type OpinionDocument = Opinion & Document;
 
 @Schema()
 export class Opinion {
-  @Prop({ default: new Date() })
+  @Prop({ default: Date.now })
   date: Date;
   @Prop()
   content: string;
