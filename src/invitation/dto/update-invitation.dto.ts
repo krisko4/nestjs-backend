@@ -1,6 +1,6 @@
 import { IsEmail } from 'class-validator';
 
-export class UpdateReferralDto {
+export class UpdateInvitationDto {
   @IsEmail({ message: 'INVALID_EMAIL' })
   invitedEmail: string;
 }

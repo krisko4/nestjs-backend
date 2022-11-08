@@ -22,6 +22,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { CodeModule } from './code/code.module';
 import { GeolocationModule } from './geolocation/geolocation.module';
 import { ReferralModule } from './referral/referral.module';
+import { InvitationModule } from './invitation/invitation.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { ReferralModule } from './referral/referral.module';
     CodeModule,
     GeolocationModule,
     ReferralModule,
+    InvitationModule,
   ],
 })
 export class AppModule {}

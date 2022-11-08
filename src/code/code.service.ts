@@ -1,5 +1,11 @@
+import { ReferralService } from './../referral/referral.service';
 import { CodeFilterQuery } from './queries/code-filter.query';
-import { Injectable } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { CodeRepository } from './code.repository';
 import { CreateCodeDto } from './dto/create-code.dto';
 import { ClientSession } from 'mongoose';
@@ -20,11 +26,24 @@ export class CodeService {
     }
     return this.codeRepository.createCode(createCodeDto, value, session);
   }
-  findByCodeValue(value: string) {
-    return this.codeRepository.findOne({ value });
+
+  async findByCodeValue(value: string) {
+    const code = await this.codeRepository.findByCodeValue(value);
+    if (!code) return null;
+    if (code.isUsed) {
+      throw new InternalServerErrorException('CODE_USED');
+    }
+    if (code.isExpired) {
+      throw new InternalServerErrorException('CODE_EXPIRED');
+    }
+    return code;
   }
+
   findByQuery(codeFilterQuery: CodeFilterQuery, uid: string) {
-    const { rewardId } = codeFilterQuery;
+    const { rewardId, value } = codeFilterQuery;
+    if (value) {
+      return this.findByCodeValue(value);
+    }
     if (rewardId) {
       return this.codeRepository.findByRewardId(rewardId);
     }

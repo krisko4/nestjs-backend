@@ -18,11 +18,12 @@ export class CodeRepository extends MongoRepository<CodeDocument> {
     value: string,
     session?: ClientSession,
   ) {
-    const { userId, rewardId } = createCodeDto;
+    const { userId, rewardId, invitationId } = createCodeDto;
     return this.create(
       {
         user: new Types.ObjectId(userId),
-        reward: new Types.ObjectId(rewardId),
+        reward: rewardId && new Types.ObjectId(rewardId),
+        invitation: invitationId && new Types.ObjectId(invitationId),
         value,
       },
       session,
@@ -31,6 +32,11 @@ export class CodeRepository extends MongoRepository<CodeDocument> {
   findByRewardId(rewardId: string) {
     return this.find({ reward: new Types.ObjectId(rewardId) });
   }
+
+  findByCodeValue(value: string) {
+    return this.codeModel.findOne({ value }).populate('invitation');
+  }
+
   async findByUserId(userId: string) {
     const codes = await this.codeModel
       .find({ user: new Types.ObjectId(userId) })

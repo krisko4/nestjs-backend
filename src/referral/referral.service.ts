@@ -1,14 +1,19 @@
+import { InvitationService } from './../invitation/invitation.service';
+import { CodeService } from 'src/code/code.service';
+import { SubscriptionService } from 'src/subscription/subscription.service';
 import { UserService } from 'src/user/user.service';
-import { UpdateReferralDto } from './dto/update-referral.dto';
 import { ReferralQuery } from './queries/referral.query';
 import { PlaceService } from 'src/place/place.service';
 import { ReferralRepository } from './referral.repository';
 import {
   Injectable,
   InternalServerErrorException,
-  BadRequestException,
+  forwardRef,
+  Inject,
 } from '@nestjs/common';
 import { CreateReferralDto } from './dto/create-referral.dto';
+import mongoose from 'mongoose';
+import { InjectConnection } from '@nestjs/mongoose';
 
 @Injectable()
 export class ReferralService {
@@ -16,6 +21,11 @@ export class ReferralService {
     private readonly referralRepository: ReferralRepository,
     private readonly placeService: PlaceService,
     private readonly userService: UserService,
+    private readonly subscriptionService: SubscriptionService,
+    @Inject(forwardRef(() => InvitationService))
+    private invitationService: InvitationService,
+    private readonly codeService: CodeService,
+    @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
   async create(createReferralDto: CreateReferralDto, userId: string) {
     const { locationId } = createReferralDto;
@@ -35,45 +45,64 @@ export class ReferralService {
     return place;
   }
 
-  async findByLocationId(locationId: string) {
-    return this.referralRepository.findByLocationId(locationId);
+  async findByCodeValueAndLocationId(value: string, locationId: string) {
+    const code = await this.codeService.findByCodeValue(value);
+    const ref = await this.findByInvitationId(code.invitation._id);
+    if (ref.locationId.toString() !== locationId.toString()) {
+      throw new InternalServerErrorException('INVALID_CODE');
+    }
+    return code;
   }
 
-  async invite(
-    id: string,
-    userId: string,
-    updateReferralDto: UpdateReferralDto,
-  ) {
-    const { invitedEmail } = updateReferralDto;
-    const invitedUser = await this.userService.findByEmail(invitedEmail);
-    if (!invitedUser) {
-      throw new InternalServerErrorException('USER_NOT_FOUND');
-    }
-    const referral = await this.referralRepository.findByIdPopulated(id);
-    if (!referral) {
-      throw new BadRequestException('INVALID_REFERRAL_ID');
-    }
-    const existingInvitation = referral.invitations.find(
-      (i) => i.referrer._id.toString() === userId.toString(),
+  async findByLocationId(locationId: string, userId: string) {
+    const place = await this.placeService.findByLocationId(locationId);
+    const isUserOwner = place.userId.toString() === userId.toString();
+    const refs = await this.referralRepository.findByLocationId(locationId);
+    const subscriptions = await this.subscriptionService.findByLocationId(
+      locationId,
     );
-    if (!existingInvitation) {
-      return this.referralRepository.invite(id, userId, [invitedUser._id]);
-    }
-    if (
-      existingInvitation.invitedUsers.some(
-        (uid) => uid.toString === invitedUser._id.toString(),
-      )
-    ) {
-      throw new InternalServerErrorException('USER_ALREADY_INVITED');
-    }
-    const invitedUsers = [...existingInvitation.invitedUsers, invitedUser._id];
-    return this.referralRepository.invite(id, userId, invitedUsers);
+    if (isUserOwner) return refs;
+    return Promise.all(
+      refs.map(async (ref) => {
+        const invitation =
+          await this.invitationService.findByReferralIdAndReferrerId(
+            ref._id,
+            userId,
+          );
+        return {
+          ...ref,
+          invitations: invitation
+            ? [
+                {
+                  ...invitation,
+                  invitedUsers: invitation.invitedUsers.filter((uid) =>
+                    subscriptions.some(
+                      (sub) => sub.user._id.toString() === uid.toString(),
+                    ),
+                  ),
+                },
+              ]
+            : [],
+        };
+      }),
+    );
   }
 
-  async findByQuery(query: ReferralQuery) {
-    const { locationId } = query;
+  async findByInvitationId(invitationId: string) {
+    return this.referralRepository.findByInvitationId(invitationId);
+  }
+
+  async findById(id: string) {
+    return this.referralRepository.findById(id);
+  }
+
+  async findByQuery(query: ReferralQuery, userId: string) {
+    const { locationId, codeValue } = query;
+    if (locationId && codeValue) {
+      return this.findByCodeValueAndLocationId(codeValue, locationId);
+    }
     if (locationId) {
-      return this.findByLocationId(locationId);
+      return this.findByLocationId(locationId, userId);
     }
   }
 }

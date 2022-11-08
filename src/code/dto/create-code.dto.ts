@@ -6,4 +6,6 @@ export class CreateCodeDto {
   @IsMongoId()
   @IsOptional()
   rewardId?: string;
+  @IsOptional()
+  invitationId?: string;
 }

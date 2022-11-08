@@ -1,3 +1,5 @@
+import { CodeDocument } from './../code/schemas/code.schema';
+import { CodeService } from 'src/code/code.service';
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { User } from 'src/user/schemas/user.schema';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
@@ -9,9 +11,10 @@ import { SubscriptionRepository } from './subscription.repository';
 export class SubscriptionService {
   constructor(
     private readonly subscriptionRepository: SubscriptionRepository,
+    private readonly codeService: CodeService,
   ) {}
   async create(createSubscriptionDto: CreateSubscriptionDto) {
-    const { userId, locationId } = createSubscriptionDto;
+    const { userId, locationId, referralCode } = createSubscriptionDto;
     const duplicateSub = await this.findByUserIdAndLocationId(
       userId,
       locationId,
@@ -20,12 +23,18 @@ export class SubscriptionService {
       throw new InternalServerErrorException(
         `User with id: ${userId} is already a subscriber of location with id: ${locationId}`,
       );
+    let code: CodeDocument | undefined;
+    if (referralCode) {
+      code = await this.codeService.findByCodeValue(referralCode);
+      if (!code) throw new InternalServerErrorException('Invalid code');
+    }
     return this.subscriptionRepository.createSubscription(
       createSubscriptionDto,
+      code,
     );
   }
 
-  private findByUserIdAndLocationId(uid: string, locationId: string) {
+  findByUserIdAndLocationId(uid: string, locationId: string) {
     return this.subscriptionRepository.findByUserIdAndLocationId(
       uid,
       locationId,

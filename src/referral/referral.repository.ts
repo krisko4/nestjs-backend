@@ -1,9 +1,8 @@
-import { UpdateReferralDto } from './dto/update-referral.dto';
 import { CreateReferralDto } from './dto/create-referral.dto';
 import { Referral, ReferralDocument } from './schemas/referral.schema';
 
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { ClientSession, Model, Types } from 'mongoose';
 import { Injectable } from '@nestjs/common';
 import { MongoRepository } from '../database/repository';
 @Injectable()
@@ -15,38 +14,50 @@ export class ReferralRepository extends MongoRepository<ReferralDocument> {
     super(referralModel);
   }
 
-  findByLocationId(locationId: string) {
-    return this.find({ locationId: new Types.ObjectId(locationId) });
+  async findByLocationId(locationId: string) {
+    return this.referralModel
+      .find({
+        locationId: new Types.ObjectId(locationId),
+      })
+      .lean();
   }
 
-  async invite(id: string, userId: string, invitedUserIds: string[]) {
-    return this.findByIdAndUpdate(id, {
-      $push: {
-        invitations: {
-          referrer: new Types.ObjectId(userId),
-          invitedUsers: invitedUserIds.map((uid) => new Types.ObjectId(uid)),
+  async findByInvitationId(invitationId: string) {
+    return this.findOne({
+      'invitations._id': new Types.ObjectId(invitationId),
+    });
+  }
+
+  async invite(
+    id: string,
+    userId: string,
+    invitedUserIds: string[],
+    session?: ClientSession,
+  ) {
+    return this.findByIdAndUpdate(
+      id,
+      {
+        $push: {
+          invitations: {
+            referrer: new Types.ObjectId(userId),
+            invitedUsers: invitedUserIds.map((uid) => new Types.ObjectId(uid)),
+          },
         },
       },
-    });
+      session,
+    );
   }
 
   findByIdPopulated(id: string) {
-    return this.referralModel.findById(id).populate('referrer');
+    return this.referralModel.findById(id).populate('invitations.referrer');
   }
 
-  findByReferrerIdAndLocationId(userId: string, locationId: string) {
-    return this.findOne({
-      locationId: new Types.ObjectId(locationId),
-      'invitations.referrer': new Types.ObjectId(userId),
-    });
-  }
-
-  findByInvitedUserIdAndLocationId(userId: string, locationId: string) {
-    return this.findOne({
-      locationId: new Types.ObjectId(locationId),
-      'invitations.invitedUsers': new Types.ObjectId(userId),
-    });
-  }
+  // findByInvitedUserIdAndLocationId(userId: string, locationId: string) {
+  //   return this.findOne({
+  //     locationId: new Types.ObjectId(locationId),
+  //     'invitations.invitedUsers': new Types.ObjectId(userId),
+  //   });
+  // }
 
   createReferral(createReferralDto: CreateReferralDto) {
     const { locationId, ...rest } = createReferralDto;

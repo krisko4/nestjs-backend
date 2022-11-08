@@ -1,3 +1,4 @@
+import { CodeModule } from 'src/code/code.module';
 import { Module } from '@nestjs/common';
 import { SubscriptionService } from './subscription.service';
 import { SubscriptionController } from './subscription.controller';
@@ -10,6 +11,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
   imports: [
+    CodeModule,
     MongooseModule.forFeature([
       { name: Subscription.name, schema: SubscriptionSchema },
     ]),

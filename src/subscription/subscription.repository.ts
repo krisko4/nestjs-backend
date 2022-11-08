@@ -1,3 +1,4 @@
+import { CodeDocument } from './../code/schemas/code.schema';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { MongoRepository } from 'src/database/repository';
@@ -18,11 +19,15 @@ export class SubscriptionRepository extends MongoRepository<SubscriptionDocument
   ) {
     super(subscriptionModel);
   }
-  createSubscription(createSubscriptionDto: CreateSubscriptionDto) {
+  createSubscription(
+    createSubscriptionDto: CreateSubscriptionDto,
+    referralCode?: CodeDocument,
+  ) {
     const { userId, locationId } = createSubscriptionDto;
     return this.create({
       user: new Types.ObjectId(userId),
       locationId: new Types.ObjectId(locationId),
+      referralCode: referralCode ? referralCode._id : undefined,
     });
   }
   findByUserId(uid: string) {
