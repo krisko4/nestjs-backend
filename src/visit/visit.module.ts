@@ -4,7 +4,7 @@ import { VisitController } from './visit.controller';
 import { VisitRepository } from './visit.repository';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Visit, VisitSchema } from './schemas/visit.schema';
-import { PlaceModule } from 'src/place/place.module';
+import { PlaceModule } from '../place/place.module';
 
 @Module({
   imports: [

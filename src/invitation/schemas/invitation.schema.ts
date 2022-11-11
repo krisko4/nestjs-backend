@@ -14,6 +14,8 @@ export class Invitation {
   referrer: User;
   @Prop({ type: [mongoose.Schema.Types.ObjectId], ref: User.name })
   invitedUsers: User[];
+  @Prop({ default: Date.now })
+  createdAt: Date;
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Referral.name })
   referral: Referral;
 }

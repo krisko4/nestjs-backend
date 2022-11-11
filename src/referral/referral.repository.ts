@@ -52,18 +52,14 @@ export class ReferralRepository extends MongoRepository<ReferralDocument> {
     return this.referralModel.findById(id).populate('invitations.referrer');
   }
 
-  // findByInvitedUserIdAndLocationId(userId: string, locationId: string) {
-  //   return this.findOne({
-  //     locationId: new Types.ObjectId(locationId),
-  //     'invitations.invitedUsers': new Types.ObjectId(userId),
-  //   });
-  // }
-
-  createReferral(createReferralDto: CreateReferralDto) {
+  createReferral(createReferralDto: CreateReferralDto, session: ClientSession) {
     const { locationId, ...rest } = createReferralDto;
-    return this.create({
-      locationId: new Types.ObjectId(locationId),
-      ...rest,
-    });
+    return this.create(
+      {
+        locationId: new Types.ObjectId(locationId),
+        ...rest,
+      },
+      session,
+    );
   }
 }

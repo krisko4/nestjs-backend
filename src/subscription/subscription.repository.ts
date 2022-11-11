@@ -6,7 +6,7 @@ import {
   Subscription,
   SubscriptionDocument,
 } from './schemas/subscription.schema';
-import { Types, Model } from 'mongoose';
+import { Types, Model, ClientSession } from 'mongoose';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { SubscriptionFilterQuery } from './queries/subscription-filter.query';
 import { User } from 'src/user/schemas/user.schema';
@@ -21,14 +21,18 @@ export class SubscriptionRepository extends MongoRepository<SubscriptionDocument
   }
   createSubscription(
     createSubscriptionDto: CreateSubscriptionDto,
-    referralCode?: CodeDocument,
+    invitationId?: string,
+    session?: ClientSession,
   ) {
     const { userId, locationId } = createSubscriptionDto;
-    return this.create({
-      user: new Types.ObjectId(userId),
-      locationId: new Types.ObjectId(locationId),
-      referralCode: referralCode ? referralCode._id : undefined,
-    });
+    return this.create(
+      {
+        user: new Types.ObjectId(userId),
+        locationId: new Types.ObjectId(locationId),
+        invitation: invitationId ? new Types.ObjectId(invitationId) : undefined,
+      },
+      session,
+    );
   }
   findByUserId(uid: string) {
     return this.find({

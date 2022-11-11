@@ -1,5 +1,7 @@
+import { NotificationModule } from 'src/notification/notification.module';
+import { NotificationService } from 'src/notification/notification.service';
 import { UserModule } from 'src/user/user.module';
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { EventService } from './event.service';
 import { EventController } from './event.controller';
 import { MulterModule } from '@nestjs/platform-express';
@@ -10,7 +12,6 @@ import { EventSchema } from './schemas/event.schema';
 import { MongooseModule } from '@nestjs/mongoose';
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
-import { NotificationModule } from 'src/notification/notification.module';
 
 @Module({
   imports: [
@@ -19,10 +20,10 @@ import { NotificationModule } from 'src/notification/notification.module';
     }),
     MongooseModule.forFeature([{ name: Event.name, schema: EventSchema }]),
     PlaceModule,
+    NotificationModule,
     UserModule,
     CloudinaryModule,
     SubscriptionModule,
-    forwardRef(() => NotificationModule),
   ],
   controllers: [EventController],
   providers: [EventService, EventRepository],

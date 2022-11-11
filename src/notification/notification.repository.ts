@@ -2,7 +2,7 @@ import { NotificationType } from 'src/notification/schemas/notification.schema';
 import { startOfDay, endOfDay } from 'date-fns';
 import { Place } from './../place/schemas/place.schema';
 import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, Model, Types } from 'mongoose';
+import { FilterQuery, Model, Types, ClientSession } from 'mongoose';
 import { Injectable } from '@nestjs/common';
 import { MongoRepository } from '../database/repository';
 import {
@@ -53,7 +53,7 @@ export class NotificationRepository extends MongoRepository<NotificationDocument
   findById(id: string) {
     return this.notificationModel.findById(new Types.ObjectId(id)).exec();
   }
-  hasUserAlreadyReceivedNearbyNotification(userId: string, date: Date) {
+  hasUserAlreadyReceivedNearbyEventsNotification(userId: string, date: Date) {
     return this.findOne({
       'receivers.receiver': userId,
       'receivers.received': true,
@@ -65,20 +65,26 @@ export class NotificationRepository extends MongoRepository<NotificationDocument
     const id = new Types.ObjectId(eventId);
     return this.find({ $or: [{ event: id }, { events: id }] });
   }
-  createNotification(createNotificationDto: CreateNotificationDto) {
+  createNotification(
+    createNotificationDto: CreateNotificationDto,
+    session?: ClientSession,
+  ) {
     const { receivers, eventId, eventIds, title, type, locationId } =
       createNotificationDto;
     const mappedReceivers = receivers.map((receiverId) => ({
       receiver: new Types.ObjectId(receiverId),
     }));
-    return this.create({
-      event: eventId && new Types.ObjectId(eventId),
-      events: eventIds && eventIds.map((id) => new Types.ObjectId(id)),
-      title,
-      locationId,
-      receivers: mappedReceivers,
-      type,
-    });
+    return this.create(
+      {
+        event: eventId && new Types.ObjectId(eventId),
+        events: eventIds && eventIds.map((id) => new Types.ObjectId(id)),
+        title,
+        locationId,
+        receivers: mappedReceivers,
+        type,
+      },
+      session,
+    );
   }
 
   updateNotificationState(

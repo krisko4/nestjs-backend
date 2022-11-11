@@ -3,8 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PlaceService } from 'src/place/place.service';
-import { UserService } from 'src/user/user.service';
+import { PlaceService } from '../place/place.service';
+import { UserService } from '../user/user.service';
 import { CreateOpinionDto } from './dto/create-opinion.dto';
 import { OpinionRepository } from './opinion.repository';
 import { FindOpinionsQuery } from './queries/find-opinions.query';

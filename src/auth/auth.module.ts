@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
-import { RefreshTokenModule } from 'src/refresh-token/refresh-token.module';
-import { UserModule } from 'src/user/user.module';
+import { RefreshTokenModule } from '../refresh-token/refresh-token.module';
+import { UserModule } from '../user/user.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAccessModule } from './jwt-access.module';

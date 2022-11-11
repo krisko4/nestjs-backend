@@ -1,5 +1,6 @@
-import { CodeModule } from 'src/code/code.module';
-import { Module } from '@nestjs/common';
+import { NotificationModule } from '../notification/notification.module';
+import { CodeModule } from '../code/code.module';
+import { Module, forwardRef } from '@nestjs/common';
 import { SubscriptionService } from './subscription.service';
 import { SubscriptionController } from './subscription.controller';
 import { SubscriptionRepository } from './subscription.repository';
@@ -12,6 +13,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 @Module({
   imports: [
     CodeModule,
+    NotificationModule,
     MongooseModule.forFeature([
       { name: Subscription.name, schema: SubscriptionSchema },
     ]),

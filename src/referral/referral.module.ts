@@ -1,3 +1,4 @@
+import { NotificationModule } from 'src/notification/notification.module';
 import { InvitationModule } from './../invitation/invitation.module';
 import { CodeModule } from 'src/code/code.module';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
@@ -13,13 +14,12 @@ import { MongooseModule } from '@nestjs/mongoose';
 @Module({
   imports: [
     PlaceModule,
-    UserModule,
     SubscriptionModule,
+    NotificationModule,
     forwardRef(() => InvitationModule),
     MongooseModule.forFeature([
       { name: Referral.name, schema: ReferralSchema },
     ]),
-    CodeModule,
   ],
   controllers: [ReferralController],
   providers: [ReferralService, ReferralRepository],

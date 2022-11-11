@@ -1,7 +1,7 @@
+import { NotificationService } from 'src/notification/notification.service';
+import { ReferralDocument } from './schemas/referral.schema';
 import { InvitationService } from './../invitation/invitation.service';
-import { CodeService } from 'src/code/code.service';
 import { SubscriptionService } from 'src/subscription/subscription.service';
-import { UserService } from 'src/user/user.service';
 import { ReferralQuery } from './queries/referral.query';
 import { PlaceService } from 'src/place/place.service';
 import { ReferralRepository } from './referral.repository';
@@ -14,44 +14,71 @@ import {
 import { CreateReferralDto } from './dto/create-referral.dto';
 import mongoose from 'mongoose';
 import { InjectConnection } from '@nestjs/mongoose';
+import { NotificationType } from 'src/notification/schemas/notification.schema';
 
 @Injectable()
 export class ReferralService {
   constructor(
     private readonly referralRepository: ReferralRepository,
     private readonly placeService: PlaceService,
-    private readonly userService: UserService,
     private readonly subscriptionService: SubscriptionService,
+    private readonly notificationService: NotificationService,
     @Inject(forwardRef(() => InvitationService))
     private invitationService: InvitationService,
-    private readonly codeService: CodeService,
     @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
+
   async create(createReferralDto: CreateReferralDto, userId: string) {
     const { locationId } = createReferralDto;
     await this.validateReferralLocation(locationId, userId);
-    return this.referralRepository.createReferral(createReferralDto);
+    const session = await this.connection.startSession();
+    let newReferral: ReferralDocument;
+    const place = await this.placeService.findByLocationId(locationId);
+    await session.withTransaction(async () => {
+      newReferral = await this.referralRepository.createReferral(
+        createReferralDto,
+        session,
+      );
+      const subs = await this.subscriptionService.findByLocationId(locationId);
+      const receivers = subs.map((sub) => sub.user._id);
+      if (receivers.length > 0) {
+        const createNotificationDto = {
+          title: `${place.name} has added a new referral!`,
+          body: 'Click me to find out what you can win for inviting your friends',
+          locationId,
+          receivers,
+          type: NotificationType.NEW_REFERRAL,
+        };
+        const notification = await this.notificationService.create(
+          createNotificationDto,
+          session,
+        );
+        const { body, title } = createNotificationDto;
+        await this.notificationService.sendNotification(receivers, {
+          data: {
+            _id: notification._id.toString(),
+            title,
+            body,
+            locationName: place.name,
+          },
+          notification: {
+            title,
+            body,
+          },
+        });
+      }
+    });
+    await session.endSession();
+    return newReferral;
   }
 
   private async validateReferralLocation(locationId: string, userId: string) {
     const place = await this.placeService.findByLocationId(locationId);
-    if (!place)
-      throw new InternalServerErrorException(
-        'Place not found for locationId:' + locationId,
-      );
+    if (!place) throw new InternalServerErrorException('PLACE_NOT_FOUND');
     if (place.userId.toString() !== userId.toString()) {
-      throw new InternalServerErrorException('Operation forbidden');
+      throw new InternalServerErrorException('OPERATION_FORBIDDEN');
     }
     return place;
-  }
-
-  async findByCodeValueAndLocationId(value: string, locationId: string) {
-    const code = await this.codeService.findByCodeValue(value);
-    const ref = await this.findByInvitationId(code.invitation._id);
-    if (ref.locationId.toString() !== locationId.toString()) {
-      throw new InternalServerErrorException('INVALID_CODE');
-    }
-    return code;
   }
 
   async findByLocationId(locationId: string, userId: string) {
@@ -75,9 +102,9 @@ export class ReferralService {
             ? [
                 {
                   ...invitation,
-                  invitedUsers: invitation.invitedUsers.filter((uid) =>
+                  invitedUsers: invitation.invitedUsers.filter((u) =>
                     subscriptions.some(
-                      (sub) => sub.user._id.toString() === uid.toString(),
+                      (sub) => sub.user._id.toString() === u._id.toString(),
                     ),
                   ),
                 },
@@ -88,19 +115,12 @@ export class ReferralService {
     );
   }
 
-  async findByInvitationId(invitationId: string) {
-    return this.referralRepository.findByInvitationId(invitationId);
-  }
-
   async findById(id: string) {
     return this.referralRepository.findById(id);
   }
 
   async findByQuery(query: ReferralQuery, userId: string) {
-    const { locationId, codeValue } = query;
-    if (locationId && codeValue) {
-      return this.findByCodeValueAndLocationId(codeValue, locationId);
-    }
+    const { locationId } = query;
     if (locationId) {
       return this.findByLocationId(locationId, userId);
     }

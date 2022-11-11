@@ -1,13 +1,10 @@
+import { EventDocument } from './schemas/event.schema';
 import { Haversine } from './../haversine/haversine';
 import { CreateNotificationDto } from './../notification/dto/create-notification.dto';
 import { UserService } from 'src/user/user.service';
 import { GeolocationDto } from './../geolocation/dto/geolocation.dto';
-import { EventDocument } from 'src/event/schemas/event.schema';
-
 import {
   BadRequestException,
-  forwardRef,
-  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -16,12 +13,14 @@ import { format, isBefore, isToday } from 'date-fns';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { NotificationService } from 'src/notification/notification.service';
 import { NotificationType } from 'src/notification/schemas/notification.schema';
-import { PlaceService } from 'src/place/place.service';
 import { PaginationQuery } from 'src/place/queries/pagination.query';
 import { SubscriptionService } from 'src/subscription/subscription.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { EventRepository } from './event.repository';
 import { EventFilterQuery } from './queries/event-filter.query';
+import { PlaceService } from 'src/place/place.service';
+import { InjectConnection } from '@nestjs/mongoose';
+import mongoose from 'mongoose';
 
 @Injectable()
 export class EventService {
@@ -31,9 +30,10 @@ export class EventService {
     private readonly userService: UserService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly subscriptionService: SubscriptionService,
-    @Inject(forwardRef(() => NotificationService))
     private readonly notificationService: NotificationService,
+    @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
+
   async create(createEventDto: CreateEventDto, img?: Express.Multer.File) {
     const { title, startDate, endDate, locationId } = createEventDto;
     if (isBefore(new Date(endDate), new Date(startDate))) {
@@ -45,25 +45,53 @@ export class EventService {
     if (!place)
       throw new NotFoundException(`location with id: ${locationId} not found`);
     let imageId: string;
-    if (img) {
-      imageId = await this.cloudinaryService.uploadImage(img.path, 'events');
-    }
-    const event = await this.eventRepository.createEvent(
-      createEventDto,
-      imageId,
-    );
-    const subs = await this.subscriptionService.findByLocationId(locationId);
-    const receivers = subs.map((sub) => sub.user._id);
-    if (receivers.length > 0) {
-      await this.notificationService.create({
-        title: `${place.name} has added a new event!`,
-        body: title,
-        eventId: event._id.toString(),
-        locationId,
-        receivers,
-        type: NotificationType.NEW_EVENT,
-      });
-    }
+    let event: EventDocument;
+    const session = await this.connection.startSession();
+    await session.withTransaction(async () => {
+      if (img) {
+        imageId = await this.cloudinaryService.uploadImage(img.path, 'events');
+      }
+      event = await this.eventRepository.createEvent(
+        createEventDto,
+        session,
+        imageId,
+      );
+      const subs = await this.subscriptionService.findByLocationId(locationId);
+      const receivers = subs.map((sub) => sub.user._id);
+      if (receivers.length > 0) {
+        const createNotificationDto = {
+          title: `${place.name} has added a new event!`,
+          body: title,
+          eventId: event._id.toString(),
+          locationId,
+          receivers,
+          type: NotificationType.NEW_EVENT,
+        };
+        const notification = await this.notificationService.create(
+          createNotificationDto,
+          session,
+        );
+        const { body, eventId } = createNotificationDto;
+        await this.notificationService.sendNotification(receivers, {
+          data: {
+            _id: notification._id.toString(),
+            title,
+            body,
+            startDate: format(startDate, 'yyyy-MM-dd hh:mm'),
+            endDate: format(endDate, 'yyyy-MM-dd hh:mm'),
+            eventId,
+            locationName: place.name,
+            img: `${process.env.CLOUDI_URL}/${img}`,
+          },
+          notification: {
+            title,
+            body,
+            imageUrl: `${process.env.CLOUDI_URL}/${img}`,
+          },
+        });
+      }
+    });
+    await session.endSession();
     return event;
   }
 
@@ -93,7 +121,7 @@ export class EventService {
       throw new InternalServerErrorException(`User with uid: ${uid} not found`);
     }
     if (
-      await this.notificationService.hasUserAlreadyReceivedNearbyNotification(
+      await this.notificationService.hasUserAlreadyReceivedNearbyEventsNotification(
         user._id,
         new Date(),
       )
@@ -134,7 +162,19 @@ export class EventService {
         type: NotificationType.EVENT_TODAY_NEARBY,
       };
     }
-    this.notificationService.create(createNotificationDto);
+    const notification = await this.notificationService.create(
+      createNotificationDto,
+    );
+    const { receivers, title, body } = createNotificationDto;
+    return this.notificationService.sendNotification(receivers, {
+      data: {
+        _id: notification._id.toString(),
+      },
+      notification: {
+        title,
+        body,
+      },
+    });
   }
 
   async participate(id: string, uid: string) {

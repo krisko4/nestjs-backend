@@ -10,9 +10,11 @@ export type NotificationDocument = Notification & Document;
 
 export enum NotificationType {
   NEW_EVENT = 'event',
+  NEW_REFERRAL = 'referral',
   REWARD = 'reward',
-  REMINDER = 'reminder',
+  EVENT_REMINDER = 'reminder',
   EVENT_TODAY_NEARBY = 'event_today_nearby',
+  REFERRAL_REWARD = 'referral_reward',
 }
 
 @Schema()
@@ -56,7 +58,9 @@ export class Notification {
       NotificationType.NEW_EVENT,
       NotificationType.EVENT_TODAY_NEARBY,
       NotificationType.REWARD,
-      NotificationType.REMINDER,
+      NotificationType.EVENT_REMINDER,
+      NotificationType.REFERRAL_REWARD,
+      NotificationType.NEW_REFERRAL,
     ],
   })
   type: NotificationType;

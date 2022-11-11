@@ -1,5 +1,5 @@
 import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, Model, Types } from 'mongoose';
+import { FilterQuery, Model, Types, ClientSession } from 'mongoose';
 import { Injectable } from '@nestjs/common';
 import { MongoRepository } from '../database/repository';
 import { EventDocument } from './schemas/event.schema';
@@ -15,12 +15,19 @@ export class EventRepository extends MongoRepository<EventDocument> {
   ) {
     super(eventModel);
   }
-  createEvent(createEventDto: CreateEventDto, imageId?: string) {
-    return this.create({
-      ...createEventDto,
-      img: imageId,
-      place: createEventDto.placeId,
-    });
+  createEvent(
+    createEventDto: CreateEventDto,
+    session: ClientSession,
+    imageId?: string,
+  ) {
+    return this.create(
+      {
+        ...createEventDto,
+        img: imageId,
+        place: createEventDto.placeId,
+      },
+      session,
+    );
   }
   findByLocationId(locationId: string) {
     return this.eventModel

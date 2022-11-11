@@ -5,9 +5,9 @@ import { RewardController } from './reward.controller';
 import { RewardRepository } from './reward.repository';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Reward, RewardSchema } from './schemas/reward.schema';
-import { SubscriptionModule } from 'src/subscription/subscription.module';
-import { CodeModule } from 'src/code/code.module';
-import { EventModule } from 'src/event/event.module';
+import { SubscriptionModule } from '../subscription/subscription.module';
+import { CodeModule } from '../code/code.module';
+import { EventModule } from '../event/event.module';
 
 @Module({
   imports: [

@@ -4,6 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { MongoRepository } from '../database/repository';
 import { Code, CodeDocument } from './schemas/code.schema';
 import { CreateCodeDto } from './dto/create-code.dto';
+import { CodeType } from './queries/code-filter.query';
 
 @Injectable()
 export class CodeRepository extends MongoRepository<CodeDocument> {
@@ -33,11 +34,33 @@ export class CodeRepository extends MongoRepository<CodeDocument> {
     return this.find({ reward: new Types.ObjectId(rewardId) });
   }
 
-  findByCodeValue(value: string) {
-    return this.codeModel.findOne({ value }).populate('invitation');
+  findByValue(value: string) {
+    return this.codeModel.findOne({ value }).populate({
+      path: 'invitation',
+      populate: {
+        path: 'referral',
+      },
+    });
   }
 
-  async findByUserId(userId: string) {
+  useCode(id: string) {
+    return this.findByIdAndUpdate(id, { isUsed: true });
+  }
+
+  async findReferralCodes(userId: string) {
+    const codes = await this.codeModel
+      .find({ user: new Types.ObjectId(userId) })
+      .populate({
+        path: 'invitation',
+        populate: {
+          path: 'referral',
+        },
+      });
+
+    return codes.filter((c) => c.invitation);
+  }
+
+  async findRewardCodes(userId: string) {
     const codes = await this.codeModel
       .find({ user: new Types.ObjectId(userId) })
       .populate({
@@ -49,14 +72,27 @@ export class CodeRepository extends MongoRepository<CodeDocument> {
           },
         },
       });
-    return codes.map((code) => {
-      return {
-        _id: code._id,
-        value: code.value,
-        description: code.reward.description,
-        date: code.reward.date,
-        placeLogo: `${process.env.CLOUDI_URL}/${code.reward.event.place.logo}`,
-      };
-    });
+
+    return codes.filter((c) => c.reward);
+  }
+
+  async findByUserId(userId: string) {
+    return this.codeModel
+      .find({ user: new Types.ObjectId(userId) })
+      .populate({
+        path: 'reward',
+        populate: {
+          path: 'event',
+          populate: {
+            path: 'place',
+          },
+        },
+      })
+      .populate({
+        path: 'invitation',
+        populate: {
+          path: 'referral',
+        },
+      });
   }
 }

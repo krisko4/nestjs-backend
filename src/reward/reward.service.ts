@@ -142,12 +142,25 @@ export class RewardService {
       const remindJob = new CronJob(
         subMinutes(new Date(scheduledFor), 5),
         async () => {
-          this.notificationService.create({
+          const createNotificationDto = {
             title: `A reward drawing will start in 5 minutes!`,
             body: event.title,
             eventId: event._id.toString(),
             receivers: event.participators.map((u) => u._id),
-            type: NotificationType.REMINDER,
+            type: NotificationType.EVENT_REMINDER,
+          };
+          const { title, body, receivers } = createNotificationDto;
+          const notification = await this.notificationService.create(
+            createNotificationDto,
+          );
+          return this.notificationService.sendNotification(receivers, {
+            data: {
+              _id: notification._id.toString(),
+            },
+            notification: {
+              title,
+              body,
+            },
           });
         },
       );
