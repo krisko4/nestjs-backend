@@ -4,10 +4,22 @@ import { ValidateNested } from 'class-validator';
 import mongoose from 'mongoose';
 import { Document } from 'mongoose';
 import { User } from 'src/user/schemas/user.schema';
-import { Location } from 'src/place/schemas/location.schema';
 import { Place } from 'src/place/schemas/place.schema';
 
 export type EventDocument = Event & Document;
+
+@Schema({ _id: false })
+export class Participator {
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: User.name })
+  user: User;
+  @Prop({ default: false })
+  didReallyParticipate: boolean;
+  @Prop()
+  rate: number;
+  isSubscriber?: boolean;
+}
+
+export const ParticipatorSchema = SchemaFactory.createForClass(Participator);
 
 @Schema()
 export class Event {
@@ -39,13 +51,16 @@ export class Event {
   @Transform((params) => plainToInstance(Place, params.obj.place))
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Place.name })
   place: Place;
-  @Prop({ type: [mongoose.Schema.Types.ObjectId], ref: User.name })
+  @Prop({ type: [ParticipatorSchema], required: true, default: [] })
   @ValidateNested()
   @Transform((params) => {
     const { participators } = params.obj;
-    return participators.map((par) => plainToInstance(User, par));
+    return participators.map((par) => ({
+      ...par,
+      user: plainToInstance(User, par.user),
+    }));
   })
-  participators: User[];
+  participators: Participator[];
 }
 
 export const EventSchema = SchemaFactory.createForClass(Event);

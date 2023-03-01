@@ -34,6 +34,11 @@ export class CodeRepository extends MongoRepository<CodeDocument> {
     return this.find({ reward: new Types.ObjectId(rewardId) });
   }
 
+  findByRewardsIds(rewardsIds: string[]) {
+    const validRewardsIds = rewardsIds.map((id) => new Types.ObjectId(id));
+    return this.find({ reward: { $in: validRewardsIds } });
+  }
+
   findByValue(value: string) {
     return this.codeModel.findOne({ value }).populate({
       path: 'invitation',

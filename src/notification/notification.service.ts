@@ -12,6 +12,7 @@ import { NotificationFilterQuery } from './queries/notification-filter.query';
 import { UserService } from 'src/user/user.service';
 import _ from 'lodash/fp';
 import { MessagingPayload } from 'firebase-admin/lib/messaging/messaging-api';
+import { differenceInSeconds } from 'date-fns';
 
 @Injectable()
 export class NotificationService {
@@ -64,8 +65,12 @@ export class NotificationService {
     return this.notificationRepository.findById(id);
   }
 
+  findByEventId(eventId: string) {
+    return this.notificationRepository.findByEventsIds([eventId]);
+  }
+
   findByQuery(filterQuery: NotificationFilterQuery, userId: string) {
-    const { locationId, eventId } = filterQuery;
+    const { locationId, eventId, eventsIds } = filterQuery;
     const queryLength = Object.keys(filterQuery).length;
     if (queryLength > 1)
       throw new BadRequestException('Only one query parameter can be provided');
@@ -73,18 +78,24 @@ export class NotificationService {
       return this.notificationRepository.findByLocationId(locationId);
     }
     if (eventId) {
-      return this.findNotificationStatistics(eventId);
+      return this.findByEventId(eventId);
+      // return this.findNotificationStatistics([eventId]);
+    }
+    if (eventsIds) {
+      // return this.findByEventId(eventId);
+      return this.findNotificationStatistics(eventsIds);
     }
     return this.notificationRepository.findByReceiverId(userId);
   }
 
-  async findNotificationStatistics(eventId: string) {
-    const notifications = await this.notificationRepository.findByEventId(
-      eventId,
+  async findNotificationStatistics(eventsIds: string[]) {
+    const notifications = await this.notificationRepository.findByEventsIds(
+      eventsIds,
     );
     return notifications.map((notification) => {
       let receivedCount = 0;
       let clickedCount = 0;
+      let clickTime = 0;
       for (const receiver of notification.receivers) {
         if (receiver.received) {
           receivedCount++;
@@ -92,18 +103,27 @@ export class NotificationService {
         if (receiver.clicked) {
           clickedCount++;
         }
+        if (receiver.clickedAt) {
+          clickTime += differenceInSeconds(
+            new Date(receiver.clickedAt),
+            new Date(receiver.receivedAt),
+          );
+        }
       }
       return {
         type: notification.type,
         all: notification.receivers.length,
         received: receivedCount,
         clicked: clickedCount,
+        averageClickTime: Math.floor(clickTime / clickedCount) || 0,
+        eventName: notification.event ? notification.event.title : undefined,
       };
     });
   }
 
   update(id: string, notificationUpdateQuery: NotificationUpdateQuery) {
     const { clicked, receiverId } = notificationUpdateQuery;
+    console.log(clicked, receiverId);
     const state = clicked ? 'clicked' : 'received';
     return this.notificationRepository.updateNotificationState(
       id,

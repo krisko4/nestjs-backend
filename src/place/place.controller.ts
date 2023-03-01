@@ -192,6 +192,7 @@ export class PlaceController {
     const { uid } = req.cookies;
     const place = await this.placeService.findLocation(id, locationId);
     const placeDto = plainToInstance(PlaceDto, place);
+    console.log(uid);
     placeDto.isUserOwner = place.userId.toString() === uid.toString();
     return placeDto;
   }

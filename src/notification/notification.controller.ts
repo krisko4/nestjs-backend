@@ -34,9 +34,11 @@ export class NotificationController {
   @Get()
   findByQuery(@Req() req, @Query() filterQuery: NotificationFilterQuery) {
     const { user } = req;
+    console.log('hej');
     return this.notificationService.findByQuery(filterQuery, user.uid);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch(':id')
   update(
     @Param() id: string,

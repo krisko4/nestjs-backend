@@ -1,4 +1,9 @@
-import { IsMongoId, IsOptional } from 'class-validator';
+import {
+  IsArray,
+  IsMongoId,
+  IsOptional,
+  ValidateNested,
+} from 'class-validator';
 
 export class NotificationFilterQuery {
   @IsMongoId()
@@ -10,4 +15,17 @@ export class NotificationFilterQuery {
   @IsMongoId()
   @IsOptional()
   eventId?: string;
+  @IsMongoId()
+  @IsOptional()
+  rewardId?: string;
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @IsMongoId()
+  eventsIds?: string[];
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @IsMongoId()
+  rewardsIds?: string[];
 }

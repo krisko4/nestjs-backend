@@ -1,4 +1,4 @@
-import { IsMongoId, IsString } from 'class-validator';
+import { IsMongoId, IsOptional, IsString } from 'class-validator';
 
 export class CreateSubscriptionDto {
   @IsMongoId()
@@ -6,5 +6,6 @@ export class CreateSubscriptionDto {
   @IsMongoId()
   locationId: string;
   @IsString()
+  @IsOptional()
   referralCode?: string;
 }

@@ -1,6 +1,5 @@
 import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
-import { Exclude, Transform } from 'class-transformer';
-import mongoose from 'mongoose';
+import { Transform } from 'class-transformer';
 import { AverageNote, AverageNoteSchema } from './average-note.schema';
 import { OpeningHours, OpeningHoursSchema } from './opening-hours.schema';
 

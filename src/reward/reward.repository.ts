@@ -27,14 +27,24 @@ export class RewardRepository extends MongoRepository<RewardDocument> {
     return this.findOne({ event: new Types.ObjectId(eventId) });
   }
 
+  findByEventsIds(eventsIds: string[]) {
+    const validEventsIds = eventsIds.map((id) => new Types.ObjectId(id));
+    return this.rewardModel
+      .find({ event: { $in: validEventsIds } })
+      .populate('event')
+      .exec();
+  }
+
   createReward(
     description: string,
     eventId: string,
+    participators: string[],
     rewardPercentage: number,
     session?: ClientSession,
     scheduledFor?: Date,
   ) {
     const reward = {
+      participators,
       description,
       rewardPercentage,
       event: eventId,

@@ -28,6 +28,10 @@ class Receiver {
   received: boolean;
   @Prop({ default: false })
   clicked: boolean;
+  @Prop()
+  receivedAt: Date;
+  @Prop()
+  clickedAt: Date;
 }
 
 const ReceiverSchema = SchemaFactory.createForClass(Receiver);

@@ -52,31 +52,81 @@ export class EventRepository extends MongoRepository<EventDocument> {
     };
     return this.findPaginated(paginationQuery, filterQuery, sortQuery);
   }
-  participate(id: string, userId: string) {
-    return this.findByIdAndUpdate(id, { $push: { participators: userId } });
+  addParticipator(id: string, userId: string) {
+    return this.findByIdAndUpdate(id, {
+      $push: {
+        participators: {
+          user: userId,
+        },
+      },
+    });
   }
 
-  unparticipate(id: string, userId: string) {
-    return this.findByIdAndUpdate(id, { $pull: { participators: userId } });
+  rateEvent(id: string, participatorId: string, rate: number) {
+    return this.findOneAndUpdate(
+      {
+        _id: new Types.ObjectId(id),
+        'participators.user': new Types.ObjectId(participatorId),
+      },
+      {
+        $set: {
+          'participators.$.rate': rate,
+        },
+      },
+    );
   }
-  findByIdAndParticipatorId(id: string, uid: string) {
-    return this.findOne({
-      _id: new Types.ObjectId(id),
-      participators: new Types.ObjectId(uid),
+
+  markParticipationIRL(id: string, participatorId: string) {
+    return this.findOneAndUpdate(
+      {
+        _id: new Types.ObjectId(id),
+        'participators.user': new Types.ObjectId(participatorId),
+      },
+      {
+        $set: {
+          'participators.$.didReallyParticipate': true,
+        },
+      },
+    );
+  }
+
+  removeParticipator(id: string, userId: string) {
+    return this.findByIdAndUpdate(id, {
+      $pull: { participators: { user: userId } },
     });
+  }
+  findByIdAndParticipatorId(id: string, uid: string, populated?: boolean) {
+    const doc = this.eventModel.findOne({
+      _id: new Types.ObjectId(id),
+      'participators.user': new Types.ObjectId(uid),
+    });
+    if (populated) {
+      return doc.populate('place').populate('participators.user').lean();
+    }
+    return doc;
   }
   findByParticipatorId(uid: string) {
     return this.eventModel
-      .find({ participators: new Types.ObjectId(uid) })
+      .find({ 'participators.user': new Types.ObjectId(uid) })
       .populate('place')
-      .populate('participators')
+      .populate('participators.user')
       .lean();
+  }
+
+  findByPlacesIds(placesIds: string[]) {
+    const validPlacesIds = placesIds.map((p) => new Types.ObjectId(p));
+    return this.eventModel
+      .find({ place: { $in: validPlacesIds } })
+      .populate('place')
+      .populate('participators.user')
+      .lean()
+      .exec();
   }
 
   findEventById(id: string): Promise<Event> {
     return this.eventModel
       .findById(id)
-      .populate('participators')
+      .populate('participators.user')
       .populate('place')
       .lean()
       .exec();

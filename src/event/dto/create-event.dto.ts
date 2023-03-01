@@ -1,4 +1,6 @@
 import {
+  IsDate,
+  IsDateString,
   IsISO8601,
   IsMongoId,
   IsNumber,
@@ -9,9 +11,7 @@ import {
 } from 'class-validator';
 
 export class CreateEventDto {
-  @IsISO8601()
   startDate: Date;
-  @IsISO8601()
   endDate: Date;
   @IsString()
   address: string;

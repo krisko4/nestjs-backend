@@ -22,6 +22,7 @@ export class User {
   @Exclude()
   isActive: boolean;
   @Prop({ default: '' })
+  @Transform(({ value }) => (value ? `${process.env.CLOUDI_URL}/${value}` : ''))
   img: string;
   @Prop()
   birthdate: Date;

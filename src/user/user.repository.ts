@@ -22,6 +22,10 @@ export class UserRepository extends MongoRepository<UserDocument> {
     return this.findByIdAndUpdate(id, { notificationTokens: tokens });
   }
 
+  updateProfilePicture(uid: string, logoId: string) {
+    return this.findByIdAndUpdate(uid, { img: logoId });
+  }
+
   async removeNotificationTokens(uid: string) {
     return this.findByIdAndUpdate(uid, { notificationTokens: [] });
   }

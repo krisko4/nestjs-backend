@@ -9,6 +9,7 @@ import { SubscriptionRepository } from './subscription.repository';
 import { InjectConnection } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
 import { NotificationType } from 'src/notification/schemas/notification.schema';
+import { Participator } from 'src/event/schemas/event.schema';
 
 @Injectable()
 export class SubscriptionService {
@@ -116,7 +117,7 @@ export class SubscriptionService {
   async drawWinners(
     rewardPercentage: number,
     locationId: string,
-    participators: User[],
+    participators: Participator[],
   ): Promise<string[]> {
     const subscriptions = await this.subscriptionRepository.findByLocationId(
       locationId,
@@ -124,7 +125,7 @@ export class SubscriptionService {
     const validSubs = subscriptions.filter((sub) =>
       participators.some(
         (participator) =>
-          participator._id.toString() === sub.user._id.toString(),
+          participator.user._id.toString() === sub.user._id.toString(),
       ),
     );
     const winnersAmount = Math.ceil(rewardPercentage * 0.01 * validSubs.length);

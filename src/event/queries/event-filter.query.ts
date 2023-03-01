@@ -1,5 +1,4 @@
-import { IsMongoId, IsOptional } from 'class-validator';
-import { PaginationQuery } from 'src/place/queries/pagination.query';
+import { IsMongoId, IsOptional, IsBooleanString } from 'class-validator';
 
 export class EventFilterQuery {
   @IsMongoId()
@@ -8,4 +7,10 @@ export class EventFilterQuery {
   @IsMongoId()
   @IsOptional()
   participatorId?: string;
+  @IsMongoId()
+  @IsOptional()
+  userId?: string;
+  @IsBooleanString()
+  @IsOptional()
+  active?: boolean;
 }

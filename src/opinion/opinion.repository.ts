@@ -16,6 +16,14 @@ export class OpinionRepository extends MongoRepository<OpinionDocument> {
     super(opinionModel);
   }
 
+  async findByLocationId(locationId: string) {
+    return this.opinionModel
+      .find({ locationId: locationId })
+      .populate('author')
+      .sort({ date: -1 })
+      .exec();
+  }
+
   async findByLocationIds(locationIds: Types.ObjectId[]) {
     const start = startOfDay(new Date());
     const end = endOfDay(new Date());

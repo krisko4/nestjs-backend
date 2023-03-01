@@ -61,9 +61,15 @@ export class NotificationRepository extends MongoRepository<NotificationDocument
       type: NotificationType.EVENT_TODAY_NEARBY,
     });
   }
-  findByEventId(eventId: string) {
-    const id = new Types.ObjectId(eventId);
-    return this.find({ $or: [{ event: id }, { events: id }] });
+  findByEventsIds(eventsIds: string[]) {
+    const ids = eventsIds.map((id) => new Types.ObjectId(id));
+    return this.notificationModel
+      .find({
+        $or: [{ event: { $in: ids } }, { events: { $in: ids } }],
+      })
+      .populate('event')
+      .populate('events')
+      .exec();
   }
   createNotification(
     createNotificationDto: CreateNotificationDto,
@@ -94,6 +100,7 @@ export class NotificationRepository extends MongoRepository<NotificationDocument
   ) {
     const updateObj = {};
     updateObj[`receivers.$.${state}`] = true;
+    updateObj[`receivers.$.${state}At`] = new Date();
     return this.findOneAndUpdate(
       {
         _id: new Types.ObjectId(id),

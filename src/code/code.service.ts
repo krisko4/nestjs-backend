@@ -110,6 +110,10 @@ export class CodeService {
     }
   }
 
+  async findByRewardsIds(rewardsIds: string[]) {
+    return this.codeRepository.findByRewardsIds(rewardsIds);
+  }
+
   findByQuery(codeFilterQuery: CodeFilterQuery, userId: string) {
     const { rewardId, value, locationId, type } = codeFilterQuery;
     if (value) {

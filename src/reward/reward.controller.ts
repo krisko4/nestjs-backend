@@ -1,3 +1,4 @@
+import { StatisticsFilterQuery } from './queries/statistics-filter.query';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import {
   Controller,
@@ -28,5 +29,11 @@ export class RewardController {
   find(@Query() rewardFilterQuery: RewardFilterQuery, @Req() req) {
     const { uid } = req.user;
     return this.rewardService.find(rewardFilterQuery, uid);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('statistics')
+  findStatistics(@Query() statisticsFilterQuery: StatisticsFilterQuery) {
+    return this.rewardService.findStatistics(statisticsFilterQuery);
   }
 }
