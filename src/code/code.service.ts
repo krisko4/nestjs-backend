@@ -94,6 +94,7 @@ export class CodeService {
         value: code.value,
         description: code.reward.description,
         date: code.reward.date,
+        eventName: code.reward.event.title,
         placeLogo: `${process.env.CLOUDI_URL}/${code.reward.event.place.logo}`,
       };
     });

@@ -3,6 +3,7 @@ import { IsMongoId, IsEnum } from 'class-validator';
 export enum StatisticsType {
   PARTICIPATORS = 'PARTICIPATORS',
   NOTIFICATIONS = 'NOTIFICATIONS',
+  RATINGS = 'RATINGS',
 }
 
 export class StatisticsFilterQuery {

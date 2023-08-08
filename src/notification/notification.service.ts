@@ -78,8 +78,8 @@ export class NotificationService {
       return this.notificationRepository.findByLocationId(locationId);
     }
     if (eventId) {
-      return this.findByEventId(eventId);
-      // return this.findNotificationStatistics([eventId]);
+      // return this.findByEventId(eventId);
+      return this.findNotificationStatistics([eventId]);
     }
     if (eventsIds) {
       // return this.findByEventId(eventId);

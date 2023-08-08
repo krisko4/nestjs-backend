@@ -1,6 +1,5 @@
-import { UserService } from 'src/user/user.service';
 import { MessagingPayload } from 'firebase-admin/lib/messaging/messaging-api';
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import * as firebase from 'firebase-admin';
 
 @Injectable()

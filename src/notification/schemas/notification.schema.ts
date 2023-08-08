@@ -9,6 +9,7 @@ import { User } from 'src/user/schemas/user.schema';
 export type NotificationDocument = Notification & Document;
 
 export enum NotificationType {
+  RATING_REQUEST = 'rating_request',
   NEW_EVENT = 'event',
   NEW_REFERRAL = 'referral',
   REWARD = 'reward',
@@ -58,14 +59,7 @@ export class Notification {
   reward: Reward;
   @Prop({
     required: true,
-    enum: [
-      NotificationType.NEW_EVENT,
-      NotificationType.EVENT_TODAY_NEARBY,
-      NotificationType.REWARD,
-      NotificationType.EVENT_REMINDER,
-      NotificationType.REFERRAL_REWARD,
-      NotificationType.NEW_REFERRAL,
-    ],
+    enum: Object.values(NotificationType),
   })
   type: NotificationType;
 }

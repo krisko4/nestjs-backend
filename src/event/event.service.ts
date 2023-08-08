@@ -16,7 +16,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { addDays, format, isBefore, isToday, addMinutes } from 'date-fns';
+import { format, isBefore, isToday, addMinutes } from 'date-fns';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { NotificationService } from 'src/notification/notification.service';
 import { NotificationType } from 'src/notification/schemas/notification.schema';
@@ -102,14 +102,18 @@ export class EventService {
             image: `${process.env.CLOUDI_URL}/${imageId}`,
           },
         });
+        const rateRequestJob = new CronJob(
+          addMinutes(new Date(endDate), 1),
+          () => {
+            this.sendRateRequestNotifications(event._id);
+          },
+        );
+        this.schedulerRegistry.addCronJob(
+          new Date().toString(),
+          rateRequestJob,
+        );
+        rateRequestJob.start();
       }
-      const rateRequestJob = new CronJob(
-        addMinutes(new Date(endDate), 5),
-        () => {
-          this.sendRateRequestNotifications(event._id);
-        },
-      );
-      this.schedulerRegistry.addCronJob(new Date().toString(), rateRequestJob);
     });
     await session.endSession();
     return event;
@@ -128,7 +132,7 @@ export class EventService {
         body: `Let us know, we can't wait to hear your opinion!🤔`,
         eventId: event._id.toString(),
         receivers,
-        type: NotificationType.NEW_EVENT,
+        type: NotificationType.RATING_REQUEST,
       };
       const notification = await this.notificationService.create(
         createNotificationDto,
@@ -173,6 +177,7 @@ export class EventService {
 
   async findNearbyEventsToday(geolocationDto: GeolocationDto) {
     const { lat, lng, uid } = geolocationDto;
+    console.log('szukanko');
     const user = await this.userService.findById(uid);
     if (!user) {
       throw new InternalServerErrorException(`User with uid: ${uid} not found`);
@@ -204,7 +209,10 @@ export class EventService {
       const event = nearbyEventsToday[0];
       createNotificationDto = {
         title: `${event.title} will take place in your neighbourhood today!`,
-        body: `Starts: ${format(event.startDate, 'yyyy-MM-dd HH:mm')}`,
+        body: `Starts: ${format(
+          event.startDate,
+          'yyyy-MM-dd HH:mm',
+        )}\nRewards planned: chicken salad 50% OFF🤩🤩\nAre you coming?🤔`,
         receivers: [user._id],
         eventId: event._id,
         type: NotificationType.EVENT_TODAY_NEARBY,
@@ -253,10 +261,33 @@ export class EventService {
         events.map((e) => e._id),
       );
     }
+    if (type === StatisticsType.RATINGS) {
+      return events.map((event) => {
+        return {
+          eventName: event.title,
+          ones: event.participators.filter((p) => p.rate === 1).length,
+          twos: event.participators.filter((p) => p.rate === 2).length,
+          threes: event.participators.filter((p) => p.rate === 3).length,
+          fours: event.participators.filter((p) => p.rate === 4).length,
+          fives: event.participators.filter((p) => p.rate === 5).length,
+        };
+      });
+    }
+    for (const event of events) {
+      const subs = await this.subscriptionService.findByLocationId(
+        event.locationId,
+      );
+      event.participators.forEach((participator) => {
+        participator['isSubscriber'] = subs.some(({ user }) => {
+          return user._id.toString() === participator.user._id.toString();
+        });
+      });
+    }
     return events.map((event) => {
       return {
         eventName: event.title,
         participators: event.participators.length,
+        subscribers: event.participators.filter((p) => p.isSubscriber).length,
         realParticipators: event.participators.filter(
           (p) => p.didReallyParticipate,
         ).length,
@@ -273,11 +304,9 @@ export class EventService {
     const event = await this.eventRepository.findEventById(id);
     if (!event) throw new InternalServerErrorException(`EVENT_NOT_FOUND`);
     const { rate } = updateParticipatorDto;
-    console.log(rate);
     if (rate) {
       return this.rateEvent(uid, participatorId, rate, event);
     }
-    console.log('alo');
     return this.markParticipationIRL(participatorId, uid, event);
   }
 
