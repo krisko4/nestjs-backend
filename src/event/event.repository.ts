@@ -17,6 +17,7 @@ export class EventRepository extends MongoRepository<EventDocument> {
   }
   createEvent(
     createEventDto: CreateEventDto,
+    placeId: string,
     session: ClientSession,
     imageId?: string,
   ) {
@@ -24,7 +25,7 @@ export class EventRepository extends MongoRepository<EventDocument> {
       {
         ...createEventDto,
         img: imageId,
-        place: createEventDto.placeId,
+        place: placeId,
       },
       session,
     );
@@ -136,16 +137,27 @@ export class EventRepository extends MongoRepository<EventDocument> {
     return this.eventModel.find().lean();
   }
 
-  private async findPaginated(
+  findByUserId(paginationQuery: PaginationQuery, uid: string) {
+    return this.findPaginated(paginationQuery, {
+      userId: uid,
+    });
+  }
+
+  async findPaginated(
     paginationQuery: PaginationQuery,
     entityFilterQuery: FilterQuery<Model<EventDocument>>,
     sortQuery?: FilterQuery<Model<EventDocument>>,
   ) {
     const { start, limit } = paginationQuery;
-    const result = await this.eventModel
-      .aggregate()
-      .sort(sortQuery)
-      .facet(getPaginatedEventData(start, limit, entityFilterQuery));
+    let pipeline = this.eventModel.aggregate();
+
+    if (sortQuery) {
+      pipeline = pipeline.sort(sortQuery);
+    }
+
+    const result = await pipeline.facet(
+      getPaginatedEventData(start, limit, entityFilterQuery),
+    );
     return result[0];
   }
 }

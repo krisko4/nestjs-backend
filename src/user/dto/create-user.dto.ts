@@ -1,7 +1,7 @@
-import { Exclude } from 'class-transformer';
 import {
   IsEmail,
   IsISO8601,
+  IsOptional,
   IsString,
   Matches,
   MaxLength,
@@ -9,9 +9,11 @@ import {
 
 export class CreateUserDto {
   @IsString()
+  @IsOptional()
   @MaxLength(20)
   firstName: string;
   @IsString()
+  @IsOptional()
   @MaxLength(30)
   lastName: string;
   @Matches(/^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$/, {
@@ -21,5 +23,6 @@ export class CreateUserDto {
   @IsEmail()
   email: string;
   @IsISO8601()
+  @IsOptional()
   birthdate: Date;
 }

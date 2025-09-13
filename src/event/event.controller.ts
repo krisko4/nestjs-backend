@@ -40,8 +40,7 @@ export class EventController {
 
   @Get()
   async find(@Query() eventFilterQuery: EventFilterQuery) {
-    const events = await this.eventService.findByQuery(eventFilterQuery);
-    return events.map((event) => plainToInstance(EventDto, event));
+    return this.eventService.findByQuery(eventFilterQuery);
   }
 
   @UseGuards(JwtAuthGuard)

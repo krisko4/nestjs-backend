@@ -1,23 +1,26 @@
 import { NotificationModule } from './../notification/notification.module';
 import { Module } from '@nestjs/common';
 import { RewardService } from './reward.service';
-import { RewardController } from './reward.controller';
+import { AdminRewardController } from './reward.controller.admin';
 import { RewardRepository } from './reward.repository';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Reward, RewardSchema } from './schemas/reward.schema';
 import { SubscriptionModule } from '../subscription/subscription.module';
 import { CodeModule } from '../code/code.module';
 import { EventModule } from '../event/event.module';
+import { PlaceModule } from 'src/place/place.module';
+import { UserRewardController } from './reward.controller.user';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Reward.name, schema: RewardSchema }]),
     EventModule,
+    PlaceModule,
     SubscriptionModule,
     CodeModule,
     NotificationModule,
   ],
-  controllers: [RewardController],
+  controllers: [AdminRewardController, UserRewardController],
   providers: [RewardService, RewardRepository],
 })
 export class RewardModule {}

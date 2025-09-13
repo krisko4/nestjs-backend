@@ -11,6 +11,7 @@ import {
   UploadedFiles,
   UseGuards,
   Put,
+  Delete,
 } from '@nestjs/common';
 import { PlaceService } from './place.service';
 import { CreatePlaceDto } from './dto/create-place.dto';
@@ -92,6 +93,7 @@ export class PlaceController {
 
   @Get('/search')
   async findByUserId(@Query('uid') uid: string) {
+    console.log(uid);
     const places = await this.placeService.findByUserId(uid);
     return places.map((place) => {
       const placeDto = plainToInstance(PlaceDto, place.toObject());
@@ -192,7 +194,6 @@ export class PlaceController {
     const { uid } = req.cookies;
     const place = await this.placeService.findLocation(id, locationId);
     const placeDto = plainToInstance(PlaceDto, place);
-    console.log(uid);
     placeDto.isUserOwner = place.userId.toString() === uid.toString();
     return placeDto;
   }
@@ -206,5 +207,11 @@ export class PlaceController {
   async findById(@Param('id') id: string) {
     const place = await this.placeService.findById(id);
     return plainToInstance(PlaceDto, place.toObject());
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  async removePlace(@Param('id') id: string) {
+    return this.placeService.removePlace(id);
   }
 }

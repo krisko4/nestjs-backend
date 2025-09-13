@@ -1,4 +1,5 @@
 import {
+  IsEnum,
   IsISO8601,
   IsMongoId,
   IsNumber,
@@ -8,16 +9,28 @@ import {
   Min,
 } from 'class-validator';
 
+export enum AvailableFor {
+  ALL = 'ALL',
+  SUBSCRIBERS = 'SUBSCRIBERS',
+}
+
 export class CreateRewardDto {
-  @IsISO8601()
-  @IsOptional()
-  scheduledFor?: Date;
-  @IsMongoId()
-  eventId: string;
-  @IsNumber()
-  @Max(100)
-  @Min(1)
-  rewardPercentage: number;
+  @IsString()
+  name: string;
   @IsString()
   description: string;
+  @IsMongoId()
+  @IsOptional()
+  eventId?: string;
+  @IsEnum(AvailableFor)
+  availableFor: AvailableFor;
+  @IsMongoId()
+  locationId: string;
+  // @IsISO8601()
+  // @IsOptional()
+  // scheduledFor?: Date;
+  // @IsNumber()
+  // @Max(100)
+  // @Min(1)
+  // rewardPercentage: number;
 }

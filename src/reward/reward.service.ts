@@ -2,6 +2,7 @@ import { StatisticsFilterQuery } from './queries/statistics-filter.query';
 import {
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
@@ -19,6 +20,9 @@ import { RewardDocument } from './schemas/reward.schema';
 import { NotificationService } from 'src/notification/notification.service';
 import { NotificationType } from 'src/notification/schemas/notification.schema';
 import { addSeconds, isBefore, subMinutes } from 'date-fns';
+import { PlaceService } from 'src/place/place.service';
+import { PaginationQuery } from './queries/pagination.query';
+import { ActivateRewardDto } from './dto/activate-reward.dto';
 
 @Injectable()
 export class RewardService {
@@ -29,6 +33,7 @@ export class RewardService {
     private readonly subscriptionService: SubscriptionService,
     private readonly codeService: CodeService,
     private readonly notificationService: NotificationService,
+    private readonly placeService: PlaceService,
     @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
 
@@ -41,7 +46,13 @@ export class RewardService {
       return this.findByUserIdAndEventId(userId, eventId);
     }
     if (userId) {
-      return this.findByUserId(userId);
+      return this.findByUserId(
+        {
+          start: rewardFilterQuery.start,
+          limit: rewardFilterQuery.limit,
+        },
+        userId,
+      );
     }
     if (eventId) {
       return this.findByEventId(eventId);
@@ -52,102 +63,130 @@ export class RewardService {
     return this.rewardRepository.findByUserIdAndEventId(uid, eventId);
   }
 
+  findById(id: string) {
+    return this.rewardRepository.findById(id);
+  }
+
+  async findByIdForUser(id: string, userId: string) {
+    const reward = await this.rewardRepository.findById(id);
+    // const code = await this.codeService.findByRewardIdAndUserId(id, userId);
+    return {
+      ...reward.toObject(),
+      // usedAt: code.usedAt,
+    };
+  }
+
   findByEventId(eventId: string) {
     console.log(eventId);
     return this.rewardRepository.findByEventId(eventId);
   }
 
-  findByUserId(userId: string) {
-    return this.rewardRepository.findByUserId(userId);
+  findByUserId(paginationQuery: PaginationQuery, userId: string) {
+    return this.rewardRepository.findByUserId(paginationQuery, userId);
   }
 
-  private async createRewardWithCodes(
-    description: string,
-    event: Event,
-    authorizedParticipatorsIds: string[],
-    rewardPercentage: number,
-    scheduledFor?: Date,
-    rewardId?: string,
-  ) {
-    const { _id: eventId, locationId } = event;
-    const winnersAmount = Math.ceil(
-      rewardPercentage * 0.01 * authorizedParticipatorsIds.length,
-    );
-    const shuffled = [...authorizedParticipatorsIds].sort(
-      () => 0.5 - Math.random(),
-    );
-    const happyWinners = shuffled.slice(0, winnersAmount);
-    // const happyWinners = await this.subscriptionService.drawWinners(
-    //   rewardPercentage,
-    //   locationId,
-    //   authorizedParticipators
-    // );
-
-    const session = await this.connection.startSession();
-    await session.withTransaction(async () => {
-      let reward: RewardDocument;
-      if (rewardId) {
-        reward = await this.rewardRepository.findByIdAndUpdate(
-          rewardId,
-          {
-            description,
-            eventId,
-            rewardPercentage,
-            date: new Date(),
-          },
-          session,
-        );
-      } else {
-        reward = await this.rewardRepository.createReward(
-          description,
-          eventId,
-          authorizedParticipatorsIds,
-          rewardPercentage,
-          session,
-          scheduledFor,
-        );
-      }
-      await Promise.all(
-        happyWinners.map((winner) =>
-          this.codeService.create(
-            {
-              userId: winner,
-              rewardId: reward._id,
-            },
-            session,
-          ),
-        ),
-      );
-      if (happyWinners.length > 0) {
-        const createNotificationDto = {
-          title: `Congratulations🥳 You have won a reward!💰`,
-          body: `Event: ${event.title}\nClick to view your special code🤫`,
-          eventId: event._id.toString(),
-          locationId,
-          receivers: happyWinners,
-          type: NotificationType.REWARD,
-        };
-        const notification = await this.notificationService.create(
-          createNotificationDto,
-          session,
-        );
-        const { receivers, body } = createNotificationDto;
-        await this.notificationService.sendNotification(receivers, {
-          data: {
-            _id: notification._id.toString(),
-          },
-          notification: {
-            title: createNotificationDto.title,
-            body,
-          },
-        });
-      }
+  async activateReward(activateRewardDto: ActivateRewardDto, userId: string) {
+    const { rewardId } = activateRewardDto;
+    const reward = await this.findById(rewardId);
+    if (!reward) {
+      throw new NotFoundException('invalid rewardId');
+    }
+    const code = await this.codeService.create({
+      userId,
+      rewardId,
     });
-    await session.endSession();
+    return {
+      code: code.value,
+    };
   }
+
+  // private async createRewardWithCodes(
+  //   description: string,
+  //   event: Event,
+  //   authorizedParticipatorsIds: string[],
+  //   rewardPercentage: number,
+  //   scheduledFor?: Date,
+  //   rewardId?: string,
+  // ) {
+  //   const { _id: eventId, locationId } = event;
+  //   const winnersAmount = Math.ceil(
+  //     rewardPercentage * 0.01 * authorizedParticipatorsIds.length,
+  //   );
+  //   const shuffled = [...authorizedParticipatorsIds].sort(
+  //     () => 0.5 - Math.random(),
+  //   );
+  //   const happyWinners = shuffled.slice(0, winnersAmount);
+  //   // const happyWinners = await this.subscriptionService.drawWinners(
+  //   //   rewardPercentage,
+  //   //   locationId,
+  //   //   authorizedParticipators
+  //   // );
+
+  //   const session = await this.connection.startSession();
+  //   await session.withTransaction(async () => {
+  //     let reward: RewardDocument;
+  //     if (rewardId) {
+  //       reward = await this.rewardRepository.findByIdAndUpdate(
+  //         rewardId,
+  //         {
+  //           description,
+  //           eventId,
+  //           rewardPercentage,
+  //           date: new Date(),
+  //         },
+  //         session,
+  //       );
+  //     } else {
+  //       reward = await this.rewardRepository.createReward(
+  //         description,
+  //         eventId,
+  //         authorizedParticipatorsIds,
+  //         rewardPercentage,
+  //         session,
+  //         scheduledFor,
+  //       );
+  //     }
+  //     await Promise.all(
+  //       happyWinners.map((winner) =>
+  //         this.codeService.create(
+  //           {
+  //             userId: winner,
+  //             rewardId: reward._id,
+  //           },
+  //           session,
+  //         ),
+  //       ),
+  //     );
+  //     if (happyWinners.length > 0) {
+  //       const createNotificationDto = {
+  //         title: `Congratulations🥳 You have won a reward!💰`,
+  //         body: `Event: ${event.title}\nClick to view your special code🤫`,
+  //         eventId: event._id.toString(),
+  //         locationId,
+  //         receivers: happyWinners,
+  //         type: NotificationType.REWARD,
+  //       };
+  //       const notification = await this.notificationService.create(
+  //         createNotificationDto,
+  //         session,
+  //       );
+  //       const { receivers, body } = createNotificationDto;
+  //       await this.notificationService.sendNotification(receivers, {
+  //         data: {
+  //           _id: notification._id.toString(),
+  //         },
+  //         notification: {
+  //           title: createNotificationDto.title,
+  //           body,
+  //         },
+  //       });
+  //     }
+  //   });
+  //   await session.endSession();
+  // }
 
   async create(createRewardDto: CreateRewardDto, uid: string) {
-    const { scheduledFor, description, rewardPercentage, eventId } =
+    const { description, eventId, name, locationId, availableFor } =
       createRewardDto;
     const duplicateEvent = await this.findByEventId(eventId);
     if (duplicateEvent) {
@@ -155,86 +194,103 @@ export class RewardService {
         `REWARD_DRAWING_ALREADY_SPECIFIED`,
       );
     }
-    const { event, isUserOwner } = await this.eventService.findById(
-      eventId,
-      uid,
-    );
-    if (!event) {
-      throw new InternalServerErrorException(`EVENT_NOT_FOUND`);
+    if (eventId) {
+      const { event } = await this.eventService.findById(eventId, uid);
+      if (!event) {
+        throw new InternalServerErrorException(`EVENT_NOT_FOUND`);
+      }
+      if (isBefore(new Date(event.endDate), new Date())) {
+        throw new InternalServerErrorException(`EVENT_HAS_ENDED`);
+      }
     }
+    const place = await this.placeService.findByLocationId(locationId);
+    const isUserOwner = place.userId.toString() === uid.toString();
     if (!isUserOwner) {
       throw new InternalServerErrorException(`ILLEGAL_OPERATION`);
     }
-    if (isBefore(new Date(event.endDate), new Date())) {
-      throw new InternalServerErrorException(`EVENT_HAS_ENDED`);
-    }
-    const authorizedParticipatorsIds = event.participators
-      .filter((p) => p.isSubscriber)
-      .map((p) => p.user._id);
-    if (scheduledFor) {
-      if (isBefore(new Date(scheduledFor), new Date())) {
-        throw new InternalServerErrorException(
-          `REWARD_DRAWING_SCHEDULED_FOR_THE_PAST`,
-        );
-      }
-      const reward = await this.rewardRepository.createReward(
-        description,
-        eventId,
-        authorizedParticipatorsIds,
-        rewardPercentage,
-        undefined,
-        scheduledFor,
-      );
-      const remindJob = new CronJob(
-        subMinutes(new Date(scheduledFor), 5),
-        async () => {
-          const createNotificationDto = {
-            title: `A reward drawing starts in 5 minutes! ⏰`,
-            body: `Event: ${event.title}\nFingers crossed 🤞🤞`,
-            eventId: event._id.toString(),
-            receivers: event.participators.map((u) => u.user._id),
-            type: NotificationType.EVENT_REMINDER,
-          };
-          const { title, body, receivers } = createNotificationDto;
-          const notification = await this.notificationService.create(
-            createNotificationDto,
-          );
-          return this.notificationService.sendNotification(receivers, {
-            data: {
-              _id: notification._id.toString(),
-            },
-            notification: {
-              title,
-              body,
-            },
-          });
-        },
-      );
-      const createRewardJob = new CronJob(new Date(scheduledFor), async () => {
-        this.createRewardWithCodes(
-          description,
-          event,
-          authorizedParticipatorsIds,
-          rewardPercentage,
-          new Date(scheduledFor),
-          reward._id,
-        );
-      });
-      this.schedulerRegistry.addCronJob(new Date().toString(), createRewardJob);
-      this.schedulerRegistry.addCronJob(
-        addSeconds(new Date(), 1).toString(),
-        remindJob,
-      );
-      createRewardJob.start();
-      remindJob.start();
-      return;
-    }
-    await this.createRewardWithCodes(
+    // const authorizedParticipatorsIds = event.participators
+    //   .filter((p) => p.isSubscriber)
+    //   .map((p) => p.user._id);
+    // if (scheduledFor) {
+    //   if (isBefore(new Date(scheduledFor), new Date())) {
+    //     throw new InternalServerErrorException(
+    //       `REWARD_DRAWING_SCHEDULED_FOR_THE_PAST`,
+    //     );
+    //   }
+    //   const reward = await this.rewardRepository.createReward(
+    //     description,
+    //     eventId,
+    //     authorizedParticipatorsIds,
+    //     rewardPercentage,
+    //     undefined,
+    //     scheduledFor,
+    //   );
+    //   const remindJob = new CronJob(
+    //     subMinutes(new Date(scheduledFor), 5),
+    //     async () => {
+    //       const createNotificationDto = {
+    //         title: `A reward drawing starts in 5 minutes! ⏰`,
+    //         body: `Event: ${event.title}\nFingers crossed 🤞🤞`,
+    //         eventId: event._id.toString(),
+    //         receivers: event.participators.map((u) => u.user._id),
+    //         type: NotificationType.EVENT_REMINDER,
+    //       };
+    //       const { title, body, receivers } = createNotificationDto;
+    //       const notification = await this.notificationService.create(
+    //         createNotificationDto,
+    //       );
+    //       return this.notificationService.sendNotification(receivers, {
+    //         data: {
+    //           _id: notification._id.toString(),
+    //         },
+    //         notification: {
+    //           title,
+    //           body,
+    //         },
+    //       });
+    //     },
+    //   );
+    //   const createRewardJob = new CronJob(new Date(scheduledFor), async () => {
+    //     this.createRewardWithCodes(
+    //       description,
+    //       event,
+    //       authorizedParticipatorsIds,
+    //       rewardPercentage,
+    //       new Date(scheduledFor),
+    //       reward._id,
+    //     );
+    //   });
+    //   this.schedulerRegistry.addCronJob(new Date().toString(), createRewardJob);
+    //   this.schedulerRegistry.addCronJob(
+    //     addSeconds(new Date(), 1).toString(),
+    //     remindJob,
+    //   );
+    //   createRewardJob.start();
+    //   remindJob.start();
+    //   return;
+    // }
+
+    const session = await this.connection.startSession();
+    this.rewardRepository.createReward({
+      name,
       description,
-      event,
-      authorizedParticipatorsIds,
-      rewardPercentage,
-    );
+      eventId,
+      session,
+      availableFor,
+      placeId: place._id,
+      locationId,
+    });
+
+    // await this.createRewardWithCodes(
+    //   description,
+    //   event,
+    //   authorizedParticipatorsIds,
+    //   rewardPercentage,
+    // );
+  }
+
+  search(paginationQuery: PaginationQuery) {
+    return this.rewardRepository.findPaginated(paginationQuery, {});
   }
 
   async findStatistics(query: StatisticsFilterQuery) {
@@ -250,12 +306,12 @@ export class RewardService {
         (c) => c.reward.toString() === r._id.toString(),
       );
       const allCodes = rewardCodes.length;
-      const usedCodes = rewardCodes.filter((c) => c.isUsed).length;
+      const usedCodes = rewardCodes.filter((c) => c.usedAt).length;
       return {
         eventName: r.event.title,
         allCodes,
         usedCodes,
-        participatorsCount: r.participators.length,
+        // participatorsCount: r.participators.length,
       };
     });
   }

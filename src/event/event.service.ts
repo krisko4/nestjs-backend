@@ -59,10 +59,11 @@ export class EventService {
     const session = await this.connection.startSession();
     await session.withTransaction(async () => {
       if (img) {
-        imageId = await this.cloudinaryService.uploadImage(img.path, 'events');
+        imageId = await this.cloudinaryService.uploadImage(img, 'events');
       }
       event = await this.eventRepository.createEvent(
         createEventDto,
+        place._id,
         session,
         imageId,
       );
@@ -177,7 +178,6 @@ export class EventService {
 
   async findNearbyEventsToday(geolocationDto: GeolocationDto) {
     const { lat, lng, uid } = geolocationDto;
-    console.log('szukanko');
     const user = await this.userService.findById(uid);
     if (!user) {
       throw new InternalServerErrorException(`User with uid: ${uid} not found`);
@@ -355,18 +355,20 @@ export class EventService {
   }
 
   async findByQuery(eventFilterQuery: EventFilterQuery) {
-    const { locationId, participatorId, userId, active } = eventFilterQuery;
+    const { locationId, participatorId, userId, active, start, limit } =
+      eventFilterQuery;
     if (userId) {
-      const places = await this.placeService.findByUserId(userId);
-      const events = await this.eventRepository.findByPlacesIds(
-        places.map((p) => p._id),
-      );
-      if (active) {
-        return events.filter((e) => {
-          return isBefore(new Date(), e.endDate);
-        });
-      }
-      return events;
+      // const places = await this.placeService.findByUserId(userId);
+      // const events = await this.eventRepository.findByPlacesIds(
+      //   places.map((p) => p._id),
+      // );
+      // if (active) {
+      //   return events.filter((e) => {
+      //     return isBefore(new Date(), e.endDate);
+      //   });
+      // }
+      // return events;
+      return this.eventRepository.findByUserId({ start, limit }, userId);
     }
     if (participatorId) {
       return this.eventRepository.findByParticipatorId(participatorId);

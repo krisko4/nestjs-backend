@@ -21,7 +21,8 @@ export class AuthController {
   @Post('/login')
   async login(@Request() req, @Res({ passthrough: true }) response: Response) {
     const userData = await this.authService.login(req.user);
-    response.cookie('uid', userData.uid);
+    console.log(userData);
+    response.cookie('uid', userData.uid.toString());
     response.cookie('access_token', userData.access_token);
     response.cookie('refresh_token', userData.refresh_token);
     return userData;

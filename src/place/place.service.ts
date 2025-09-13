@@ -66,7 +66,7 @@ export class PlaceService {
       if (logo) {
         await this.cloudinaryService.destroyImage(place.logo);
         newLogoId = await this.cloudinaryService.uploadImage(
-          logo[0].path,
+          logo[0],
           'place_logos',
         );
       }
@@ -77,7 +77,7 @@ export class PlaceService {
         );
         for (const image of images) {
           const newImageId = await this.cloudinaryService.uploadImage(
-            image.path,
+            image,
             'place_images',
           );
           newImages.push(newImageId);
@@ -96,38 +96,38 @@ export class PlaceService {
   }
   async create(
     createPlaceDto: CreatePlaceDto,
-    logo: Express.Multer.File[],
+    logo: Express.Multer.File[] | undefined,
     images: Express.Multer.File[],
     uid: string,
   ) {
-    const { locations } = createPlaceDto;
+    // const { locations } = createPlaceDto;
     const user = await this.validateUser(uid);
-    if (!logo)
-      throw new BadRequestException(
-        'Request is missing necessary upload files - logo is required',
-      );
-    if (logo.length !== 1)
+    if (logo && logo.length > 1)
       throw new BadRequestException('Exactly one logo file is required');
-    for (const location of locations) {
-      const { lat, lng } = location;
-      const occupiedAddress = await this.findByLatLng(lat, lng);
-      if (occupiedAddress)
-        throw new InternalServerErrorException(
-          `The address: ${occupiedAddress} is already occupied by another place`,
-        );
-    }
+    // for (const location of locations) {
+    //   const { lat, lng } = location;
+    //   const occupiedAddress = await this.findByLatLng(lat, lng);
+    //   if (occupiedAddress)
+    //     throw new InternalServerErrorException(
+    //       `The address: ${occupiedAddress} is already occupied by another place`,
+    //     );
+    // }
     const session = await this.connection.startSession();
     let registeredPlace: PlaceDocument;
     await session.withTransaction(async () => {
-      const logoUrl = await this.cloudinaryService.uploadImage(
-        logo[0].path,
-        'place_logos',
-      );
+      let logoUrl: string | null = null;
+      if (logo) {
+        logoUrl = await this.cloudinaryService.uploadImage(
+          logo[0],
+          'place_logos',
+        );
+      }
+
       const imageUrls = [];
       if (images) {
         for (const image of images) {
           const imageId = await this.cloudinaryService.uploadImage(
-            image.path,
+            image,
             'place_images',
           );
           imageUrls.push(imageId);
@@ -245,5 +245,16 @@ export class PlaceService {
   }
   findByUserId(uid: string) {
     return this.placeRepository.findByUserId(uid);
+  }
+  async removePlace(id: string) {
+    const session = await this.connection.startSession();
+
+    try {
+      await this.placeRepository.findOneAndDelete({
+        _id: id,
+      });
+    } finally {
+      await session.endSession();
+    }
   }
 }

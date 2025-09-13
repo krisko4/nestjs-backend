@@ -59,7 +59,7 @@ export class PlaceRepository extends MongoRepository<PlaceDocument> {
 
   createPlace(
     imageUrls: string[],
-    logoUrl: string,
+    logoUrl: string | null,
     createPlaceDto: CreatePlaceDto,
     userId: Types.ObjectId,
     session: ClientSession,

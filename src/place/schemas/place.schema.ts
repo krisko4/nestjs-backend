@@ -13,9 +13,9 @@ export class Place {
   _id: string;
   @Prop({ required: true })
   name: string;
-  @Prop({ required: true })
+  @Prop()
   type: string;
-  @Prop({ required: true })
+  @Prop()
   @Transform(({ value }) => `${process.env.CLOUDI_URL}/${value}`)
   logo: string;
   @Prop()
@@ -23,9 +23,9 @@ export class Place {
     value.map((img: string) => `${process.env.CLOUDI_URL}/${img}`),
   )
   images: string[];
-  @Prop({ required: true })
+  @Prop()
   description: string;
-  @Prop({ required: true })
+  @Prop()
   subtitle: string;
   @Prop({ default: false })
   isBusinessChain: boolean;

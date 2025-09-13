@@ -44,13 +44,10 @@ export class UserService {
     if (id.toString() !== uid.toString()) {
       throw new ForbiddenException('INVALID_ID');
     }
-    console.log(img[0]);
-    console.log(img[0].path);
     const logoId = await this.cloudinaryService.uploadImage(
-      img[0].path,
+      img[0],
       'user_images',
     );
-    console.log('uploaded');
     this.userRepository.updateProfilePicture(uid, logoId);
   }
 

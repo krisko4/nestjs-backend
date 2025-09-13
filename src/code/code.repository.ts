@@ -5,6 +5,7 @@ import { MongoRepository } from '../database/repository';
 import { Code, CodeDocument } from './schemas/code.schema';
 import { CreateCodeDto } from './dto/create-code.dto';
 import { CodeType } from './queries/code-filter.query';
+import { toMongoObjectId } from 'src/utils/mongo';
 
 @Injectable()
 export class CodeRepository extends MongoRepository<CodeDocument> {
@@ -79,6 +80,13 @@ export class CodeRepository extends MongoRepository<CodeDocument> {
       });
 
     return codes.filter((c) => c.reward);
+  }
+
+  async findByRewardIdAndUserId(rewardId: string, userId: string) {
+    return this.codeModel.findOne({
+      user: toMongoObjectId(userId),
+      reward: toMongoObjectId(rewardId),
+    });
   }
 
   async findByUserId(userId: string) {

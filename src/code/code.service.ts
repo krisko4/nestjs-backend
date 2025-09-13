@@ -42,8 +42,7 @@ export class CodeService {
   ) {
     const code = await this.findByValue(value);
     if (!code) throw new InternalServerErrorException('CODE_INVALID');
-    if (code.isExpired) throw new InternalServerErrorException('CODE_EXPIRED');
-    if (code.isUsed) throw new InternalServerErrorException('CODE_USED');
+    if (code.usedAt) throw new InternalServerErrorException('CODE_USED');
     const isUserCodeReceiver = code.user.toString() === userId.toString();
     if (!isUserCodeReceiver) {
       throw new InternalServerErrorException('CODE_INVALID');
@@ -98,6 +97,10 @@ export class CodeService {
         placeLogo: `${process.env.CLOUDI_URL}/${code.reward.event.place.logo}`,
       };
     });
+  }
+
+  findByRewardIdAndUserId(rewardId: string, userId: string) {
+    return this.codeRepository.findByRewardIdAndUserId(rewardId, userId);
   }
 
   findByUserId(userId: string, type: CodeType) {

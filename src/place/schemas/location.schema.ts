@@ -7,13 +7,13 @@ import { OpeningHours, OpeningHoursSchema } from './opening-hours.schema';
 export class Location {
   @Transform((params) => params.obj._id.toString())
   _id: string;
-  @Prop({ required: true })
+  @Prop()
   address: string;
-  @Prop({ required: true })
+  @Prop()
   addressId: string;
-  @Prop({ required: true })
+  @Prop()
   lat: number;
-  @Prop({ required: true })
+  @Prop()
   lng: number;
   @Prop()
   facebook: string;

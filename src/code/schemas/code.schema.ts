@@ -11,16 +11,16 @@ export type CodeDocument = Code & Document;
 export class Code {
   @Prop({ required: true })
   value: string;
-  @Prop({ default: false })
-  isExpired: boolean;
-  @Prop({ default: false })
-  isUsed: boolean;
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: User.name })
   user: User;
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Reward.name })
   reward?: Reward;
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Invitation.name })
   invitation?: Invitation;
+  @Prop({ default: Date.now })
+  createdAt: Date;
+  @Prop()
+  usedAt?: Date;
 }
 
 export const CodeSchema = SchemaFactory.createForClass(Code);
