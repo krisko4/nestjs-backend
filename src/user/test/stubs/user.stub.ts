@@ -1,6 +1,6 @@
 import { User } from 'src/user/schemas/user.schema';
 
-export const userStub = (): User => {
+export const userStub = (): any => {
   return {
     firstName: 'test',
     lastName: 'user',

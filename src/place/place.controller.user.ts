@@ -1,94 +1,27 @@
 import {
   Controller,
   Get,
-  Post,
-  Body,
   Patch,
   Param,
   Query,
   Req,
-  UseInterceptors,
-  UploadedFiles,
   UseGuards,
-  Put,
-  Delete,
 } from '@nestjs/common';
 import { PlaceService } from './place.service';
-import { CreatePlaceDto } from './dto/create-place.dto';
 import { PlaceFilterQuery } from './queries/place.filter.query';
 import { FindLocationParams } from './params/find.location.params';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { plainToInstance } from 'class-transformer';
-import { Place } from './schemas/place.schema';
-import { UpdatePlaceDto } from './dto/update-place.dto';
-import { UpdateStatusDto } from './dto/update-status.dto';
-import {
-  LocationIdsDto,
-  UpdateOpeningHoursDto,
-} from './dto/update-opening-hours.dto';
 import { PlaceDto } from './dto/place.dto';
 import { CoordsQuery } from './queries/coords.query';
 
-@Controller('places')
-export class PlaceController {
+@Controller('user/places')
+export class UserPlaceController {
   constructor(private readonly placeService: PlaceService) {}
-
-  @Put()
-  @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'logo', maxCount: 1 },
-      { name: 'images', maxCount: 4 },
-    ]),
-  )
-  @UseGuards(JwtAuthGuard)
-  update(
-    @Body() updatePlaceDto: UpdatePlaceDto,
-    @Req() req,
-    @UploadedFiles()
-    files: { logo?: Express.Multer.File[]; images?: Express.Multer.File[] },
-  ) {
-    const { uid } = req.cookies;
-    return this.placeService.update(
-      updatePlaceDto,
-      uid,
-      files.logo,
-      files.images,
-    );
-  }
-  @Post()
-  @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'logo', maxCount: 1 },
-      { name: 'images', maxCount: 4 },
-    ]),
-  )
-  @UseGuards(JwtAuthGuard)
-  create(
-    @Body() createPlaceDto: CreatePlaceDto,
-    @Req() req,
-    @UploadedFiles()
-    files: { logo?: Express.Multer.File[]; images?: Express.Multer.File[] },
-  ) {
-    return this.placeService.create(
-      createPlaceDto,
-      files.logo,
-      files.images,
-      req.user.uid,
-    );
-  }
 
   @Get()
   findAll() {
     return this.placeService.findAll();
-  }
-
-  @Patch(':locationId/status')
-  setStatus(
-    @Param('locationId') locationId: string,
-    @Body() updateStatusDto: UpdateStatusDto,
-  ) {
-    return this.placeService.setStatus(locationId, updateStatusDto);
   }
 
   @Get('/search')
@@ -98,17 +31,6 @@ export class PlaceController {
     return places.map((place) => {
       const placeDto = plainToInstance(PlaceDto, place.toObject());
       placeDto.isUserOwner = true;
-      return placeDto;
-    });
-  }
-
-  @Get('/active')
-  async findActive(@Req() req) {
-    const { uid } = req.cookies;
-    const places = await this.placeService.findActive();
-    return places.map((place) => {
-      const placeDto = plainToInstance(PlaceDto, place.toObject());
-      placeDto.isUserOwner = place.userId === uid;
       return placeDto;
     });
   }
@@ -156,25 +78,25 @@ export class PlaceController {
     return this.placeService.findOpeningHours(locationId);
   }
 
-  @Patch(':id/opening-hours')
-  setOpeningHours(
-    @Req() req,
-    @Param('id') id: string,
-    @Body() updateOpeningHoursDto: UpdateOpeningHoursDto,
-  ) {
-    const { uid } = req.cookies;
-    return this.placeService.setOpeningHours(id, uid, updateOpeningHoursDto);
-  }
+  // @Patch(':id/opening-hours')
+  // setOpeningHours(
+  //   @Req() req,
+  //   @Param('id') id: string,
+  //   @Body() updateOpeningHoursDto: UpdateOpeningHoursDto,
+  // ) {
+  //   const { uid } = req.cookies;
+  //   return this.placeService.setOpeningHours(id, uid, updateOpeningHoursDto);
+  // }
 
-  @Patch(':id/always-open')
-  setAlwaysOpen(
-    @Req() req,
-    @Param('id') id: string,
-    @Body() locationIdsDto: LocationIdsDto,
-  ) {
-    const { uid } = req.cookies;
-    return this.placeService.setAlwaysOpen(id, uid, locationIdsDto);
-  }
+  // @Patch(':id/always-open')
+  // setAlwaysOpen(
+  //   @Req() req,
+  //   @Param('id') id: string,
+  //   @Body() locationIdsDto: LocationIdsDto,
+  // ) {
+  //   const { uid } = req.cookies;
+  //   return this.placeService.setAlwaysOpen(id, uid, locationIdsDto);
+  // }
 
   @Get(':locationId/status')
   findStatus(@Param('locationId') locationId: string): Promise<string> {
@@ -207,11 +129,5 @@ export class PlaceController {
   async findById(@Param('id') id: string) {
     const place = await this.placeService.findById(id);
     return plainToInstance(PlaceDto, place.toObject());
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Delete(':id')
-  async removePlace(@Param('id') id: string) {
-    return this.placeService.removePlace(id);
   }
 }

@@ -171,7 +171,7 @@ export class EventService {
     return {
       event,
       isUserOwner: uid
-        ? event.place.userId.toString() === uid.toString()
+        ? event.place.employees.some((u) => u.user._id.toString() === uid)
         : false,
     };
   }
@@ -334,12 +334,12 @@ export class EventService {
     uid: string,
     event: Event,
   ) {
-    const organizerId = event.place.userId;
-    console.log('lkur');
-    if (organizerId.toString() !== uid.toString()) {
+    const organizer = event.place.employees.find(
+      (u) => u.user._id.toString() === uid.toString(),
+    );
+    if (!organizer) {
       throw new ForbiddenException('USER_IS_NOT_ORGANIZER');
     }
-    console.log(event.participators, participatorId);
     if (
       !event.participators.some(
         (par) => par.user._id.toString() === participatorId.toString(),

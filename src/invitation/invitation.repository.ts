@@ -4,7 +4,10 @@ import { Injectable } from '@nestjs/common';
 import { MongoRepository } from '../database/repository';
 import { Invitation, InvitationDocument } from './schemas/invitation.schema';
 @Injectable()
-export class InvitationRepository extends MongoRepository<InvitationDocument> {
+export class InvitationRepository extends MongoRepository<
+  InvitationDocument,
+  {}
+> {
   constructor(
     @InjectModel(Invitation.name)
     private readonly invitationModel: Model<InvitationDocument>,

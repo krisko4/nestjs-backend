@@ -7,7 +7,18 @@ import {
   QueryOptions,
 } from 'mongoose';
 
-export abstract class MongoRepository<T extends Document> {
+type DeepPartial<T> = {
+  [K in keyof T]?: T[K] extends Array<infer U>
+    ? Array<DeepPartial<U>>
+    : T[K] extends object
+    ? DeepPartial<T[K]>
+    : T[K];
+};
+
+export abstract class MongoRepository<
+  T extends Document,
+  CreateSchema extends {},
+> {
   constructor(protected readonly entityModel: Model<T>) {}
 
   async findOne(
@@ -50,7 +61,10 @@ export abstract class MongoRepository<T extends Document> {
     return this.entityModel.find(entityFilterQuery).sort(sortQuery).exec();
   }
 
-  async create(createEntityData: unknown, session?: ClientSession): Promise<T> {
+  async create(
+    createEntityData: CreateSchema,
+    session?: ClientSession,
+  ): Promise<T> {
     const entity = new this.entityModel(createEntityData);
     return entity.save({ session });
   }

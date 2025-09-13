@@ -1,6 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { User } from './schemas/user.schema';
-import { userStub } from './test/stubs/user.stub';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
 jest.mock('./user.service');

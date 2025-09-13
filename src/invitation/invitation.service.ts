@@ -53,7 +53,11 @@ export class InvitationService {
       throw new BadRequestException('USER_ALREADY_SUBSCRIBES');
     }
     const place = await this.placeService.findByLocationId(referral.locationId);
-    if (place.userId.toString() === invitedUser._id.toString()) {
+    if (
+      place.employees.some(
+        (u) => u.user._id.toString() === invitedUser._id.toString(),
+      )
+    ) {
       throw new InternalServerErrorException('USER_ALREADY_INVITED');
     }
     const existingInvitation = await this.findByReferralIdAndReferrerId(

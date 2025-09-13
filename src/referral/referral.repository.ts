@@ -6,7 +6,7 @@ import { ClientSession, Model, Types } from 'mongoose';
 import { Injectable } from '@nestjs/common';
 import { MongoRepository } from '../database/repository';
 @Injectable()
-export class ReferralRepository extends MongoRepository<ReferralDocument> {
+export class ReferralRepository extends MongoRepository<ReferralDocument, {}> {
   constructor(
     @InjectModel(Referral.name)
     private readonly referralModel: Model<ReferralDocument>,

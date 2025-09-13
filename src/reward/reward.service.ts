@@ -204,7 +204,9 @@ export class RewardService {
       }
     }
     const place = await this.placeService.findByLocationId(locationId);
-    const isUserOwner = place.userId.toString() === uid.toString();
+    const isUserOwner = place.employees.some(
+      (u) => u.user._id.toString() === uid,
+    );
     if (!isUserOwner) {
       throw new InternalServerErrorException(`ILLEGAL_OPERATION`);
     }

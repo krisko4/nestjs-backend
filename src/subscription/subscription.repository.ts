@@ -1,4 +1,3 @@
-import { CodeDocument } from './../code/schemas/code.schema';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { MongoRepository } from 'src/database/repository';
@@ -8,11 +7,12 @@ import {
 } from './schemas/subscription.schema';
 import { Types, Model, ClientSession } from 'mongoose';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
-import { SubscriptionFilterQuery } from './queries/subscription-filter.query';
-import { User } from 'src/user/schemas/user.schema';
 
 @Injectable()
-export class SubscriptionRepository extends MongoRepository<SubscriptionDocument> {
+export class SubscriptionRepository extends MongoRepository<
+  SubscriptionDocument,
+  {}
+> {
   constructor(
     @InjectModel(Subscription.name)
     private readonly subscriptionModel: Model<SubscriptionDocument>,

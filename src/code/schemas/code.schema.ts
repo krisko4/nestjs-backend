@@ -1,11 +1,18 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import mongoose from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import { Document } from 'mongoose';
 import { Invitation } from 'src/invitation/schemas/invitation.schema';
 import { Reward } from 'src/reward/schemas/reward.schema';
 import { User } from 'src/user/schemas/user.schema';
 
 export type CodeDocument = Code & Document;
+
+export type CreateCodeSchema = {
+  value: string;
+  user: Types.ObjectId;
+  reward?: Types.ObjectId;
+  invitation?: Types.ObjectId;
+};
 
 @Schema()
 export class Code {

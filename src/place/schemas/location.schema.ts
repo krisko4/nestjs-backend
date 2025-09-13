@@ -3,6 +3,10 @@ import { Transform } from 'class-transformer';
 import { AverageNote, AverageNoteSchema } from './average-note.schema';
 import { OpeningHours, OpeningHoursSchema } from './opening-hours.schema';
 
+export type CreateLocationSchema = {
+  address: string;
+};
+
 @Schema()
 export class Location {
   @Transform((params) => params.obj._id.toString())

@@ -5,7 +5,7 @@ import { Injectable } from '@nestjs/common';
 import { MongoRepository } from '../database/repository';
 
 @Injectable()
-export class NewsRepository extends MongoRepository<NewsDocument> {
+export class NewsRepository extends MongoRepository<NewsDocument, {}> {
   constructor(
     @InjectModel(News.name) private readonly newsModel: Model<NewsDocument>,
   ) {

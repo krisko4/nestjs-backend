@@ -5,10 +5,16 @@ import { Document } from 'mongoose';
 
 export type UserDocument = User & Document;
 
+export type CreateUserSchema = {
+  email: string;
+  password: string;
+  isActive: boolean;
+};
+
 @Schema()
 export class User {
   @Transform((params) => params.obj._id.toString())
-  _id?: string;
+  _id: string;
   @Prop()
   firstName: string;
   @Prop()
@@ -30,7 +36,7 @@ export class User {
   @Exclude()
   notificationTokens: string[];
   @Exclude()
-  __v?: number;
+  __v: number;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

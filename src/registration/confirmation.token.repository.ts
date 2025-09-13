@@ -6,7 +6,10 @@ import {
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 
-export class ConfirmationTokenRepository extends MongoRepository<ConfirmationTokenDocument> {
+export class ConfirmationTokenRepository extends MongoRepository<
+  ConfirmationTokenDocument,
+  {}
+> {
   constructor(
     @InjectModel(ConfirmationToken.name)
     private readonly confirmationTokenModel: Model<ConfirmationTokenDocument>,

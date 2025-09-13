@@ -2,10 +2,17 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Injectable } from '@nestjs/common';
 import { MongoRepository } from '../database/repository';
-import { Contact, ContactDocument } from './schemas/contact.schema';
+import {
+  Contact,
+  ContactDocument,
+  CreateContactSchema,
+} from './schemas/contact.schema';
 
 @Injectable()
-export class ContactRepository extends MongoRepository<ContactDocument> {
+export class ContactRepository extends MongoRepository<
+  ContactDocument,
+  CreateContactSchema
+> {
   constructor(
     @InjectModel(Contact.name)
     private readonly contactModel: Model<ContactDocument>,

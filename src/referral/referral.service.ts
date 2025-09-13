@@ -75,7 +75,7 @@ export class ReferralService {
   private async validateReferralLocation(locationId: string, userId: string) {
     const place = await this.placeService.findByLocationId(locationId);
     if (!place) throw new InternalServerErrorException('PLACE_NOT_FOUND');
-    if (place.userId.toString() !== userId.toString()) {
+    if (!place.employees.some((u) => u.user._id.toString() === userId)) {
       throw new InternalServerErrorException('OPERATION_FORBIDDEN');
     }
     return place;
@@ -83,7 +83,9 @@ export class ReferralService {
 
   async findByLocationId(locationId: string, userId: string) {
     const place = await this.placeService.findByLocationId(locationId);
-    const isUserOwner = place.userId.toString() === userId.toString();
+    const isUserOwner = place.employees.some(
+      (u) => u.user._id.toString() === userId.toString(),
+    );
     const refs = await this.referralRepository.findByLocationId(locationId);
     const subscriptions = await this.subscriptionService.findByLocationId(
       locationId,

@@ -9,7 +9,7 @@ import { SubscriptionRepository } from './subscription.repository';
 import { InjectConnection } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
 import { NotificationType } from 'src/notification/schemas/notification.schema';
-import { Participator } from 'src/event/schemas/event.schema';
+import { Participator } from 'src/event/schemas/participator.schema';
 
 @Injectable()
 export class SubscriptionService {

@@ -2,13 +2,16 @@ import { InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Model, Types } from 'mongoose';
 import { Injectable } from '@nestjs/common';
 import { MongoRepository } from '../database/repository';
-import { Code, CodeDocument } from './schemas/code.schema';
+import { Code, CodeDocument, CreateCodeSchema } from './schemas/code.schema';
 import { CreateCodeDto } from './dto/create-code.dto';
 import { CodeType } from './queries/code-filter.query';
 import { toMongoObjectId } from 'src/utils/mongo';
 
 @Injectable()
-export class CodeRepository extends MongoRepository<CodeDocument> {
+export class CodeRepository extends MongoRepository<
+  CodeDocument,
+  CreateCodeSchema
+> {
   constructor(
     @InjectModel(Code.name)
     private readonly codeModel: Model<CodeDocument>,
@@ -23,9 +26,9 @@ export class CodeRepository extends MongoRepository<CodeDocument> {
     const { userId, rewardId, invitationId } = createCodeDto;
     return this.create(
       {
-        user: new Types.ObjectId(userId),
-        reward: rewardId && new Types.ObjectId(rewardId),
-        invitation: invitationId && new Types.ObjectId(invitationId),
+        user: toMongoObjectId(userId),
+        reward: rewardId ? toMongoObjectId(rewardId) : undefined,
+        invitation: invitationId ? toMongoObjectId(invitationId) : undefined,
         value,
       },
       session,

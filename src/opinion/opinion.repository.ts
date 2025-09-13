@@ -8,7 +8,7 @@ import { getOpinionsFacet } from './aggregations/facets/opinions.facet';
 import { endOfDay, format, startOfDay } from 'date-fns';
 
 @Injectable()
-export class OpinionRepository extends MongoRepository<OpinionDocument> {
+export class OpinionRepository extends MongoRepository<OpinionDocument, {}> {
   constructor(
     @InjectModel(Opinion.name)
     private readonly opinionModel: Model<OpinionDocument>,

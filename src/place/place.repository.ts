@@ -2,7 +2,12 @@ import { InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Model, Types, FilterQuery } from 'mongoose';
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { MongoRepository } from '../database/repository';
-import { Place, PlaceDocument } from './schemas/place.schema';
+import {
+  CreatePlaceSchema,
+  Place,
+  PlaceDocument,
+  PlaceWithPopulatedEmployees,
+} from './schemas/place.schema';
 import { PlaceFilterQuery } from './queries/place.filter.query';
 import { getGroupedLocationData } from './aggregations/grouped-location-data';
 import { getPaginatedPlaceData } from './aggregations/paginated-place-data';
@@ -13,9 +18,22 @@ import {
   LocationIdsDto,
   UpdateOpeningHoursDto,
 } from './dto/update-opening-hours.dto';
+import { toMongoObjectId } from 'src/utils/mongo';
+import { getPaginatedEmployees } from './aggregations/paginated-employees-data';
+import { PaginationQuery } from './queries/pagination.query';
+import {
+  CreatePlaceEmployeeSchema,
+  PlaceEmployeeRole,
+  PlaceEmployeeStatus,
+} from './schemas/place-employee.schema';
+import { AddPlaceEmployeeDto } from './dto/add-place-employee.dto';
+import { User, UserDocument } from 'src/user/schemas/user.schema';
 
 @Injectable()
-export class PlaceRepository extends MongoRepository<PlaceDocument> {
+export class PlaceRepository extends MongoRepository<
+  PlaceDocument,
+  CreatePlaceSchema
+> {
   constructor(
     @InjectModel(Place.name) private readonly placeModel: Model<PlaceDocument>,
   ) {
@@ -61,7 +79,7 @@ export class PlaceRepository extends MongoRepository<PlaceDocument> {
     imageUrls: string[],
     logoUrl: string | null,
     createPlaceDto: CreatePlaceDto,
-    userId: Types.ObjectId,
+    user: UserDocument,
     session: ClientSession,
   ) {
     return this.create(
@@ -69,14 +87,30 @@ export class PlaceRepository extends MongoRepository<PlaceDocument> {
         images: imageUrls,
         logo: logoUrl,
         ...createPlaceDto,
-        userId,
+        employees: [
+          {
+            user: user._id,
+            email: user.email,
+            role: PlaceEmployeeRole.BOSS,
+            status: PlaceEmployeeStatus.ACTIVE,
+          },
+        ],
       },
       session,
     );
   }
 
-  async findByUserId(id: string) {
-    return this.find({ userId: new Types.ObjectId(id) });
+  async findByUserId(id: string, shouldPopulateUsers?: boolean) {
+    const query = this.placeModel.find({
+      'employees.user': toMongoObjectId(id),
+      'employees.role': PlaceEmployeeRole.BOSS,
+    });
+
+    if (shouldPopulateUsers) {
+      query.populate('employees.user');
+    }
+
+    return query.exec();
   }
 
   setStatus(locationId: string, updateStatusDto: UpdateStatusDto) {
@@ -274,5 +308,73 @@ export class PlaceRepository extends MongoRepository<PlaceDocument> {
       },
     );
     return aggregationResult[0];
+  }
+
+  async findPaginatedEmployees(
+    userId: string,
+    paginationQuery: PaginationQuery,
+  ) {
+    const data = await this.placeModel
+      .aggregate()
+      .facet(
+        getPaginatedEmployees(
+          userId,
+          paginationQuery.start,
+          paginationQuery.limit,
+        ),
+      );
+    return data[0];
+  }
+
+  async findByIdWithEmployees(id: string) {
+    return this.placeModel
+      .findById(id)
+      .populate('employees.user')
+      .exec() as unknown as Promise<PlaceWithPopulatedEmployees | undefined>;
+  }
+
+  async addEmployee(
+    placeId: string,
+    addEmployeeDto: AddPlaceEmployeeDto,
+    userId?: Types.ObjectId,
+  ) {
+    const newEmployee: CreatePlaceEmployeeSchema = {
+      role: addEmployeeDto.role,
+      name: addEmployeeDto.name,
+      email: addEmployeeDto.email,
+      status: PlaceEmployeeStatus.WAITING_FOR_CONFIRMATION,
+      user: userId,
+    };
+    return this.placeModel
+      .findByIdAndUpdate(
+        placeId,
+        {
+          $push: {
+            employees: newEmployee,
+          },
+        },
+        {
+          new: true,
+          runValidators: true,
+        },
+      )
+      .exec();
+  }
+
+  async removeEmployee(placeId: string, employeeId: string) {
+    return this.placeModel
+      .findByIdAndUpdate(
+        placeId,
+        {
+          $pull: {
+            employees: { _id: employeeId },
+          },
+        },
+        {
+          new: true,
+          runValidators: true,
+        },
+      )
+      .exec();
   }
 }

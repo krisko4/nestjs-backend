@@ -5,21 +5,19 @@ import mongoose from 'mongoose';
 import { Document } from 'mongoose';
 import { User } from 'src/user/schemas/user.schema';
 import { Place } from 'src/place/schemas/place.schema';
+import { Participator, ParticipatorSchema } from './participator.schema';
 
 export type EventDocument = Event & Document;
 
-@Schema({ _id: false })
-export class Participator {
-  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: User.name })
-  user: User;
-  @Prop({ default: false })
-  didReallyParticipate: boolean;
-  @Prop()
-  rate: number;
-  isSubscriber?: boolean;
-}
-
-export const ParticipatorSchema = SchemaFactory.createForClass(Participator);
+export type CreateEventSchema = {
+  title: string;
+  startDate: Date;
+  endDate: Date;
+  content: string;
+  img?: string;
+  place: string;
+  locationId: string;
+};
 
 @Schema()
 export class Event {

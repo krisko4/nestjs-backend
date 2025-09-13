@@ -13,6 +13,15 @@ export enum RewardAvailableFor {
   SUBSCRIBERS = 'SUBSCRIBERS',
 }
 
+export type CreateRewardSchema = {
+  name: string;
+  description: string;
+  availableFor: RewardAvailableFor;
+  locationId: string;
+  event: string;
+  place: string;
+};
+
 @Schema()
 export class Reward {
   @Transform((params) => params.obj._id.toString())

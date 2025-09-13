@@ -8,14 +8,14 @@ import { MulterModule } from '@nestjs/platform-express';
 import { MulterConfigService } from 'src/multer-config/multer-config.service';
 import { EventRepository } from './event.repository';
 import { PlaceModule } from 'src/place/place.module';
-import {
-  EventSchema,
-  Participator,
-  ParticipatorSchema,
-} from './schemas/event.schema';
+import { EventSchema } from './schemas/event.schema';
 import { MongooseModule } from '@nestjs/mongoose';
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
+import {
+  Participator,
+  ParticipatorSchema,
+} from './schemas/participator.schema';
 
 @Module({
   imports: [

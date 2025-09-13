@@ -1,9 +1,12 @@
 import { InjectModel } from '@nestjs/mongoose';
 import { MongoRepository } from 'src/database/repository';
-import { User, UserDocument } from './schemas/user.schema';
+import { CreateUserSchema, User, UserDocument } from './schemas/user.schema';
 import { Model } from 'mongoose';
 
-export class UserRepository extends MongoRepository<UserDocument> {
+export class UserRepository extends MongoRepository<
+  UserDocument,
+  CreateUserSchema
+> {
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {

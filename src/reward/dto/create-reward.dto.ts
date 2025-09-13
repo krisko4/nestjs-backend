@@ -1,18 +1,5 @@
-import {
-  IsEnum,
-  IsISO8601,
-  IsMongoId,
-  IsNumber,
-  IsOptional,
-  IsString,
-  Max,
-  Min,
-} from 'class-validator';
-
-export enum AvailableFor {
-  ALL = 'ALL',
-  SUBSCRIBERS = 'SUBSCRIBERS',
-}
+import { IsEnum, IsMongoId, IsOptional, IsString } from 'class-validator';
+import { RewardAvailableFor } from '../schemas/reward.schema';
 
 export class CreateRewardDto {
   @IsString()
@@ -22,8 +9,8 @@ export class CreateRewardDto {
   @IsMongoId()
   @IsOptional()
   eventId?: string;
-  @IsEnum(AvailableFor)
-  availableFor: AvailableFor;
+  @IsEnum(RewardAvailableFor)
+  availableFor: RewardAvailableFor;
   @IsMongoId()
   locationId: string;
   // @IsISO8601()

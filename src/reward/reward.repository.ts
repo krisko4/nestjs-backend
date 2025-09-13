@@ -2,14 +2,21 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types, ClientSession, FilterQuery } from 'mongoose';
 import { Injectable } from '@nestjs/common';
 import { MongoRepository } from '../database/repository';
-import { Reward, RewardDocument } from './schemas/reward.schema';
-import { AvailableFor } from './dto/create-reward.dto';
+import {
+  CreateRewardSchema,
+  Reward,
+  RewardAvailableFor,
+  RewardDocument,
+} from './schemas/reward.schema';
 import { PaginationQuery } from './queries/pagination.query';
 import { getPaginatedRewardData } from './aggregations/paginated-reward-data';
 import { toMongoObjectId } from 'src/utils/mongo';
 
 @Injectable()
-export class RewardRepository extends MongoRepository<RewardDocument> {
+export class RewardRepository extends MongoRepository<
+  RewardDocument,
+  CreateRewardSchema
+> {
   constructor(
     @InjectModel(Reward.name)
     private readonly rewardModel: Model<RewardDocument>,
@@ -58,7 +65,7 @@ export class RewardRepository extends MongoRepository<RewardDocument> {
     description: string;
     eventId?: string;
     session?: ClientSession;
-    availableFor: AvailableFor;
+    availableFor: RewardAvailableFor;
     locationId: string;
     placeId: string;
   }) {

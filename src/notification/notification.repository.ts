@@ -13,7 +13,10 @@ import { NotificationFilterQuery } from './queries/notification-filter.query';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 
 @Injectable()
-export class NotificationRepository extends MongoRepository<NotificationDocument> {
+export class NotificationRepository extends MongoRepository<
+  NotificationDocument,
+  {}
+> {
   constructor(
     @InjectModel(Notification.name)
     private readonly notificationModel: Model<NotificationDocument>,

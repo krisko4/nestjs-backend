@@ -2,14 +2,17 @@ import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, Types, ClientSession } from 'mongoose';
 import { Injectable } from '@nestjs/common';
 import { MongoRepository } from '../database/repository';
-import { EventDocument } from './schemas/event.schema';
+import { CreateEventSchema, EventDocument } from './schemas/event.schema';
 import { CreateEventDto } from './dto/create-event.dto';
 import { PaginationQuery } from 'src/place/queries/pagination.query';
 import { endOfDay, startOfDay } from 'date-fns';
 import { getPaginatedEventData } from './aggregations/paginated-event-data';
 import { Event } from './schemas/event.schema';
 @Injectable()
-export class EventRepository extends MongoRepository<EventDocument> {
+export class EventRepository extends MongoRepository<
+  EventDocument,
+  CreateEventSchema
+> {
   constructor(
     @InjectModel(Event.name) private readonly eventModel: Model<EventDocument>,
   ) {

@@ -8,7 +8,7 @@ import { getVisitsFacet } from './aggregations/facets/visits.facet';
 import { endOfDay, format, isToday, isYesterday, startOfDay } from 'date-fns';
 
 @Injectable()
-export class VisitRepository extends MongoRepository<VisitDocument> {
+export class VisitRepository extends MongoRepository<VisitDocument, {}> {
   constructor(
     @InjectModel(Visit.name) private readonly visitModel: Model<VisitDocument>,
   ) {

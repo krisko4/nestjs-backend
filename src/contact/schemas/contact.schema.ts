@@ -3,6 +3,12 @@ import { Document } from 'mongoose';
 
 export type ContactDocument = Contact & Document;
 
+export type CreateContactSchema = {
+  name: string;
+  content: string;
+  email: string;
+};
+
 @Schema()
 export class Contact {
   @Prop({ required: true })
