@@ -123,7 +123,6 @@ export class NotificationService {
 
   update(id: string, notificationUpdateQuery: NotificationUpdateQuery) {
     const { clicked, receiverId } = notificationUpdateQuery;
-    console.log(clicked, receiverId);
     const state = clicked ? 'clicked' : 'received';
     return this.notificationRepository.updateNotificationState(
       id,

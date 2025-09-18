@@ -83,7 +83,6 @@ export class EventController {
   ) {
     const { uid } = req.user;
     const { id, participatorId } = markParticipationIRLParams;
-    console.log('hej');
     return this.eventService.updateParticipator(
       id,
       participatorId,

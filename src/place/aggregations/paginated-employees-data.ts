@@ -30,6 +30,7 @@ export function getPaginatedEmployees(
       { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
       {
         $project: {
+          _id: '$employees._id',
           user: '$user',
           role: '$employees.role',
           email: '$employees.email',

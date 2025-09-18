@@ -276,6 +276,7 @@ export class PlaceService {
     addEmployeeDto: AddPlaceEmployeeDto,
   ) {
     const place = await this.findByIdWithEmployees(placeId);
+    console.log(place);
     if (!place) {
       throw new InternalServerErrorException('INVALID_PLACE_ID');
     }
@@ -316,6 +317,8 @@ export class PlaceService {
     if (!isUserBoss) {
       throw new ForbiddenException('NOT_ALLOWED');
     }
+    console.log(employeeId);
+    console.log(place);
     const deletedEmployee = place.employees.find(
       (e) => e._id.toString() === employeeId,
     );

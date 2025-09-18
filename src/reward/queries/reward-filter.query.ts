@@ -5,7 +5,4 @@ export class RewardFilterQuery extends PaginationQuery {
   @IsMongoId()
   @IsOptional()
   eventId?: string;
-  @IsMongoId()
-  @IsOptional()
-  userId?: string;
 }

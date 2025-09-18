@@ -375,7 +375,6 @@ export class EventService {
     }
     if (locationId) {
       const events = await this.findByLocationId(locationId);
-      console.log(events);
       const subs = await this.subscriptionService.findByLocationId(locationId);
       events.forEach((event) => {
         event.participators.forEach((participator) => {

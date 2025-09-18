@@ -128,4 +128,8 @@ export class CodeService {
     }
     return this.findByUserId(userId, type);
   }
+
+  async findByRewardIdAndDelete(rewardId: string, session?: ClientSession) {
+    return this.codeRepository.findByRewardIdAndDelete(rewardId, session);
+  }
 }

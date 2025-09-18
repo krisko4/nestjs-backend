@@ -111,4 +111,11 @@ export class CodeRepository extends MongoRepository<
         },
       });
   }
+
+  async findByRewardIdAndDelete(rewardId: string, session?: ClientSession) {
+    return this.codeModel.deleteMany(
+      { reward: new Types.ObjectId(rewardId) },
+      { session },
+    );
+  }
 }

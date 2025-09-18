@@ -210,7 +210,6 @@ export class AdminPlaceController {
       uid,
       paginationQuery,
     );
-    console.log(employees);
     return employees;
   }
 

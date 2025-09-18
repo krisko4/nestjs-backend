@@ -20,6 +20,14 @@ import { FileFieldsInterceptor } from '@nestjs/platform-express';
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  async findMe(@Req() req) {
+    const { uid } = req.cookies;
+    const user = await this.userService.findById(uid);
+    return plainToInstance(User, user.toObject());
+  }
+
   @Get()
   async findAll() {
     const users = await this.userService.findAll();

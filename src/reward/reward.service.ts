@@ -23,6 +23,7 @@ import { addSeconds, isBefore, subMinutes } from 'date-fns';
 import { PlaceService } from 'src/place/place.service';
 import { PaginationQuery } from './queries/pagination.query';
 import { ActivateRewardDto } from './dto/activate-reward.dto';
+import { PlaceEmployeeRole } from 'src/place/schemas/place-employee.schema';
 
 @Injectable()
 export class RewardService {
@@ -38,25 +39,20 @@ export class RewardService {
   ) {}
 
   async find(rewardFilterQuery: RewardFilterQuery, uid: string) {
-    const { eventId, userId } = rewardFilterQuery;
-    if (userId && uid.toString() !== userId.toString()) {
-      throw new UnauthorizedException('INVALID_USER_ID');
-    }
-    if (userId && eventId) {
-      return this.findByUserIdAndEventId(userId, eventId);
-    }
-    if (userId) {
-      return this.findByUserId(
-        {
-          start: rewardFilterQuery.start,
-          limit: rewardFilterQuery.limit,
-        },
-        userId,
-      );
-    }
+    const { eventId } = rewardFilterQuery;
     if (eventId) {
-      return this.findByEventId(eventId);
+      return this.findByUserIdAndEventId(uid, eventId);
     }
+    return this.findByUserId(
+      {
+        start: rewardFilterQuery.start,
+        limit: rewardFilterQuery.limit,
+      },
+      uid,
+    );
+    // if (eventId) {
+    //   return this.findByEventId(eventId);
+    // }
   }
 
   private findByUserIdAndEventId(uid: string, eventId: string) {
@@ -77,7 +73,6 @@ export class RewardService {
   }
 
   findByEventId(eventId: string) {
-    console.log(eventId);
     return this.rewardRepository.findByEventId(eventId);
   }
 
@@ -89,7 +84,7 @@ export class RewardService {
     const { rewardId } = activateRewardDto;
     const reward = await this.findById(rewardId);
     if (!reward) {
-      throw new NotFoundException('invalid rewardId');
+      throw new NotFoundException('INVALID_REWARD_ID');
     }
     const code = await this.codeService.create({
       userId,
@@ -98,6 +93,30 @@ export class RewardService {
     return {
       code: code.value,
     };
+  }
+
+  async deleteById(id: string, uid: string) {
+    const reward = await this.findById(id);
+    if (!reward) {
+      throw new NotFoundException('INVALID_REWARD_ID');
+    }
+    const isUserBoss = reward.place.employees.some(
+      (u) =>
+        u.user.toString() === uid.toString() &&
+        u.role === PlaceEmployeeRole.BOSS,
+    );
+    if (!isUserBoss) {
+      throw new UnauthorizedException('ILLEGAL_OPERATION');
+    }
+    const session = await this.connection.startSession();
+    await session.withTransaction(async () => {
+      await Promise.all([
+        this.rewardRepository.findByIdAndDelete(id, session),
+        this.codeService.findByRewardIdAndDelete(id, session),
+      ]);
+    });
+    await session.endSession();
+    return true;
   }
 
   // private async createRewardWithCodes(
@@ -204,8 +223,9 @@ export class RewardService {
       }
     }
     const place = await this.placeService.findByLocationId(locationId);
+    console.log(place);
     const isUserOwner = place.employees.some(
-      (u) => u.user._id.toString() === uid,
+      (u) => u.user.toString() === uid && u.role === PlaceEmployeeRole.BOSS,
     );
     if (!isUserOwner) {
       throw new InternalServerErrorException(`ILLEGAL_OPERATION`);
@@ -302,7 +322,6 @@ export class RewardService {
     const rewards = await this.rewardRepository.findByEventsIds(eventsIds);
     const rewardsIds = rewards.map((r) => r._id);
     const codes = await this.codeService.findByRewardsIds(rewardsIds);
-    console.log(codes);
     return rewards.map((r) => {
       const rewardCodes = codes.filter(
         (c) => c.reward.toString() === r._id.toString(),

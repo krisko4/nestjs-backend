@@ -26,7 +26,6 @@ export class UserPlaceController {
 
   @Get('/search')
   async findByUserId(@Query('uid') uid: string) {
-    console.log(uid);
     const places = await this.placeService.findByUserId(uid);
     return places.map((place) => {
       const placeDto = plainToInstance(PlaceDto, place.toObject());

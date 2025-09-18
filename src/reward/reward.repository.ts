@@ -106,4 +106,10 @@ export class RewardRepository extends MongoRepository<
 
     return result[0];
   }
+
+  async findByIdAndDelete(id: string, session?: ClientSession) {
+    return this.rewardModel.findByIdAndDelete(toMongoObjectId(id), {
+      session,
+    });
+  }
 }

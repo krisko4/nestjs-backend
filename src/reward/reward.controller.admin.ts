@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   Param,
+  Delete,
 } from '@nestjs/common';
 import { RewardService } from './reward.service';
 import { CreateRewardDto } from './dto/create-reward.dto';
@@ -40,6 +41,13 @@ export class AdminRewardController {
   async findById(@Param('id') id: string) {
     const reward = await this.rewardService.findById(id);
     return plainToInstance(Reward, reward.toObject());
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  deleteById(@Param('id') id: string, @Req() req) {
+    const { uid } = req.user;
+    return this.rewardService.deleteById(id, uid);
   }
 
   @UseGuards(JwtAuthGuard)
