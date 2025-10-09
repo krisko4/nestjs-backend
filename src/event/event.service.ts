@@ -30,6 +30,7 @@ import { InjectConnection } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
+import { PlaceEmployeeRole } from 'src/place/schemas/place-employee.schema';
 
 @Injectable()
 export class EventService {
@@ -157,23 +158,25 @@ export class EventService {
     return this.eventRepository.findByLocationId(locationId);
   }
 
-  async findById(id: string, uid?: string) {
+  async findById(id: string) {
     const event = await this.eventRepository.findEventById(id);
-    if (!event) throw new InternalServerErrorException(`EVENT_NOT_FOUND`);
-    const subs = await this.subscriptionService.findByLocationId(
-      event.locationId,
-    );
-    event.participators.forEach((participator) => {
-      participator['isSubscriber'] = subs.some(({ user }) => {
-        return user._id.toString() === participator.user._id.toString();
-      });
-    });
-    return {
-      event,
-      isUserOwner: uid
-        ? event.place.employees.some((u) => u.user._id.toString() === uid)
-        : false,
-    };
+    if (!event) throw new BadRequestException(`INVALID_EVENT_ID`);
+    return event;
+    // if (!event) throw new InternalServerErrorException(`EVENT_NOT_FOUND`);
+    // const subs = await this.subscriptionService.findByLocationId(
+    //   event.locationId,
+    // );
+    // event.participators.forEach((participator) => {
+    //   participator['isSubscriber'] = subs.some(({ user }) => {
+    //     return user._id.toString() === participator.user._id.toString();
+    //   });
+    // });
+    // return {
+    //   event,
+    //   isUserOwner: uid
+    //     ? event.place.employees.some((u) => u.user._id.toString() === uid)
+    //     : false,
+    // };
   }
 
   async findNearbyEventsToday(geolocationDto: GeolocationDto) {
@@ -393,5 +396,18 @@ export class EventService {
   }
   findToday(paginationQuery: PaginationQuery) {
     return this.eventRepository.findToday(paginationQuery);
+  }
+
+  async deleteById(id: string, uid: string) {
+    const event = await this.findById(id);
+    const isUserBoss = event.place.employees.some(
+      (u) =>
+        u.user.toString() === uid.toString() &&
+        u.role === PlaceEmployeeRole.BOSS,
+    );
+    if (!isUserBoss) {
+      throw new UnauthorizedException('ILLEGAL_OPERATION');
+    }
+    return this.eventRepository.findByIdAndDelete(id);
   }
 }

@@ -1,13 +1,76 @@
 import { Model, FilterQuery, Types } from 'mongoose';
 import { RewardDocument } from '../schemas/reward.schema';
 
-export function getPaginatedRewardData(
-  start: number,
-  limit: number,
+const RADIUS_IN_METERS = 15000; // 15 km
+
+const haversineFunction = function (
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+) {
+  const R = 6378137;
+  const toRad = (x: number) => (x * Math.PI) / 180.0;
+  const hav = (x: number) => Math.pow(Math.sin(x / 2), 2);
+  const aLat = toRad(lat1);
+  const bLat = toRad(lat2);
+  const aLng = toRad(lng1);
+  const bLng = toRad(lng2);
+  const ht =
+    hav(bLat - aLat) + Math.cos(aLat) * Math.cos(bLat) * hav(bLng - aLng);
+  return 2 * R * Math.asin(Math.sqrt(ht));
+}.toString();
+
+function buildLocationFilterStages(locationFilter: {
+  lat: number;
+  lng: number;
+}) {
+  return [
+    {
+      $lookup: {
+        from: 'locations',
+        localField: 'locationId',
+        foreignField: '_id',
+        as: 'location',
+      },
+    },
+    {
+      $unwind: {
+        path: '$location',
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $addFields: {
+        distance: {
+          $function: {
+            body: haversineFunction,
+            args: [
+              locationFilter.lat,
+              locationFilter.lng,
+              '$location.lat',
+              '$location.lng',
+            ],
+            lang: 'js',
+          },
+        },
+      },
+    },
+    {
+      $match: {
+        distance: { $lte: RADIUS_IN_METERS },
+      },
+    },
+  ];
+}
+
+function buildBasePipeline(
   entityFilterQuery: FilterQuery<Model<RewardDocument>>,
+  locationFilter?: { lat?: number; lng?: number },
+  countryCode?: string,
 ) {
   const { userId, ...rest } = entityFilterQuery;
-  const dataPipeline: any[] = [
+  const pipeline: any[] = [
     { $match: rest },
     {
       $lookup: {
@@ -20,13 +83,57 @@ export function getPaginatedRewardData(
   ];
 
   if (userId) {
-    dataPipeline.push({
+    pipeline.push({
       $match: {
         'place.employees.user':
           typeof userId === 'string' ? new Types.ObjectId(userId) : userId,
       },
     });
   }
+
+  // Jeśli podano filtr po countryCode (fallback)
+  if (countryCode) {
+    pipeline.push({
+      $lookup: {
+        from: 'locations',
+        localField: 'locationId',
+        foreignField: '_id',
+        as: 'location',
+      },
+    });
+    pipeline.push({
+      $unwind: {
+        path: '$location',
+        preserveNullAndEmptyArrays: true,
+      },
+    });
+    pipeline.push({
+      $match: {
+        'location.countryCode': countryCode,
+      },
+    });
+  }
+  // Jeśli podano filtr po lokalizacji (promień 15 km)
+  else if (locationFilter?.lat !== undefined && locationFilter?.lng !== undefined) {
+    pipeline.push(
+      ...buildLocationFilterStages({
+        lat: locationFilter.lat,
+        lng: locationFilter.lng,
+      }),
+    );
+  }
+
+  return pipeline;
+}
+
+export function getPaginatedRewardData(
+  start: number,
+  limit: number,
+  entityFilterQuery: FilterQuery<Model<RewardDocument>>,
+  locationFilter?: { lat?: number; lng?: number },
+  countryCode?: string,
+) {
+  const dataPipeline = buildBasePipeline(entityFilterQuery, locationFilter, countryCode);
 
   dataPipeline.push(
     { $skip: start },
@@ -70,26 +177,7 @@ export function getPaginatedRewardData(
     },
   );
 
-  const metadataPipeline: any[] = [
-    { $match: rest },
-    {
-      $lookup: {
-        from: 'places',
-        localField: 'place',
-        foreignField: '_id',
-        as: 'place',
-      },
-    },
-  ];
-
-  if (userId) {
-    metadataPipeline.push({
-      $match: {
-        'place.employees.user':
-          typeof userId === 'string' ? new Types.ObjectId(userId) : userId,
-      },
-    });
-  }
+  const metadataPipeline = buildBasePipeline(entityFilterQuery, locationFilter, countryCode);
 
   metadataPipeline.push(
     { $count: 'total' },

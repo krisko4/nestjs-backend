@@ -50,7 +50,7 @@ export class SubscriptionService {
         code.invitation._id.toString(),
         session,
       );
-      await this.codeService.useCode(code._id);
+      await this.codeService.useById(code._id, userId);
       if (
         successfullyInvitedUsers.length ===
         code.invitation.referral.requiredMembersCount - 1

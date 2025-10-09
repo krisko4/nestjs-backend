@@ -5,6 +5,7 @@ import { OpeningHours, OpeningHoursSchema } from './opening-hours.schema';
 
 export type CreateLocationSchema = {
   address: string;
+  countryCode?: string;
 };
 
 @Schema()
@@ -19,6 +20,8 @@ export class Location {
   lat: number;
   @Prop()
   lng: number;
+  @Prop()
+  countryCode: string;
   @Prop()
   facebook: string;
   @Prop()

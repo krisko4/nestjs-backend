@@ -70,6 +70,7 @@ export class PlaceRepository extends MongoRepository<
         'locations.$.lat': location.lat,
         'locations.$.lng': location.lng,
         'locations.$.address': location.address,
+        'locations.$.countryCode': location.countryCode,
       },
       session,
     );
@@ -111,6 +112,16 @@ export class PlaceRepository extends MongoRepository<
     }
 
     return query.exec();
+  }
+
+  async findPlacesByEmployeeUserId(userId: string) {
+    return this.placeModel
+      .find({
+        'employees.user': toMongoObjectId(userId),
+        'employees.status': PlaceEmployeeStatus.ACTIVE,
+      })
+      .select('-employees')
+      .exec();
   }
 
   setStatus(locationId: string, updateStatusDto: UpdateStatusDto) {

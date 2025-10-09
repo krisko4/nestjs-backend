@@ -35,7 +35,7 @@ export class CodeRepository extends MongoRepository<
     );
   }
   findByRewardId(rewardId: string) {
-    return this.find({ reward: new Types.ObjectId(rewardId) });
+    return this.find({ reward: toMongoObjectId(rewardId) });
   }
 
   findByRewardsIds(rewardsIds: string[]) {
@@ -44,16 +44,31 @@ export class CodeRepository extends MongoRepository<
   }
 
   findByValue(value: string) {
-    return this.codeModel.findOne({ value }).populate({
-      path: 'invitation',
-      populate: {
-        path: 'referral',
-      },
-    });
+    return this.codeModel
+      .findOne({ value })
+      .populate({
+        path: 'invitation',
+        populate: {
+          path: 'referral',
+        },
+      })
+      .populate({
+        path: 'reward',
+        populate: {
+          path: 'place',
+        },
+      });
   }
 
-  useCode(id: string) {
-    return this.findByIdAndUpdate(id, { isUsed: true });
+  useCode(value: string) {
+    return this.findOneAndUpdate({ value }, { usedAt: new Date() });
+  }
+
+  useCodeById(id: string, usedBy: string) {
+    return this.findByIdAndUpdate(id, {
+      usedAt: new Date(),
+      usedBy: toMongoObjectId(usedBy),
+    });
   }
 
   async findReferralCodes(userId: string) {

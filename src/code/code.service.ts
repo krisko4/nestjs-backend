@@ -1,14 +1,19 @@
 import { PlaceService } from 'src/place/place.service';
 import { CodeFilterQuery, CodeType } from './queries/code-filter.query';
 import {
+  BadRequestException,
   forwardRef,
   Inject,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CodeRepository } from './code.repository';
 import { CreateCodeDto } from './dto/create-code.dto';
 import { ClientSession } from 'mongoose';
+import { UseCodeDto } from './dto/use-code.dto';
+import { NotFoundError } from 'rxjs';
 
 @Injectable()
 export class CodeService {
@@ -27,8 +32,27 @@ export class CodeService {
     return this.codeRepository.createCode(createCodeDto, value, session);
   }
 
-  useCode(id: string) {
-    return this.codeRepository.useCode(id);
+  async use(useCodeDto: UseCodeDto, uid: string) {
+    const { value } = useCodeDto;
+    const code = await this.findByValue(value);
+    if (!code) {
+      throw new NotFoundException('INVALID_CODE');
+    }
+    if (code.usedAt) {
+      throw new BadRequestException('CODE_ALREADY_USED');
+    }
+    const place = code.reward.place;
+    const isUserEmployee = place.employees.some(
+      (u) => u.user.toString() === uid,
+    );
+    if (!isUserEmployee) {
+      throw new UnauthorizedException('ILLEGAL_OPERATION');
+    }
+    return this.codeRepository.useCodeById(code._id, uid);
+  }
+
+  useById(id: string, usedBy: string) {
+    return this.codeRepository.useCodeById(id, usedBy);
   }
 
   async findByValue(value: string) {
@@ -116,6 +140,10 @@ export class CodeService {
 
   async findByRewardsIds(rewardsIds: string[]) {
     return this.codeRepository.findByRewardsIds(rewardsIds);
+  }
+
+  async findByRewardId(rewardId: string) {
+    return this.codeRepository.findByRewardId(rewardId);
   }
 
   findByQuery(codeFilterQuery: CodeFilterQuery, userId: string) {

@@ -24,6 +24,7 @@ import { PlaceService } from 'src/place/place.service';
 import { PaginationQuery } from './queries/pagination.query';
 import { ActivateRewardDto } from './dto/activate-reward.dto';
 import { PlaceEmployeeRole } from 'src/place/schemas/place-employee.schema';
+import { SearchRewardQuery } from './queries/search-reward.query';
 
 @Injectable()
 export class RewardService {
@@ -86,6 +87,18 @@ export class RewardService {
     if (!reward) {
       throw new NotFoundException('INVALID_REWARD_ID');
     }
+
+    const existingCode = await this.codeService.findByRewardIdAndUserId(
+      rewardId,
+      userId,
+    );
+
+    if (existingCode && !existingCode.usedAt) {
+      return {
+        code: existingCode.value,
+      };
+    }
+
     const code = await this.codeService.create({
       userId,
       rewardId,
@@ -214,18 +227,16 @@ export class RewardService {
       );
     }
     if (eventId) {
-      const { event } = await this.eventService.findById(eventId, uid);
-      if (!event) {
-        throw new InternalServerErrorException(`EVENT_NOT_FOUND`);
-      }
+      const event = await this.eventService.findById(eventId);
       if (isBefore(new Date(event.endDate), new Date())) {
         throw new InternalServerErrorException(`EVENT_HAS_ENDED`);
       }
     }
     const place = await this.placeService.findByLocationId(locationId);
-    console.log(place);
     const isUserOwner = place.employees.some(
-      (u) => u.user.toString() === uid && u.role === PlaceEmployeeRole.BOSS,
+      (u) =>
+        u.user.toString() === uid.toString() &&
+        u.role === PlaceEmployeeRole.BOSS,
     );
     if (!isUserOwner) {
       throw new InternalServerErrorException(`ILLEGAL_OPERATION`);
@@ -293,6 +304,7 @@ export class RewardService {
     // }
 
     const session = await this.connection.startSession();
+
     this.rewardRepository.createReward({
       name,
       description,
@@ -311,8 +323,24 @@ export class RewardService {
     // );
   }
 
-  search(paginationQuery: PaginationQuery) {
-    return this.rewardRepository.findPaginated(paginationQuery, {});
+  async search(searchQuery: SearchRewardQuery) {
+    const { lat, lng, countryCode, start, limit } = searchQuery;
+
+    const nearbyResults = await this.rewardRepository.findPaginated(
+      { start, limit },
+      {},
+      undefined,
+      { lat, lng },
+    );
+
+    if (nearbyResults.data && nearbyResults.data.length > 0) {
+      return nearbyResults;
+    }
+
+    return this.rewardRepository.findPaginatedByCountryCode(
+      { start, limit },
+      countryCode,
+    );
   }
 
   async findStatistics(query: StatisticsFilterQuery) {

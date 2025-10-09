@@ -22,7 +22,7 @@ export function getPaginatedEventData(
   if (userId) {
     dataPipeline.push({
       $match: {
-        'place.userId':
+        'place.employees.user':
           typeof userId === 'string' ? new Types.ObjectId(userId) : userId,
       },
     });
@@ -72,7 +72,7 @@ export function getPaginatedEventData(
   if (userId) {
     metadataPipeline.push({
       $match: {
-        'place.userId':
+        'place.employees.user':
           typeof userId === 'string' ? new Types.ObjectId(userId) : userId,
       },
     });

@@ -8,6 +8,7 @@ import { PaginationQuery } from 'src/place/queries/pagination.query';
 import { endOfDay, startOfDay } from 'date-fns';
 import { getPaginatedEventData } from './aggregations/paginated-event-data';
 import { Event } from './schemas/event.schema';
+import { toMongoObjectId } from 'src/utils/mongo';
 @Injectable()
 export class EventRepository extends MongoRepository<
   EventDocument,
@@ -162,5 +163,11 @@ export class EventRepository extends MongoRepository<
       getPaginatedEventData(start, limit, entityFilterQuery),
     );
     return result[0];
+  }
+
+  async findByIdAndDelete(id: string, session?: ClientSession) {
+    return this.eventModel.findByIdAndDelete(toMongoObjectId(id), {
+      session,
+    });
   }
 }

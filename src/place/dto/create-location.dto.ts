@@ -3,6 +3,7 @@ import {
   IsMobilePhone,
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
   IsUrl,
   Max,
@@ -19,6 +20,9 @@ export class CreateLocationDto {
   @IsString()
   @IsNotEmpty()
   addressLanguage: string;
+  @IsString()
+  @IsOptional()
+  countryCode: string;
   @IsMobilePhone()
   phone: string;
   @IsEmail()

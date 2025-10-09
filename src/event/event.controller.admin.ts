@@ -24,8 +24,8 @@ import { EventDto } from './dto/event.dto';
 import { PaginationQuery } from 'src/place/queries/pagination.query';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
-@Controller('events')
-export class EventController {
+@Controller('admin/events')
+export class AdminEventController {
   constructor(private readonly eventService: EventService) {}
 
   @UseGuards(JwtAuthGuard)
@@ -50,14 +50,8 @@ export class EventController {
   }
 
   @Get(':id')
-  async findById(@Param('id') id: string, @Req() req) {
-    const { uid } = req.cookies;
-    const { event, isUserOwner } = await this.eventService.findById(id, uid);
-
-    return {
-      ...plainToInstance(EventDto, event),
-      isUserOwner,
-    };
+  async findById(@Param('id') id: string) {
+    return this.eventService.findById(id);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -72,6 +66,13 @@ export class EventController {
   async removeParticipator(@Param('id') id: string, @Req() req) {
     const { uid } = req.user;
     return this.eventService.removeParticipator(id, uid);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  async deleteById(@Param('id') id: string, @Req() req) {
+    const { uid } = req.user;
+    return this.eventService.deleteById(id, uid);
   }
 
   @UseGuards(JwtAuthGuard)

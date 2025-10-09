@@ -92,6 +92,7 @@ export class RewardRepository extends MongoRepository<
     paginationQuery: PaginationQuery,
     entityFilterQuery: FilterQuery<Model<RewardDocument>>,
     sortQuery?: FilterQuery<Model<RewardDocument>>,
+    locationFilter?: { lat?: number; lng?: number },
   ) {
     const { start, limit } = paginationQuery;
     let pipeline = this.rewardModel.aggregate();
@@ -101,7 +102,7 @@ export class RewardRepository extends MongoRepository<
     }
 
     const result = await pipeline.facet(
-      getPaginatedRewardData(start, limit, entityFilterQuery),
+      getPaginatedRewardData(start, limit, entityFilterQuery, locationFilter),
     );
 
     return result[0];
@@ -111,5 +112,19 @@ export class RewardRepository extends MongoRepository<
     return this.rewardModel.findByIdAndDelete(toMongoObjectId(id), {
       session,
     });
+  }
+
+  async findPaginatedByCountryCode(
+    paginationQuery: PaginationQuery,
+    countryCode: string,
+  ) {
+    const { start, limit } = paginationQuery;
+    let pipeline = this.rewardModel.aggregate();
+
+    const result = await pipeline.facet(
+      getPaginatedRewardData(start, limit, {}, undefined, countryCode),
+    );
+
+    return result[0];
   }
 }

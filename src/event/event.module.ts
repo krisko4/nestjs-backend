@@ -1,9 +1,7 @@
 import { NotificationModule } from 'src/notification/notification.module';
-import { NotificationService } from 'src/notification/notification.service';
 import { UserModule } from 'src/user/user.module';
 import { Module } from '@nestjs/common';
 import { EventService } from './event.service';
-import { EventController } from './event.controller';
 import { MulterModule } from '@nestjs/platform-express';
 import { MulterConfigService } from 'src/multer-config/multer-config.service';
 import { EventRepository } from './event.repository';
@@ -16,6 +14,8 @@ import {
   Participator,
   ParticipatorSchema,
 } from './schemas/participator.schema';
+import { UserEventController } from './event.controller.user';
+import { AdminEventController } from './event.controller.admin';
 
 @Module({
   imports: [
@@ -32,7 +32,7 @@ import {
     CloudinaryModule,
     SubscriptionModule,
   ],
-  controllers: [EventController],
+  controllers: [UserEventController, AdminEventController],
   providers: [EventService, EventRepository],
   exports: [EventService],
 })

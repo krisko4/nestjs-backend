@@ -28,6 +28,8 @@ export class Code {
   createdAt: Date;
   @Prop()
   usedAt?: Date;
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: User.name })
+  usedBy?: User;
 }
 
 export const CodeSchema = SchemaFactory.createForClass(Code);

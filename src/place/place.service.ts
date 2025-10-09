@@ -161,6 +161,10 @@ export class PlaceService {
     return this.placeRepository.find();
   }
 
+  findPlacesByUserId(userId: string) {
+    return this.placeRepository.findPlacesByEmployeeUserId(userId);
+  }
+
   findByLatLng(lat: number, lng: number) {
     return this.placeRepository.findByLatLng(lat, lng);
   }

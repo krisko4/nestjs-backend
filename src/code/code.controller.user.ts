@@ -13,30 +13,14 @@ import { CreateCodeDto } from './dto/create-code.dto';
 import { CodeFilterQuery } from './queries/code-filter.query';
 import { UseCodeDto } from './dto/use-code.dto';
 
-@Controller('codes')
-export class CodeController {
+@Controller('user/codes')
+export class UserCodeController {
   constructor(private readonly codeService: CodeService) {}
-
-  @UseGuards(JwtAuthGuard)
-  @Post()
-  create(@Body() createCodeDto: CreateCodeDto) {
-    return this.codeService.create(createCodeDto);
-  }
 
   @UseGuards(JwtAuthGuard)
   @Post('use')
   use(@Body() useCodeDto: UseCodeDto, @Req() req) {
     const { uid } = req.cookies;
     return this.codeService.use(useCodeDto, uid);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get()
-  async find(@Query() codeFilterQuery: CodeFilterQuery, @Req() req) {
-    const res = await this.codeService.findByQuery(
-      codeFilterQuery,
-      req.user.uid,
-    );
-    return res;
   }
 }

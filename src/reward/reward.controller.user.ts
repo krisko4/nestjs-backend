@@ -15,6 +15,7 @@ import { RewardFilterQuery } from './queries/reward-filter.query';
 import { PaginationQuery } from './queries/pagination.query';
 import { plainToInstance } from 'class-transformer';
 import { Reward } from './schemas/reward.schema';
+import { SearchRewardQuery } from './queries/search-reward.query';
 
 @Controller('user/rewards')
 export class UserRewardController {
@@ -29,9 +30,8 @@ export class UserRewardController {
 
   @UseGuards(JwtAuthGuard)
   @Get('/search')
-  search(@Query() rewardFilterQuery: PaginationQuery, @Req() req) {
-    const { uid } = req.user;
-    return this.rewardService.search(rewardFilterQuery);
+  search(@Query() searchQuery: SearchRewardQuery) {
+    return this.rewardService.search(searchQuery);
   }
 
   @UseGuards(JwtAuthGuard)
