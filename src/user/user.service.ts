@@ -76,4 +76,16 @@ export class UserService {
   async findById(id: string) {
     return this.userRepository.findById(id);
   }
+
+  async addFavoriteLocation(userId: string, locationId: string) {
+    return this.userRepository.addFavoriteLocation(userId, locationId);
+  }
+
+  async removeFavoriteLocation(userId: string, locationId: string) {
+    return this.userRepository.removeFavoriteLocation(userId, locationId);
+  }
+
+  async getFavoriteLocationIds(userId: string): Promise<string[]> {
+    return this.userRepository.getFavoriteLocationIds(userId);
+  }
 }

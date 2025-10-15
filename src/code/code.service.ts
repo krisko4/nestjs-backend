@@ -160,4 +160,8 @@ export class CodeService {
   async findByRewardIdAndDelete(rewardId: string, session?: ClientSession) {
     return this.codeRepository.findByRewardIdAndDelete(rewardId, session);
   }
+
+  async findUnusedCodeByLocationIdAndUserId(locationId: string, userId: string) {
+    return this.codeRepository.findUnusedCodeByLocationIdAndUserId(locationId, userId);
+  }
 }

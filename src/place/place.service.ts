@@ -2,8 +2,11 @@ import { PaginationQuery } from './../event/queries/pagination.query';
 import {
   BadRequestException,
   ForbiddenException,
+  forwardRef,
+  Inject,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { UserService } from 'src/user/user.service';
 import { CreatePlaceDto } from './dto/create-place.dto';
@@ -23,6 +26,8 @@ import { SubscriptionService } from 'src/subscription/subscription.service';
 import { SubscriptionDocument } from 'src/subscription/schemas/subscription.schema';
 import { AddPlaceEmployeeDto } from './dto/add-place-employee.dto';
 import { PlaceEmployeeRole } from './schemas/place-employee.schema';
+import { SearchPlaceQuery } from './queries/search-place.query';
+import { CodeService } from 'src/code/code.service';
 
 @Injectable()
 export class PlaceService {
@@ -31,6 +36,8 @@ export class PlaceService {
     private readonly userService: UserService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly subscriptionService: SubscriptionService,
+    @Inject(forwardRef(() => CodeService))
+    private readonly codeService: CodeService,
     @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
 
@@ -197,16 +204,20 @@ export class PlaceService {
     );
   }
 
-  findFavorite(placeFilterQuery: PlaceFilterQuery, favIds: string) {
+  findFavorite(placeFilterQuery: PlaceFilterQuery, favIds: string[]) {
     if (!favIds) return [];
-    return this.placeRepository.findByLocationIds(
-      placeFilterQuery,
-      favIds.split(','),
-    );
+    return this.placeRepository.findByLocationIds(placeFilterQuery, favIds);
   }
 
-  findLocation(id: string, locationId: string) {
-    return this.placeRepository.findLocation(id, locationId);
+  async findLocation(id: string, locationId: string, userId: string) {
+    const favoriteLocationIds = await this.userService.getFavoriteLocationIds(
+      userId,
+    );
+    return this.placeRepository.findLocation(
+      id,
+      locationId,
+      favoriteLocationIds,
+    );
   }
 
   findOpeningHours(locationId: string) {
@@ -248,6 +259,18 @@ export class PlaceService {
     return this.placeRepository.findLocationIdsByUserId(uid);
   }
 
+  async findLocationIdsWithinRadius(
+    lat: number,
+    lng: number,
+    radiusInMeters: number,
+  ): Promise<string[]> {
+    return this.placeRepository.findLocationIdsWithinRadius(
+      lat,
+      lng,
+      radiusInMeters,
+    );
+  }
+
   incrementVisitCount(id: string) {
     return this.placeRepository.incrementVisitCount(id);
   }
@@ -280,7 +303,6 @@ export class PlaceService {
     addEmployeeDto: AddPlaceEmployeeDto,
   ) {
     const place = await this.findByIdWithEmployees(placeId);
-    console.log(place);
     if (!place) {
       throw new InternalServerErrorException('INVALID_PLACE_ID');
     }
@@ -321,8 +343,6 @@ export class PlaceService {
     if (!isUserBoss) {
       throw new ForbiddenException('NOT_ALLOWED');
     }
-    console.log(employeeId);
-    console.log(place);
     const deletedEmployee = place.employees.find(
       (e) => e._id.toString() === employeeId,
     );
@@ -336,5 +356,91 @@ export class PlaceService {
       throw new BadRequestException('CANNOT_DELETE_YOURSELF');
     }
     return this.placeRepository.removeEmployee(placeId, employeeId);
+  }
+
+  async search(searchQuery: SearchPlaceQuery, userId: string) {
+    const { lat, lng, countryCode, start, limit } = searchQuery;
+
+    const nearbyLocationIds = await this.findLocationIdsWithinRadius(
+      lat,
+      lng,
+      15000,
+    );
+
+    const favoriteLocationIds = await this.userService.getFavoriteLocationIds(
+      userId,
+    );
+
+    if (nearbyLocationIds.length > 0) {
+      return this.placeRepository.findPaginatedByLocationIds(
+        { start, limit },
+        nearbyLocationIds,
+        favoriteLocationIds,
+      );
+    }
+
+    return this.placeRepository.findPaginatedByCountryCode(
+      { start, limit },
+      countryCode,
+      favoriteLocationIds,
+    );
+  }
+
+  async addFavoriteLocation(userId: string, locationId: string) {
+    return this.userService.addFavoriteLocation(userId, locationId);
+  }
+
+  async removeFavoriteLocation(userId: string, locationId: string) {
+    return this.userService.removeFavoriteLocation(userId, locationId);
+  }
+
+  async getFavoriteLocations(
+    placeFilterQuery: PlaceFilterQuery,
+    userId: string,
+  ) {
+    const favoriteLocationIds = await this.userService.getFavoriteLocationIds(
+      userId,
+    );
+
+    if (favoriteLocationIds.length === 0) {
+      return {
+        data: [],
+        metadata: [{ total: 0, start: 0, limit: placeFilterQuery.limit }],
+      };
+    }
+
+    const result = await this.findFavorite(
+      placeFilterQuery,
+      favoriteLocationIds,
+    );
+    return result;
+  }
+
+  async generateLocationCode(locationId: string, userId: string) {
+    const location = await this.placeRepository.findByLocationId(locationId);
+    if (!location) {
+      throw new NotFoundException('LOCATION_NOT_FOUND');
+    }
+
+    const existingCode =
+      await this.codeService.findUnusedCodeByLocationIdAndUserId(
+        locationId,
+        userId,
+      );
+
+    if (existingCode) {
+      return {
+        code: existingCode.value,
+      };
+    }
+
+    const code = await this.codeService.create({
+      userId,
+      locationId,
+    });
+
+    return {
+      code: code.value,
+    };
   }
 }

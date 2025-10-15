@@ -1,7 +1,7 @@
 import { InjectModel } from '@nestjs/mongoose';
 import { MongoRepository } from 'src/database/repository';
 import { CreateUserSchema, User, UserDocument } from './schemas/user.schema';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 
 export class UserRepository extends MongoRepository<
   UserDocument,
@@ -39,5 +39,33 @@ export class UserRepository extends MongoRepository<
       'subscriptions.subscribedLocations._id': locationId,
     });
     return user ? true : false;
+  }
+
+  async addFavoriteLocation(userId: string, locationId: string) {
+    return this.userModel.findByIdAndUpdate(
+      userId,
+      {
+        $addToSet: { favoriteLocationIds: new Types.ObjectId(locationId) },
+      },
+      { new: true },
+    );
+  }
+
+  async removeFavoriteLocation(userId: string, locationId: string) {
+    return this.userModel.findByIdAndUpdate(
+      userId,
+      {
+        $pull: { favoriteLocationIds: new Types.ObjectId(locationId) },
+      },
+      { new: true },
+    );
+  }
+
+  async getFavoriteLocationIds(userId: string): Promise<string[]> {
+    const user = await this.findById(userId);
+    if (!user || !user.favoriteLocationIds) {
+      return [];
+    }
+    return user.favoriteLocationIds.map((id) => id.toString());
   }
 }

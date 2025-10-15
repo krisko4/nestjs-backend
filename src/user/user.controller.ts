@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
+  Post,
   Req,
   UploadedFiles,
   UseGuards,
@@ -69,5 +71,25 @@ export class UserController {
   ) {
     const { uid } = req.cookies;
     return this.userService.checkIfUserIsSubscriber(id, locationId, uid);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('/favorites/:locationId')
+  async addFavoriteLocation(
+    @Param('locationId') locationId: string,
+    @Req() req,
+  ) {
+    const { uid } = req.user;
+    return this.userService.addFavoriteLocation(uid, locationId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('/favorites/:locationId')
+  async removeFavoriteLocation(
+    @Param('locationId') locationId: string,
+    @Req() req,
+  ) {
+    const { uid } = req.user;
+    return this.userService.removeFavoriteLocation(uid, locationId);
   }
 }

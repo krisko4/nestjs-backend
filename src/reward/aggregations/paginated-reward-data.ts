@@ -1,73 +1,10 @@
 import { Model, FilterQuery, Types } from 'mongoose';
 import { RewardDocument } from '../schemas/reward.schema';
 
-const RADIUS_IN_METERS = 15000; // 15 km
-
-const haversineFunction = function (
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number,
-) {
-  const R = 6378137;
-  const toRad = (x: number) => (x * Math.PI) / 180.0;
-  const hav = (x: number) => Math.pow(Math.sin(x / 2), 2);
-  const aLat = toRad(lat1);
-  const bLat = toRad(lat2);
-  const aLng = toRad(lng1);
-  const bLng = toRad(lng2);
-  const ht =
-    hav(bLat - aLat) + Math.cos(aLat) * Math.cos(bLat) * hav(bLng - aLng);
-  return 2 * R * Math.asin(Math.sqrt(ht));
-}.toString();
-
-function buildLocationFilterStages(locationFilter: {
-  lat: number;
-  lng: number;
-}) {
-  return [
-    {
-      $lookup: {
-        from: 'locations',
-        localField: 'locationId',
-        foreignField: '_id',
-        as: 'location',
-      },
-    },
-    {
-      $unwind: {
-        path: '$location',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      $addFields: {
-        distance: {
-          $function: {
-            body: haversineFunction,
-            args: [
-              locationFilter.lat,
-              locationFilter.lng,
-              '$location.lat',
-              '$location.lng',
-            ],
-            lang: 'js',
-          },
-        },
-      },
-    },
-    {
-      $match: {
-        distance: { $lte: RADIUS_IN_METERS },
-      },
-    },
-  ];
-}
-
 function buildBasePipeline(
   entityFilterQuery: FilterQuery<Model<RewardDocument>>,
-  locationFilter?: { lat?: number; lng?: number },
   countryCode?: string,
+  locationIds?: Types.ObjectId[],
 ) {
   const { userId, ...rest } = entityFilterQuery;
   const pipeline: any[] = [
@@ -91,8 +28,14 @@ function buildBasePipeline(
     });
   }
 
-  // Jeśli podano filtr po countryCode (fallback)
-  if (countryCode) {
+  if (locationIds && locationIds.length > 0) {
+    pipeline.push({
+      $match: {
+        locationId: { $in: locationIds },
+      },
+    });
+  }
+  else if (countryCode) {
     pipeline.push({
       $lookup: {
         from: 'locations',
@@ -113,15 +56,6 @@ function buildBasePipeline(
       },
     });
   }
-  // Jeśli podano filtr po lokalizacji (promień 15 km)
-  else if (locationFilter?.lat !== undefined && locationFilter?.lng !== undefined) {
-    pipeline.push(
-      ...buildLocationFilterStages({
-        lat: locationFilter.lat,
-        lng: locationFilter.lng,
-      }),
-    );
-  }
 
   return pipeline;
 }
@@ -130,10 +64,15 @@ export function getPaginatedRewardData(
   start: number,
   limit: number,
   entityFilterQuery: FilterQuery<Model<RewardDocument>>,
-  locationFilter?: { lat?: number; lng?: number },
+  locationFilter?: { lat?: number; lng?: number }, // Deprecated - nie używamy już
   countryCode?: string,
+  locationIds?: Types.ObjectId[],
 ) {
-  const dataPipeline = buildBasePipeline(entityFilterQuery, locationFilter, countryCode);
+  const dataPipeline = buildBasePipeline(
+    entityFilterQuery,
+    countryCode,
+    locationIds,
+  );
 
   dataPipeline.push(
     { $skip: start },
@@ -177,7 +116,11 @@ export function getPaginatedRewardData(
     },
   );
 
-  const metadataPipeline = buildBasePipeline(entityFilterQuery, locationFilter, countryCode);
+  const metadataPipeline = buildBasePipeline(
+    entityFilterQuery,
+    countryCode,
+    locationIds,
+  );
 
   metadataPipeline.push(
     { $count: 'total' },

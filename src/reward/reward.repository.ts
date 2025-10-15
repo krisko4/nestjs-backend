@@ -127,4 +127,19 @@ export class RewardRepository extends MongoRepository<
 
     return result[0];
   }
+
+  async findPaginatedByLocationIds(
+    paginationQuery: PaginationQuery,
+    locationIds: string[],
+  ) {
+    const { start, limit } = paginationQuery;
+    const objectIds = locationIds.map((id) => new Types.ObjectId(id));
+    let pipeline = this.rewardModel.aggregate();
+
+    const result = await pipeline.facet(
+      getPaginatedRewardData(start, limit, {}, undefined, undefined, objectIds),
+    );
+
+    return result[0];
+  }
 }

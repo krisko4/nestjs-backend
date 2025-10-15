@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { PlaceService } from './place.service';
 import { PlaceRepository } from './place.repository';
 import { Place, PlaceSchema } from './schemas/place.schema';
@@ -7,6 +7,7 @@ import { UserModule } from 'src/user/user.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
+import { CodeModule } from 'src/code/code.module';
 import { MulterConfigService } from 'src/multer-config/multer-config.service';
 import { MulterModule } from '@nestjs/platform-express';
 import { AdminPlaceController } from './place.controller.admin';
@@ -19,6 +20,7 @@ import { UserPlaceController } from './place.controller.user';
     AuthModule,
     CloudinaryModule,
     SubscriptionModule,
+    forwardRef(() => CodeModule),
     MulterModule.registerAsync({
       useClass: MulterConfigService,
     }),

@@ -36,7 +36,7 @@ export class Location {
   status: string;
   @Prop({ type: OpeningHoursSchema })
   openingHours: OpeningHours;
-  @Prop({ default: false })
+  @Prop({ default: true })
   isActive: boolean;
   @Prop({ default: 0 })
   visitCount: number;

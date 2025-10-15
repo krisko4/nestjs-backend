@@ -18,6 +18,12 @@ export class UserCodeController {
   constructor(private readonly codeService: CodeService) {}
 
   @UseGuards(JwtAuthGuard)
+  @Post()
+  create(@Body() createCodeDto: CreateCodeDto) {
+    return this.codeService.create(createCodeDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('use')
   use(@Body() useCodeDto: UseCodeDto, @Req() req) {
     const { uid } = req.cookies;

@@ -8,4 +8,7 @@ export class CreateCodeDto {
   rewardId?: string;
   @IsOptional()
   invitationId?: string;
+  @IsMongoId()
+  @IsOptional()
+  locationId?: string;
 }

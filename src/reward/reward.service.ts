@@ -326,15 +326,18 @@ export class RewardService {
   async search(searchQuery: SearchRewardQuery) {
     const { lat, lng, countryCode, start, limit } = searchQuery;
 
-    const nearbyResults = await this.rewardRepository.findPaginated(
-      { start, limit },
-      {},
-      undefined,
-      { lat, lng },
-    );
+    const nearbyLocationIds =
+      await this.placeService.findLocationIdsWithinRadius(
+        lat,
+        lng,
+        15000, // 15 km in metres
+      );
 
-    if (nearbyResults.data && nearbyResults.data.length > 0) {
-      return nearbyResults;
+    if (nearbyLocationIds.length > 0) {
+      return this.rewardRepository.findPaginatedByLocationIds(
+        { start, limit },
+        nearbyLocationIds,
+      );
     }
 
     return this.rewardRepository.findPaginatedByCountryCode(

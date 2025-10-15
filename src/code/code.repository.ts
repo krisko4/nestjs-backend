@@ -23,12 +23,13 @@ export class CodeRepository extends MongoRepository<
     value: string,
     session?: ClientSession,
   ) {
-    const { userId, rewardId, invitationId } = createCodeDto;
+    const { userId, rewardId, invitationId, locationId } = createCodeDto;
     return this.create(
       {
         user: toMongoObjectId(userId),
         reward: rewardId ? toMongoObjectId(rewardId) : undefined,
         invitation: invitationId ? toMongoObjectId(invitationId) : undefined,
+        locationId: locationId ? toMongoObjectId(locationId) : undefined,
         value,
       },
       session,
@@ -132,5 +133,13 @@ export class CodeRepository extends MongoRepository<
       { reward: new Types.ObjectId(rewardId) },
       { session },
     );
+  }
+
+  async findUnusedCodeByLocationIdAndUserId(locationId: string, userId: string) {
+    return this.codeModel.findOne({
+      locationId: toMongoObjectId(locationId),
+      user: toMongoObjectId(userId),
+      usedAt: { $exists: false },
+    });
   }
 }

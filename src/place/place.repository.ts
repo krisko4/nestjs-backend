@@ -9,8 +9,8 @@ import {
   PlaceWithPopulatedEmployees,
 } from './schemas/place.schema';
 import { PlaceFilterQuery } from './queries/place.filter.query';
-import { getGroupedLocationData } from './aggregations/grouped-location-data';
 import { getPaginatedPlaceData } from './aggregations/paginated-place-data';
+import { getPaginatedPlaceDataForSearch } from './aggregations/paginated-place-data-for-search';
 import { CreatePlaceDto } from './dto/create-place.dto';
 import { UpdatePlaceDto } from './dto/update-place.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
@@ -28,6 +28,7 @@ import {
 } from './schemas/place-employee.schema';
 import { AddPlaceEmployeeDto } from './dto/add-place-employee.dto';
 import { User, UserDocument } from 'src/user/schemas/user.schema';
+import { Haversine } from 'src/haversine/haversine';
 
 @Injectable()
 export class PlaceRepository extends MongoRepository<
@@ -132,7 +133,7 @@ export class PlaceRepository extends MongoRepository<
     );
   }
 
-  private async findActiveAndSortAndPaginate(
+  private async findAndSortAndPaginate(
     start: number,
     limit: number,
     sortQuery: FilterQuery<Model<PlaceDocument>>,
@@ -142,7 +143,6 @@ export class PlaceRepository extends MongoRepository<
       .aggregate()
       .unwind('locations')
       .match({
-        'locations.isActive': true,
         ...entityFilterQuery,
       })
       .sort(sortQuery)
@@ -168,7 +168,7 @@ export class PlaceRepository extends MongoRepository<
   ) {
     const { start, limit, name, type, address } = placeFilterQuery;
     const filterQuery = this.createFilterQuery(name, type, address);
-    const result = await this.findActiveAndSortAndPaginate(
+    const result = await this.findAndSortAndPaginate(
       start,
       limit,
       sortQuery,
@@ -206,7 +206,9 @@ export class PlaceRepository extends MongoRepository<
     return locationIdDocs.map((doc) => doc._id);
   }
 
-  async findLocation(id: string, locationId: string) {
+  async findLocation(id: string, locationId: string, favoriteLocationIds: string[] = []) {
+    const favoriteObjectIds = favoriteLocationIds.map((id) => new Types.ObjectId(id));
+
     const foundPlaces = await this.placeModel
       .aggregate()
       .unwind('locations')
@@ -214,7 +216,23 @@ export class PlaceRepository extends MongoRepository<
         _id: new Types.ObjectId(id),
         'locations._id': new Types.ObjectId(locationId),
       })
-      .group(getGroupedLocationData());
+      .addFields({
+        'locations.isFavorite': {
+          $in: ['$locations._id', favoriteObjectIds],
+        },
+      })
+      .project({
+        _id: 1,
+        name: 1,
+        type: 1,
+        logo: 1,
+        images: 1,
+        description: 1,
+        createdAt: 1,
+        subtitle: 1,
+        userId: 1,
+        location: '$locations',
+      });
     const place = foundPlaces[0];
     if (!place) throw new InternalServerErrorException('Invalid locationId');
     return place;
@@ -307,7 +325,7 @@ export class PlaceRepository extends MongoRepository<
     const { start, limit, name, type, address } = placeFilterQuery;
     const filterQuery = this.createFilterQuery(name, type, address);
     const sortQuery = { createdAt: -1 };
-    const aggregationResult = await this.findActiveAndSortAndPaginate(
+    const aggregationResult = await this.findAndSortAndPaginate(
       start,
       limit,
       sortQuery,
@@ -316,6 +334,7 @@ export class PlaceRepository extends MongoRepository<
         'locations._id': {
           $in: ids,
         },
+        'locations.isActive': true,
       },
     );
     return aggregationResult[0];
@@ -387,5 +406,69 @@ export class PlaceRepository extends MongoRepository<
         },
       )
       .exec();
+  }
+
+  async findLocationIdsWithinRadius(
+    lat: number,
+    lng: number,
+    radiusInMeters: number,
+  ): Promise<string[]> {
+    const places = await this.placeModel
+      .aggregate()
+      .unwind('locations')
+      .project({
+        'locations._id': 1,
+        'locations.lat': 1,
+        'locations.lng': 1,
+      })
+      .exec();
+
+    const nearbyLocationIds: string[] = [];
+
+    for (const place of places) {
+      const location = place.locations;
+      if (location.lat && location.lng) {
+        const distance = Haversine.calculateDistance(
+          { lat, lng },
+          { lat: location.lat, lng: location.lng },
+        );
+
+        if (distance <= radiusInMeters) {
+          nearbyLocationIds.push(location._id.toString());
+        }
+      }
+    }
+
+    return nearbyLocationIds;
+  }
+
+  async findPaginatedByCountryCode(
+    paginationQuery: PaginationQuery,
+    countryCode: string,
+    favoriteLocationIds: string[] = [],
+  ) {
+    const { start, limit } = paginationQuery;
+    const pipeline = this.placeModel.aggregate();
+
+    const result = await pipeline.facet(
+      getPaginatedPlaceDataForSearch(start, limit, countryCode, undefined, favoriteLocationIds),
+    );
+
+    return result[0];
+  }
+
+  async findPaginatedByLocationIds(
+    paginationQuery: PaginationQuery,
+    locationIds: string[],
+    favoriteLocationIds: string[] = [],
+  ) {
+    const { start, limit } = paginationQuery;
+    const pipeline = this.placeModel.aggregate();
+
+    const result = await pipeline.facet(
+      getPaginatedPlaceDataForSearch(start, limit, undefined, locationIds, favoriteLocationIds),
+    );
+
+    return result[0];
   }
 }

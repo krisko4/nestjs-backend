@@ -142,18 +142,18 @@ export class AdminPlaceController {
     return this.placeService.findSubscribed(placeFilterQuery, req.user.uid);
   }
 
-  @Get('/favorite')
-  async findFavorite(
-    @Query() placeFilterQuery: PlaceFilterQuery,
-    @Req() request,
-  ) {
-    const { favIds } = request.cookies;
-    return this.placeService.findFavorite(placeFilterQuery, favIds);
-  }
-  @Get(':locationId/opening-hours')
-  findOpeningHours(@Param('locationId') locationId: string) {
-    return this.placeService.findOpeningHours(locationId);
-  }
+  // @Get('/favorite')
+  // async findFavorite(
+  //   @Query() placeFilterQuery: PlaceFilterQuery,
+  //   @Req() request,
+  // ) {
+  //   const { favIds } = request.cookies;
+  //   return this.placeService.findFavorite(placeFilterQuery, favIds);
+  // }
+  // @Get(':locationId/opening-hours')
+  // findOpeningHours(@Param('locationId') locationId: string) {
+  //   return this.placeService.findOpeningHours(locationId);
+  // }
 
   // @Patch(':id/opening-hours')
   // setOpeningHours(
@@ -191,7 +191,7 @@ export class AdminPlaceController {
     @Param() { locationId, id }: FindLocationParams,
   ) {
     const { uid } = req.cookies;
-    const place = await this.placeService.findLocation(id, locationId);
+    const place = await this.placeService.findLocation(id, locationId, uid);
     const placeDto = plainToInstance(PlaceDto, place);
     placeDto.isUserOwner = place.userId.toString() === uid.toString();
     return placeDto;
