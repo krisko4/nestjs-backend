@@ -7,15 +7,22 @@ import {
   Query,
   Req,
   UseGuards,
+  Sse,
+  Param,
+  MessageEvent,
 } from '@nestjs/common';
 import { CodeService } from './code.service';
-import { CreateCodeDto } from './dto/create-code.dto';
 import { CodeFilterQuery } from './queries/code-filter.query';
 import { UseCodeDto } from './dto/use-code.dto';
+import { CodeSseService } from './code-sse.service';
+import { Observable } from 'rxjs';
 
 @Controller('codes')
 export class CodeController {
-  constructor(private readonly codeService: CodeService) {}
+  constructor(
+    private readonly codeService: CodeService,
+    private readonly codeSseService: CodeSseService,
+  ) {}
 
   @UseGuards(JwtAuthGuard)
   @Post('use')
@@ -32,5 +39,15 @@ export class CodeController {
       req.user.uid,
     );
     return res;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Sse('listen/:codeValue')
+  listenForCodeScan(
+    @Param('codeValue') codeValue: string,
+    @Req() req,
+  ): Observable<MessageEvent> {
+    console.log('code scanned');
+    return this.codeSseService.getCodeScannedStreamByCodeValue(codeValue);
   }
 }

@@ -6,6 +6,7 @@ import { Code, CodeSchema } from './schemas/code.schema';
 import { MongooseModule } from '@nestjs/mongoose';
 import { CodeRepository } from './code.repository';
 import { UserCodeController } from './code.controller.user';
+import { CodeSseService } from './code-sse.service';
 
 @Module({
   imports: [
@@ -13,7 +14,7 @@ import { UserCodeController } from './code.controller.user';
     MongooseModule.forFeature([{ name: Code.name, schema: CodeSchema }]),
   ],
   controllers: [CodeController, UserCodeController],
-  providers: [CodeService, CodeRepository],
-  exports: [CodeService],
+  providers: [CodeService, CodeRepository, CodeSseService],
+  exports: [CodeService, CodeRepository],
 })
 export class CodeModule {}

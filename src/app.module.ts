@@ -24,6 +24,7 @@ import { GeolocationModule } from './geolocation/geolocation.module';
 import { ReferralModule } from './referral/referral.module';
 import { InvitationModule } from './invitation/invitation.module';
 import { FirebaseModule } from './firebase/firebase.module';
+import { ClientModule } from './client/client.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { FirebaseModule } from './firebase/firebase.module';
     ReferralModule,
     InvitationModule,
     FirebaseModule,
+    ClientModule,
   ],
 })
 export class AppModule {}

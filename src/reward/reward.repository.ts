@@ -60,6 +60,7 @@ export class RewardRepository extends MongoRepository<
     availableFor,
     locationId,
     placeId,
+    selectedUserIds,
   }: {
     name: string;
     description: string;
@@ -68,8 +69,9 @@ export class RewardRepository extends MongoRepository<
     availableFor: RewardAvailableFor;
     locationId: string;
     placeId: string;
+    selectedUserIds?: string[];
   }) {
-    const reward = {
+    const reward: any = {
       name,
       description,
       event: eventId,
@@ -77,6 +79,17 @@ export class RewardRepository extends MongoRepository<
       place: placeId,
       locationId,
     };
+
+    // Dodaj selectedUserIds tylko gdy availableFor = SELECTED_USERS
+    if (
+      availableFor === RewardAvailableFor.SELECTED_USERS &&
+      selectedUserIds
+    ) {
+      reward.selectedUserIds = selectedUserIds.map(
+        (id) => new Types.ObjectId(id),
+      );
+    }
+
     // if (!scheduledFor) reward['date'] = new Date();
     return this.create(reward, session);
   }

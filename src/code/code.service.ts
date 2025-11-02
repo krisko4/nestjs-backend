@@ -14,10 +14,14 @@ import { CreateCodeDto } from './dto/create-code.dto';
 import { ClientSession } from 'mongoose';
 import { UseCodeDto } from './dto/use-code.dto';
 import { NotFoundError } from 'rxjs';
+import { CodeSseService } from './code-sse.service';
 
 @Injectable()
 export class CodeService {
-  constructor(private readonly codeRepository: CodeRepository) {}
+  constructor(
+    private readonly codeRepository: CodeRepository,
+    private readonly codeSseService: CodeSseService,
+  ) {}
   async create(createCodeDto: CreateCodeDto, session?: ClientSession) {
     let isDuplicate = true;
     let value = Math.random().toString(36).substring(2, 7);
@@ -48,7 +52,19 @@ export class CodeService {
     if (!isUserEmployee) {
       throw new UnauthorizedException('ILLEGAL_OPERATION');
     }
-    return this.codeRepository.useCodeById(code._id, uid);
+
+    const result = await this.codeRepository.useCodeById(code._id, uid);
+
+    this.codeSseService.emitCodeScanned({
+      codeValue: value,
+      userId: code.user.toString(),
+      scannedBy: uid,
+      timestamp: new Date(),
+    });
+
+    console.log(result);
+
+    return result;
   }
 
   useById(id: string, usedBy: string) {
@@ -161,7 +177,13 @@ export class CodeService {
     return this.codeRepository.findByRewardIdAndDelete(rewardId, session);
   }
 
-  async findUnusedCodeByLocationIdAndUserId(locationId: string, userId: string) {
-    return this.codeRepository.findUnusedCodeByLocationIdAndUserId(locationId, userId);
+  async findUnusedCodeByLocationIdAndUserId(
+    locationId: string,
+    userId: string,
+  ) {
+    return this.codeRepository.findUnusedCodeByLocationIdAndUserId(
+      locationId,
+      userId,
+    );
   }
 }

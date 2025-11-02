@@ -66,10 +66,10 @@ export class RewardService {
 
   async findByIdForUser(id: string, userId: string) {
     const reward = await this.rewardRepository.findById(id);
-    // const code = await this.codeService.findByRewardIdAndUserId(id, userId);
+    const code = await this.codeService.findByRewardIdAndUserId(id, userId);
     return {
       ...reward.toObject(),
-      // usedAt: code.usedAt,
+      usedAt: code ? code.usedAt : null,
     };
   }
 
@@ -86,6 +86,22 @@ export class RewardService {
     const reward = await this.findById(rewardId);
     if (!reward) {
       throw new NotFoundException('INVALID_REWARD_ID');
+    }
+
+    // Sprawdź czy użytkownik ma dostęp do tego rewarda
+    if (
+      reward.availableFor === 'SELECTED_USERS' &&
+      reward.selectedUserIds &&
+      reward.selectedUserIds.length > 0
+    ) {
+      const hasAccess = reward.selectedUserIds.some(
+        (id) => id.toString() === userId.toString(),
+      );
+      if (!hasAccess) {
+        throw new UnauthorizedException(
+          'You do not have access to this reward',
+        );
+      }
     }
 
     const existingCode = await this.codeService.findByRewardIdAndUserId(
@@ -218,8 +234,14 @@ export class RewardService {
   // }
 
   async create(createRewardDto: CreateRewardDto, uid: string) {
-    const { description, eventId, name, locationId, availableFor } =
-      createRewardDto;
+    const {
+      description,
+      eventId,
+      name,
+      locationId,
+      availableFor,
+      selectedUserIds,
+    } = createRewardDto;
     const duplicateEvent = await this.findByEventId(eventId);
     if (duplicateEvent) {
       throw new InternalServerErrorException(
@@ -313,6 +335,7 @@ export class RewardService {
       availableFor,
       placeId: place._id,
       locationId,
+      selectedUserIds,
     });
 
     // await this.createRewardWithCodes(

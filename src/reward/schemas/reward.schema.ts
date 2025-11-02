@@ -9,6 +9,7 @@ export type RewardDocument = Reward & Document;
 export enum RewardAvailableFor {
   ALL = 'ALL',
   SUBSCRIBERS = 'SUBSCRIBERS',
+  SELECTED_USERS = 'SELECTED_USERS',
 }
 
 export type CreateRewardSchema = {
@@ -18,6 +19,7 @@ export type CreateRewardSchema = {
   locationId: string;
   event: string;
   place: string;
+  selectedUserIds?: string[];
 };
 
 @Schema()
@@ -47,6 +49,8 @@ export class Reward {
   locationId: string;
   @Prop({ required: true, enum: Object.values(RewardAvailableFor) })
   availableFor: RewardAvailableFor;
+  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] })
+  selectedUserIds?: mongoose.Types.ObjectId[];
   @Prop({ default: Date.now })
   createdAt: Date;
 }
