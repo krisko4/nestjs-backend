@@ -33,6 +33,7 @@ export function getPaginatedEmployees(
           _id: '$employees._id',
           user: '$user',
           role: '$employees.role',
+          name: '$employees.name',
           email: '$employees.email',
           status: '$employees.status',
           place: {

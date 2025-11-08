@@ -186,4 +186,18 @@ export class CodeService {
       userId,
     );
   }
+
+  /**
+   * Pobiera historię skanów dla konkretnego rewarda
+   * @param rewardId - ID rewarda
+   * @param start - Offset (skip)
+   * @param limit - Liczba elementów na stronę
+   */
+  async findScanHistoryByRewardId(
+    rewardId: string,
+    start: number = 0,
+    limit: number = 10,
+  ) {
+    return this.codeRepository.findScanHistoryByRewardId(rewardId, start, limit);
+  }
 }

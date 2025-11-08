@@ -55,4 +55,28 @@ export class AdminRewardController {
   findStatistics(@Query() statisticsFilterQuery: StatisticsFilterQuery) {
     return this.rewardService.findStatistics(statisticsFilterQuery);
   }
+
+  /**
+   * GET /admin/rewards/:id/scan-history?start=0&limit=10
+   * Pobiera historię skanów dla konkretnego rewarda (kuponu)
+   * Zwraca informacje o tym kiedy kod został zeskanowany,
+   * kto go zeskanował oraz dla jakiego użytkownika był kod
+   * start - offset (0 = pierwsza strona, 10 = druga strona przy limit=10)
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/scan-history')
+  async getRewardScanHistory(
+    @Param('id') rewardId: string,
+    @Query() pagination: PaginationQuery,
+    @Req() req,
+  ) {
+    const userId = req.user.uid;
+    const { start = 0, limit = 10 } = pagination;
+    return this.rewardService.getRewardScanHistory(
+      rewardId,
+      userId,
+      start,
+      limit,
+    );
+  }
 }

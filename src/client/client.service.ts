@@ -20,13 +20,29 @@ export class ClientService {
    * @param userId - ID użytkownika (owner/employee place'ów)
    * @param page - Numer strony
    * @param limit - Liczba elementów na stronę
+   * @param placeId - Opcjonalny filtr po konkretnym placeId
    * @param locationId - Opcjonalny filtr po konkretnej lokalizacji
+   * @param email - Opcjonalny filtr po emailu klienta
+   * @param minScans - Minimalna liczba skanów
+   * @param maxScans - Maksymalna liczba skanów
+   * @param lastScanDateFrom - Data początkowa ostatniej wizyty
+   * @param lastScanDateTo - Data końcowa ostatniej wizyty
+   * @param sortBy - Pole według którego sortować
+   * @param sortOrder - Kierunek sortowania
    */
   async getClientsByUserId(
     userId: string,
     page: number = 1,
     limit: number = 10,
+    placeId?: string,
     locationId?: string,
+    email?: string,
+    minScans?: number,
+    maxScans?: number,
+    lastScanDateFrom?: string,
+    lastScanDateTo?: string,
+    sortBy: string = 'lastScanDate',
+    sortOrder: string = 'desc',
   ): Promise<PaginatedResponse<ClientResponseDto>> {
     // Pobierz wszystkie place'y użytkownika
     const places = await this.placeService.findByUserId(userId);
@@ -53,13 +69,21 @@ export class ClientService {
       places.map((place) => [place._id.toString(), place.name]),
     );
 
-    // Pobierz klientów z agregacji MongoDB (z paginacją i opcjonalnym filtrem locationId)
+    // Pobierz klientów z agregacji MongoDB (z paginacją i filtrami)
     const { data: clientsData, total } =
       await this.codeRepository.findClientsByPlaceIds(
         placeIds,
         page,
         limit,
+        placeId,
         locationId,
+        email,
+        minScans,
+        maxScans,
+        lastScanDateFrom,
+        lastScanDateTo,
+        sortBy,
+        sortOrder,
       );
 
     // Mapuj dane z agregacji na DTO

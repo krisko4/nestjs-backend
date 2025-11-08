@@ -149,13 +149,29 @@ export class CodeRepository extends MongoRepository<
    * @param placeIds - Lista ID place'ów należących do użytkownika
    * @param page - Numer strony (zaczyna się od 1)
    * @param limit - Liczba elementów na stronę
+   * @param placeId - Opcjonalny filtr po konkretnym placeId
    * @param locationId - Opcjonalny filtr po locationId
+   * @param email - Opcjonalny filtr po emailu klienta
+   * @param minScans - Minimalna liczba skanów
+   * @param maxScans - Maksymalna liczba skanów
+   * @param lastScanDateFrom - Data początkowa ostatniej wizyty
+   * @param lastScanDateTo - Data końcowa ostatniej wizyty
+   * @param sortBy - Pole według którego sortować (domyślnie: lastScanDate)
+   * @param sortOrder - Kierunek sortowania (domyślnie: desc)
    */
   async findClientsByPlaceIds(
     placeIds: string[],
     page: number = 1,
     limit: number = 10,
+    placeId?: string,
     locationId?: string,
+    email?: string,
+    minScans?: number,
+    maxScans?: number,
+    lastScanDateFrom?: string,
+    lastScanDateTo?: string,
+    sortBy: string = 'lastScanDate',
+    sortOrder: string = 'desc',
   ) {
     const placeObjectIds = placeIds.map((id) => new Types.ObjectId(id));
     const skip = (page - 1) * limit;
@@ -181,9 +197,11 @@ export class CodeRepository extends MongoRepository<
       },
       {
         // Filtrujemy tylko kody z place'ów użytkownika
-        // ORAZ opcjonalnie po locationId jeśli został podany
+        // ORAZ opcjonalnie po placeId lub locationId jeśli zostały podane
         $match: {
-          'rewardData.place': { $in: placeObjectIds },
+          'rewardData.place': placeId
+            ? new Types.ObjectId(placeId)
+            : { $in: placeObjectIds },
           ...(locationId && {
             'rewardData.locationId': new Types.ObjectId(locationId),
           }),
@@ -229,8 +247,28 @@ export class CodeRepository extends MongoRepository<
         $unwind: '$userData',
       },
       {
-        // Sortujemy po dacie ostatniego skanu (najnowsze pierwsze)
-        $sort: { lastScanDate: -1 },
+        // Filtrujemy po kryteriach dodatkowych
+        $match: {
+          ...(email && {
+            'userData.email': { $regex: email, $options: 'i' },
+          }),
+          ...((minScans !== undefined || maxScans !== undefined) && {
+            totalScans: {
+              ...(minScans !== undefined && { $gte: minScans }),
+              ...(maxScans !== undefined && { $lte: maxScans }),
+            },
+          }),
+          ...((lastScanDateFrom || lastScanDateTo) && {
+            lastScanDate: {
+              ...(lastScanDateFrom && { $gte: new Date(lastScanDateFrom) }),
+              ...(lastScanDateTo && { $lte: new Date(lastScanDateTo) }),
+            },
+          }),
+        },
+      },
+      {
+        // Sortujemy według wybranego pola i kierunku
+        $sort: { [sortBy]: sortOrder === 'asc' ? 1 : -1 },
       },
     ];
 
@@ -248,6 +286,183 @@ export class CodeRepository extends MongoRepository<
     return {
       data: result[0]?.data || [],
       total: result[0]?.metadata[0]?.total || 0,
+    };
+  }
+
+  /**
+   * Pobiera historię skanów dla konkretnego rewarda (kuponu)
+   * @param rewardId - ID rewarda
+   * @param start - Offset (skip) - liczba elementów do pominięcia
+   * @param limit - Liczba elementów na stronę
+   */
+  async findScanHistoryByRewardId(
+    rewardId: string,
+    start: number = 0,
+    limit: number = 10,
+  ) {
+    const skip = start;
+
+    const pipeline: any[] = [
+      {
+        // Tylko kody dla tego konkretnego rewarda które zostały użyte
+        $match: {
+          reward: new Types.ObjectId(rewardId),
+          usedAt: { $exists: true },
+        },
+      },
+      {
+        // Sortujemy po dacie użycia (najnowsze pierwsze)
+        $sort: { usedAt: -1 },
+      },
+      {
+        // Populujemy dane użytkownika który otrzymał kod (user)
+        $lookup: {
+          from: 'users',
+          localField: 'user',
+          foreignField: '_id',
+          as: 'codeOwner',
+        },
+      },
+      {
+        $unwind: {
+          path: '$codeOwner',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        // Populujemy dane rewarda żeby dostać się do place
+        $lookup: {
+          from: 'rewards',
+          localField: 'reward',
+          foreignField: '_id',
+          as: 'rewardInfo',
+        },
+      },
+      {
+        $unwind: {
+          path: '$rewardInfo',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        // Populujemy dane place
+        $lookup: {
+          from: 'places',
+          localField: 'rewardInfo.place',
+          foreignField: '_id',
+          as: 'placeInfo',
+        },
+      },
+      {
+        $unwind: {
+          path: '$placeInfo',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        // Filtrujemy employees żeby znaleźć tego który zeskanował kod
+        $addFields: {
+          scannedByEmployee: {
+            $arrayElemAt: [
+              {
+                $filter: {
+                  input: '$placeInfo.employees',
+                  as: 'emp',
+                  cond: { $eq: ['$$emp.user', '$usedBy'] },
+                },
+              },
+              0,
+            ],
+          },
+        },
+      },
+      {
+        // Populujemy dane użytkownika w scannedByEmployee
+        $lookup: {
+          from: 'users',
+          localField: 'scannedByEmployee.user',
+          foreignField: '_id',
+          as: 'scannedByUserData',
+        },
+      },
+      {
+        $addFields: {
+          scannedByEmployee: {
+            $cond: {
+              if: { $ne: ['$scannedByEmployee', null] },
+              then: {
+                $mergeObjects: [
+                  '$scannedByEmployee',
+                  {
+                    user: { $arrayElemAt: ['$scannedByUserData', 0] },
+                  },
+                ],
+              },
+              else: null,
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          value: 1,
+          usedAt: 1,
+          codeOwner: {
+            _id: 1,
+            firstName: 1,
+            lastName: 1,
+            email: 1,
+            img: 1,
+          },
+          scannedBy: {
+            _id: '$scannedByEmployee._id',
+            role: '$scannedByEmployee.role',
+            status: '$scannedByEmployee.status',
+            email: '$scannedByEmployee.email',
+            name: '$scannedByEmployee.name',
+            user: {
+              _id: '$scannedByEmployee.user._id',
+              firstName: '$scannedByEmployee.user.firstName',
+              lastName: '$scannedByEmployee.user.lastName',
+              email: '$scannedByEmployee.user.email',
+              img: '$scannedByEmployee.user.img',
+            },
+          },
+        },
+      },
+    ];
+
+    // Wykonujemy agregację z facet żeby dostać zarówno dane jak i total count
+    const result = await this.codeModel.aggregate([
+      ...pipeline,
+      {
+        $facet: {
+          data: [{ $skip: skip }, { $limit: limit }],
+          metadata: [
+            { $count: 'total' },
+            {
+              $addFields: {
+                start: start,
+                limit: limit,
+              },
+            },
+          ],
+        },
+      },
+    ]);
+
+    const metadata = result[0]?.metadata[0] || { total: 0, start, limit };
+
+    return {
+      data: result[0]?.data || [],
+      metadata: [
+        {
+          total: metadata.total || 0,
+          start: start,
+          limit: limit,
+        },
+      ],
     };
   }
 

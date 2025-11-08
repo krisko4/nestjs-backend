@@ -86,11 +86,33 @@ export function getPaginatedRewardData(
       },
     },
     {
+      $lookup: {
+        from: 'codes',
+        localField: '_id',
+        foreignField: 'reward',
+        as: 'codes',
+      },
+    },
+    {
+      $addFields: {
+        totalScans: {
+          $size: {
+            $filter: {
+              input: '$codes',
+              as: 'code',
+              cond: { $ne: ['$$code.usedAt', null] },
+            },
+          },
+        },
+      },
+    },
+    {
       $project: {
         name: 1,
         description: 1,
         availableFor: 1,
         createdAt: 1,
+        totalScans: 1,
         place: {
           $mergeObjects: [
             { $arrayElemAt: ['$place', 0] },

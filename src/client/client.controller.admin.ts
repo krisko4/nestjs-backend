@@ -9,17 +9,49 @@ export class AdminClientController {
   constructor(private readonly clientService: ClientService) {}
 
   /**
-   * GET /admin/clients?page=1&limit=10&locationId=xxx
+   * GET /admin/clients?page=1&limit=10&placeId=xxx&locationId=xxx&email=xxx&minScans=5&maxScans=50&lastScanDateFrom=2024-01-01&lastScanDateTo=2024-12-31&sortBy=totalScans&sortOrder=desc
    * Pobiera listę wszystkich klientów (użytkowników którzy zeskanowali kody)
    * dla place'ów należących do zalogowanego użytkownika
-   * Opcjonalnie można filtrować po locationId
+   * Opcjonalnie można filtrować po:
+   * - placeId - konkretny place
+   * - locationId - konkretna lokalizacja
+   * - email - email klienta (częściowe dopasowanie, case-insensitive)
+   * - minScans, maxScans - zakres liczby skanów
+   * - lastScanDateFrom, lastScanDateTo - zakres dat ostatniej wizyty (format ISO 8601)
+   * - sortBy - pole sortowania (lastScanDate | totalScans, domyślnie: lastScanDate)
+   * - sortOrder - kierunek sortowania (asc | desc, domyślnie: desc)
    */
   @UseGuards(JwtAuthGuard)
   @Get()
   async getClients(@Query() query: ClientFilterQuery, @Req() req) {
     const userId = req.user.uid;
-    const { page = 1, limit = 10, locationId } = query;
-    return this.clientService.getClientsByUserId(userId, page, limit, locationId);
+    const {
+      page = 1,
+      limit = 10,
+      placeId,
+      locationId,
+      email,
+      minScans,
+      maxScans,
+      lastScanDateFrom,
+      lastScanDateTo,
+      sortBy = 'lastScanDate',
+      sortOrder = 'desc',
+    } = query;
+    return this.clientService.getClientsByUserId(
+      userId,
+      page,
+      limit,
+      placeId,
+      locationId,
+      email,
+      minScans,
+      maxScans,
+      lastScanDateFrom,
+      lastScanDateTo,
+      sortBy,
+      sortOrder,
+    );
   }
 
   /**

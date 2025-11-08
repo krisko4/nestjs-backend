@@ -390,4 +390,37 @@ export class RewardService {
       };
     });
   }
+
+  /**
+   * Pobiera historię skanów dla konkretnego rewarda (dla admina)
+   * @param rewardId - ID rewarda
+   * @param userId - ID użytkownika (właściciela place'a)
+   * @param start - Offset (skip)
+   * @param limit - Liczba elementów na stronę
+   */
+  async getRewardScanHistory(
+    rewardId: string,
+    userId: string,
+    start: number = 0,
+    limit: number = 10,
+  ) {
+    // Sprawdź czy reward istnieje i czy użytkownik ma do niego dostęp
+    const reward = await this.findById(rewardId);
+    if (!reward) {
+      throw new NotFoundException('INVALID_REWARD_ID');
+    }
+
+    // Sprawdź czy użytkownik jest właścicielem place'a
+    const isUserBoss = reward.place.employees.some(
+      (u) =>
+        u.user.toString() === userId.toString() &&
+        u.role === PlaceEmployeeRole.BOSS,
+    );
+    if (!isUserBoss) {
+      throw new UnauthorizedException('ILLEGAL_OPERATION');
+    }
+
+    // Pobierz historię skanów
+    return this.codeService.findScanHistoryByRewardId(rewardId, start, limit);
+  }
 }
