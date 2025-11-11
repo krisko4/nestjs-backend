@@ -6,30 +6,34 @@ import {
 } from '@nestjs/common';
 import { PlaceEmployeeRepository } from './place-employee.repository';
 import { EmployeeService } from 'src/employee/employee.service';
-import { ClientSession, Types } from 'mongoose';
+import mongoose, { ClientSession, Types } from 'mongoose';
 import {
+  PlaceEmployeeDocument,
   PlaceEmployeeRole,
   PlaceEmployeeStatus,
 } from './schemas/place-employee.schema';
+import { CreatePlaceEmployeeDto } from './dto/create-place-employee.dto';
+import { InjectConnection } from '@nestjs/mongoose';
 
 @Injectable()
 export class PlaceEmployeeService {
   constructor(
     private readonly placeEmployeeRepository: PlaceEmployeeRepository,
     private readonly employeeService: EmployeeService,
+    @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
 
   async addEmployeeToPlace(
     placeId: string,
     userId: string,
-    email: string,
-    name?: string,
-    role: PlaceEmployeeRole = PlaceEmployeeRole.EMPLOYEE,
+    createEmployeeDto: CreatePlaceEmployeeDto,
   ) {
     const isUserBoss = await this.isUserBossOfPlace(userId, placeId);
     if (!isUserBoss) {
       throw new ForbiddenException('NOT_ALLOWED');
     }
+
+    const { email, name, role, locationIds } = createEmployeeDto;
 
     let employee = await this.employeeService.findByEmail(email);
     if (!employee) {
@@ -50,19 +54,33 @@ export class PlaceEmployeeService {
       throw new BadRequestException('EMPLOYEE_ALREADY_ADDED_TO_PLACE');
     }
 
-    return this.placeEmployeeRepository.create({
-      place: new Types.ObjectId(placeId),
-      employee: employee._id as Types.ObjectId,
-      role,
-      status: PlaceEmployeeStatus.WAITING_FOR_CONFIRMATION,
+    const session = await this.connection.startSession();
+
+    await session.withTransaction(async () => {
+      for (const locationId of locationIds) {
+        this.placeEmployeeRepository.create({
+          place: new Types.ObjectId(placeId),
+          location: new Types.ObjectId(locationId),
+          employee: employee._id as Types.ObjectId,
+          role,
+          status: PlaceEmployeeStatus.WAITING_FOR_CONFIRMATION,
+        });
+      }
     });
+
+    await session.endSession();
+
+    return true;
   }
 
   async updatePlaceEmployee(
     placeEmployeeId: string,
     userId: string,
-    role?: PlaceEmployeeRole,
-    name?: string,
+    updateDto: {
+      role?: PlaceEmployeeRole;
+      name?: string;
+      locationIds?: string[];
+    },
   ) {
     const placeEmployee =
       await this.placeEmployeeRepository.findByIdWithPopulate(placeEmployeeId);
@@ -78,7 +96,12 @@ export class PlaceEmployeeService {
       throw new ForbiddenException('NOT_ALLOWED');
     }
 
+    const { role, name, locationIds } = updateDto;
+
+    console.log(placeEmployee);
+
     if (
+      placeEmployee.employee.user &&
       placeEmployee.employee.user._id.toString() === userId &&
       role &&
       role !== PlaceEmployeeRole.BOSS
@@ -93,19 +116,69 @@ export class PlaceEmployeeService {
       );
     }
 
-    const updateData: any = {};
-    if (role !== undefined) {
-      updateData.role = role;
-    }
+    const placeId = placeEmployee.place._id.toString();
+    const employeeId = placeEmployee.employee._id.toString();
 
-    if (Object.keys(updateData).length > 0) {
-      return this.placeEmployeeRepository.updatePlaceEmployee(
-        placeEmployeeId,
-        updateData,
+    if (role !== undefined) {
+      await this.placeEmployeeRepository.updateRoleForAllLocations(
+        placeId,
+        employeeId,
+        role,
       );
     }
 
-    return placeEmployee;
+    if (locationIds !== undefined && locationIds.length > 0) {
+      const currentAssignments =
+        await this.placeEmployeeRepository.findByPlaceIdAndEmployeeId(
+          placeId,
+          employeeId,
+        );
+
+      if (currentAssignments) {
+        const allAssignments =
+          await this.placeEmployeeRepository.findAllByPlaceIdAndEmployeeId(
+            placeId,
+            employeeId,
+          );
+
+        const currentLocationIds = allAssignments.map(
+          (a: PlaceEmployeeDocument) => a.location.toString(),
+        );
+        const newLocationIdsSet = new Set(locationIds);
+
+        const locationsToRemove = currentLocationIds.filter(
+          (locId: string) => !newLocationIdsSet.has(locId),
+        );
+
+        const locationsToAdd = locationIds.filter(
+          (locId) => !currentLocationIds.includes(locId),
+        );
+
+        for (const locationId of locationsToRemove) {
+          await this.placeEmployeeRepository.removeByPlaceEmployeeAndLocation(
+            placeId,
+            employeeId,
+            locationId,
+          );
+        }
+
+        const session = await this.connection.startSession();
+        await session.withTransaction(async () => {
+          for (const locationId of locationsToAdd) {
+            await this.placeEmployeeRepository.create({
+              place: new Types.ObjectId(placeId),
+              location: new Types.ObjectId(locationId),
+              employee: new Types.ObjectId(employeeId),
+              role: role || placeEmployee.role,
+              status: placeEmployee.status,
+            });
+          }
+        });
+        await session.endSession();
+      }
+    }
+
+    return this.placeEmployeeRepository.findByIdWithPopulate(placeEmployeeId);
   }
 
   async removeEmployeeFromPlace(placeEmployeeId: string, userId: string) {
@@ -149,16 +222,13 @@ export class PlaceEmployeeService {
     return { success: true, employeeDeleted: remainingAssignments === 0 };
   }
 
-  /**
-   * Pobierz pracowników miejsca z paginacją
-   */
   async getEmployeesByPlaceId(
     placeId: string,
     userId: string,
     page: number = 1,
     limit: number = 10,
+    locationIds?: string[],
   ) {
-    // Sprawdź czy użytkownik ma dostęp
     const userPlaceEmployee =
       await this.placeEmployeeRepository.findByPlaceIdAndUserId(
         placeId,
@@ -172,6 +242,7 @@ export class PlaceEmployeeService {
       placeId,
       page,
       limit,
+      locationIds,
     );
   }
 
@@ -197,6 +268,16 @@ export class PlaceEmployeeService {
     return this.placeEmployeeRepository.isUserBossOfPlace(userId, placeId);
   }
 
+  async isUserBossOfLocation(
+    userId: string,
+    locationId: string,
+  ): Promise<boolean> {
+    return this.placeEmployeeRepository.isUserBossOfLocation(
+      userId,
+      locationId,
+    );
+  }
+
   /**
    * Znajdź PlaceEmployee po placeId i userId
    */
@@ -211,12 +292,10 @@ export class PlaceEmployeeService {
     return this.placeEmployeeRepository.findByUserId(userId);
   }
 
-  /**
-   * Utwórz PlaceEmployee z sesją (dla transakcji)
-   */
   async createPlaceEmployee(
     data: {
       place: Types.ObjectId;
+      location: Types.ObjectId;
       employee: Types.ObjectId;
       role: PlaceEmployeeRole;
       status: PlaceEmployeeStatus;

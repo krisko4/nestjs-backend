@@ -39,7 +39,9 @@ export function getPaginatedPlaceDataForSearch(
 ) {
   const dataPipeline = buildBasePipeline(countryCode, locationIds);
 
-  const favoriteObjectIds = favoriteLocationIds.map((id) => new Types.ObjectId(id));
+  const favoriteObjectIds = favoriteLocationIds.map(
+    (id) => new Types.ObjectId(id),
+  );
 
   dataPipeline.push(
     { $skip: start },
@@ -48,7 +50,6 @@ export function getPaginatedPlaceDataForSearch(
       $project: {
         _id: 1,
         name: 1,
-        subtitle: 1,
         type: 1,
         logo: {
           $concat: [`${process.env.CLOUDI_URL}/`, '$logo'],

@@ -1,9 +1,12 @@
 import {
+  IsArray,
   IsEmail,
   IsEnum,
   IsMongoId,
   IsOptional,
   IsString,
+  Min,
+  MinLength,
 } from 'class-validator';
 import { PlaceEmployeeRole } from '../schemas/place-employee.schema';
 
@@ -18,4 +21,8 @@ export class CreatePlaceEmployeeDto {
 
   @IsEnum(PlaceEmployeeRole)
   role: PlaceEmployeeRole;
+
+  @IsArray()
+  @IsMongoId({ each: true })
+  locationIds: string[];
 }

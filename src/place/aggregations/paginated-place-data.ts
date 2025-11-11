@@ -16,7 +16,6 @@ export function getPaginatedPlaceData(start: number, limit: number) {
         $project: {
           _id: 1,
           name: 1,
-          subtitle: 1,
           type: 1,
           logo: {
             $concat: [`${process.env.CLOUDI_URL}/`, '$logo'],

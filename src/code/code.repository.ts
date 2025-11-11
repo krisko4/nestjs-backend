@@ -206,7 +206,7 @@ export class CodeRepository extends MongoRepository<
             ? new Types.ObjectId(placeId)
             : { $in: placeObjectIds },
           ...(locationId && {
-            'rewardData.locationId': new Types.ObjectId(locationId),
+            'rewardData.locationIds': new Types.ObjectId(locationId),
           }),
         },
       },

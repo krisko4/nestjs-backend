@@ -1,3 +1,4 @@
+import { toMongoObjectId } from './../utils/mongo';
 import {
   BadRequestException,
   forwardRef,
@@ -163,15 +164,20 @@ export class PlaceService {
         );
       }
 
-      await this.placeEmployeeService.createPlaceEmployee(
-        {
-          place: registeredPlace._id,
-          employee: employee._id,
-          role: PlaceEmployeeRole.BOSS,
-          status: PlaceEmployeeStatus.ACTIVE,
-        },
-        session,
-      );
+      console.log(registeredPlace.locations);
+
+      for (const location of registeredPlace.locations) {
+        await this.placeEmployeeService.createPlaceEmployee(
+          {
+            place: registeredPlace._id,
+            location: toMongoObjectId(location._id),
+            employee: employee._id,
+            role: PlaceEmployeeRole.BOSS,
+            status: PlaceEmployeeStatus.ACTIVE,
+          },
+          session,
+        );
+      }
     });
     await session.endSession();
     return registeredPlace;

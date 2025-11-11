@@ -74,18 +74,26 @@ export class RewardService {
 
     const code = await this.codeService.findByRewardIdAndUserId(id, userId);
 
-    const location = reward.place.locations.find(
-      (loc) => loc._id.toString() === reward.locationId.toString(),
+    // Znajdź wszystkie lokalizacje powiązane z rewardem
+    const locations = reward.place.locations.filter((loc) =>
+      reward.locationIds.some(
+        (locationId) => locationId.toString() === loc._id.toString(),
+      ),
     );
 
-    if (!location) {
-      throw new NotFoundException('Location not found for this reward');
+    if (!locations || locations.length === 0) {
+      throw new NotFoundException('Locations not found for this reward');
     }
 
     const favoriteLocationIds = await this.userService.getFavoriteLocationIds(
       userId,
     );
-    const isFavorite = favoriteLocationIds.includes(location._id.toString());
+
+    const locationsWithFavoriteStatus = locations.map((location) => ({
+      _id: location._id,
+      address: location.address,
+      isFavorite: favoriteLocationIds.includes(location._id.toString()),
+    }));
 
     const usedCount = await this.codeService.countUserRewardUsage(id, userId);
 
@@ -101,11 +109,7 @@ export class RewardService {
         _id: reward.place._id,
         name: reward.place.name,
         logo: reward.place.logo,
-        location: {
-          _id: location._id,
-          address: location.address,
-          isFavorite,
-        },
+        locations: locationsWithFavoriteStatus,
       },
     };
   }
@@ -120,12 +124,12 @@ export class RewardService {
       userId,
     );
 
-    // Sprawdź czy są jakieś dane
+    console.log(result);
+
     if (!result.data || result.data.length === 0) {
       return result;
     }
 
-    // Dodaj usageLimit i usedCount dla każdego rewarda
     const rewardsWithUsageInfo = await Promise.all(
       result.data.map(async (reward) => {
         const usedCount = await this.codeService.countUserRewardUsage(
@@ -231,7 +235,7 @@ export class RewardService {
       description,
       eventId,
       name,
-      locationId,
+      locationIds,
       availableFor,
       selectedUserIds,
       usageLimit,
@@ -248,14 +252,30 @@ export class RewardService {
         throw new InternalServerErrorException(`EVENT_HAS_ENDED`);
       }
     }
-    const place = await this.placeService.findByLocationId(locationId);
 
-    // Sprawdź czy użytkownik jest BOSS'em tego miejsca
-    const isUserOwner = await this.placeEmployeeService.isUserBossOfPlace(
-      uid,
-      place._id.toString(),
+    // Sprawdź czy wszystkie lokalizacje należą do tego samego place
+    const place = await this.placeService.findByLocationId(locationIds[0]);
+
+    // Zweryfikuj czy wszystkie locationIds należą do tego samego place
+    for (const locationId of locationIds) {
+      const locationPlace = await this.placeService.findByLocationId(
+        locationId,
+      );
+      if (locationPlace._id.toString() !== place._id.toString()) {
+        throw new InternalServerErrorException(
+          'All locations must belong to the same place',
+        );
+      }
+    }
+
+    // Sprawdź czy użytkownik jest BOSS'em przynajmniej jednej z tych lokalizacji
+    const hasAccessToAnyLocation = await Promise.all(
+      locationIds.map((locationId) =>
+        this.placeEmployeeService.isUserBossOfLocation(uid, locationId),
+      ),
     );
-    if (!isUserOwner) {
+
+    if (!hasAccessToAnyLocation.some((hasAccess) => hasAccess)) {
       throw new InternalServerErrorException(`ILLEGAL_OPERATION`);
     }
 
@@ -270,7 +290,7 @@ export class RewardService {
         session,
         availableFor,
         placeId: place._id,
-        locationId,
+        locationIds,
         selectedUserIds,
         usageLimit,
       });
@@ -278,8 +298,9 @@ export class RewardService {
 
     await session.endSession();
 
+    // Wyślij notyfikacje dla wszystkich lokalizacji
     this.sendRewardNotificationsAsync(
-      locationId,
+      locationIds,
       place.name,
       name,
       reward._id.toString(),
@@ -289,19 +310,26 @@ export class RewardService {
   }
 
   private async sendRewardNotificationsAsync(
-    locationId: string,
+    locationIds: string[],
     placeName: string,
     rewardName: string,
     rewardId: string,
   ): Promise<void> {
     try {
-      const usersWithFavoriteLocation =
-        await this.userService.findUsersByFavoriteLocation(locationId);
+      // Zbierz użytkowników ze wszystkich lokalizacji (bez duplikatów)
+      const uniqueUserIds = new Set<string>();
 
-      if (usersWithFavoriteLocation.length > 0) {
-        const receiverIds = usersWithFavoriteLocation.map((user) =>
-          user._id.toString(),
-        );
+      for (const locationId of locationIds) {
+        const usersWithFavoriteLocation =
+          await this.userService.findUsersByFavoriteLocation(locationId);
+
+        usersWithFavoriteLocation.forEach((user) => {
+          uniqueUserIds.add(user._id.toString());
+        });
+      }
+
+      if (uniqueUserIds.size > 0) {
+        const receiverIds = Array.from(uniqueUserIds);
 
         await this.notificationService.createAndSendPersonalizedNotifications(
           NotificationType.REWARD,
@@ -312,9 +340,10 @@ export class RewardService {
           },
           {
             rewardId: rewardId,
+            locationIds: locationIds.join(','),
           },
           {
-            locationId,
+            locationId: locationIds[0], // Użyj pierwszego locationId jako głównego
             rewardId,
           },
         );

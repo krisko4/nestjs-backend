@@ -16,7 +16,7 @@ export type CreateRewardSchema = {
   name: string;
   description: string;
   availableFor: RewardAvailableFor;
-  locationId: string;
+  locationIds: string[];
   event: string;
   place: string;
   selectedUserIds?: string[];
@@ -29,10 +29,6 @@ export class Reward {
   _id: string;
   @Prop()
   date?: Date;
-  // @Prop()
-  // scheduledFor?: Date;
-  // @Prop({ required: true, type: Number })
-  // rewardPercentage: number;
   @Prop({ required: true })
   name: string;
   @Prop({ required: true })
@@ -45,9 +41,9 @@ export class Reward {
   @Transform((params) => plainToInstance(Place, params.obj.place))
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Place.name })
   place: Place;
-  @Prop({ type: mongoose.Schema.Types.ObjectId })
-  @Transform((params) => params.obj.locationId.toString())
-  locationId: string;
+  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId }] })
+  @Transform((params) => params.obj.locationIds?.map((id: mongoose.Types.ObjectId) => id.toString()) || [])
+  locationIds: string[];
   @Prop({ required: true, enum: Object.values(RewardAvailableFor) })
   availableFor: RewardAvailableFor;
   @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] })

@@ -58,7 +58,7 @@ export class RewardRepository extends MongoRepository<
     eventId,
     session,
     availableFor,
-    locationId,
+    locationIds,
     placeId,
     selectedUserIds,
     usageLimit,
@@ -68,7 +68,7 @@ export class RewardRepository extends MongoRepository<
     eventId?: string;
     session?: ClientSession;
     availableFor: RewardAvailableFor;
-    locationId: string;
+    locationIds: string[];
     placeId: string;
     selectedUserIds?: string[];
     usageLimit?: number | null;
@@ -79,7 +79,7 @@ export class RewardRepository extends MongoRepository<
       event: eventId,
       availableFor,
       place: placeId,
-      locationId,
+      locationIds: locationIds.map((id) => new Types.ObjectId(id)),
       usageLimit: usageLimit ?? null,
     };
 

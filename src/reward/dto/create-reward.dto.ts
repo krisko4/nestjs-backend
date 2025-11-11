@@ -24,8 +24,9 @@ export class CreateRewardDto {
   @IsEnum(RewardAvailableFor)
   availableFor: RewardAvailableFor;
 
-  @IsMongoId()
-  locationId: string;
+  @IsArray()
+  @IsMongoId({ each: true })
+  locationIds: string[];
 
   /**
    * Lista ID użytkowników którzy mają dostęp do tego rewarda.
@@ -44,12 +45,4 @@ export class CreateRewardDto {
   @IsNumber()
   @Min(1)
   usageLimit?: number | null;
-
-  // @IsISO8601()
-  // @IsOptional()
-  // scheduledFor?: Date;
-  // @IsNumber()
-  // @Max(100)
-  // @Min(1)
-  // rewardPercentage: number;
 }

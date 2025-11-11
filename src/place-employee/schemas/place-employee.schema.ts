@@ -20,6 +20,7 @@ export type PlaceEmployeeDocument = PlaceEmployee & Document;
 export type CreatePlaceEmployeeSchema = {
   employee: Types.ObjectId;
   place: Types.ObjectId;
+  location?: Types.ObjectId;
   role: PlaceEmployeeRole;
   status: PlaceEmployeeStatus;
 };
@@ -40,6 +41,10 @@ export class PlaceEmployee {
   @Transform((params) => params.obj.place?.toString())
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Place', required: true })
   place: Types.ObjectId;
+
+  @Transform((params) => params.obj.location?.toString())
+  @Prop({ type: mongoose.Schema.Types.ObjectId, required: false })
+  location?: Types.ObjectId;
 
   @Prop({ required: true, enum: PlaceEmployeeRole })
   @IsEnum(PlaceEmployeeRole)
@@ -65,7 +70,3 @@ export type PlaceEmployeePopulated = Omit<
 } & Document;
 
 export const PlaceEmployeeSchema = SchemaFactory.createForClass(PlaceEmployee);
-
-PlaceEmployeeSchema.index({ place: 1, employee: 1 }, { unique: true });
-PlaceEmployeeSchema.index({ employee: 1 });
-PlaceEmployeeSchema.index({ place: 1 });

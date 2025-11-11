@@ -38,6 +38,3 @@ export type EmployeePopulated = Omit<Employee, 'user'> & {
 } & Document;
 
 export const EmployeeSchema = SchemaFactory.createForClass(Employee);
-
-EmployeeSchema.index({ user: 1 });
-EmployeeSchema.index({ email: 1 }, { unique: true });

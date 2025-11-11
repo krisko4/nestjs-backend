@@ -7,7 +7,6 @@ export function getGroupedLocationData() {
     images: { $first: '$images' },
     description: { $first: '$description' },
     createdAt: { $first: '$createdAt' },
-    subtitle: { $first: '$subtitle' },
     userId: { $first: '$userId' },
     locations: {
       $addToSet: '$locations',

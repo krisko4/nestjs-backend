@@ -33,20 +33,81 @@ export class PlaceEmployeeRepository extends MongoRepository<
     placeId: string,
     page: number = 1,
     limit: number = 10,
+    locationIds?: string[],
   ) {
     const skip = (page - 1) * limit;
 
-    const [data, total] = await Promise.all([
+    // Buduj match query
+    const matchQuery: any = { place: new Types.ObjectId(placeId) };
+
+    // Jeśli podano locationIds, dodaj filtr
+    if (locationIds && locationIds.length > 0) {
+      matchQuery.location = {
+        $in: locationIds.map((id) => new Types.ObjectId(id)),
+      };
+    }
+
+    // Agregacja grupująca po employee i zbierająca wszystkie locationIds
+    const aggregationPipeline = [
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: '$employee',
+          place: { $first: '$place' },
+          role: { $first: '$role' },
+          status: { $first: '$status' },
+          locationIds: { $push: '$location' },
+          placeEmployeeIds: { $push: '$_id' },
+          createdAt: { $first: '$createdAt' },
+          updatedAt: { $first: '$updatedAt' },
+        },
+      },
+      {
+        $lookup: {
+          from: 'employees',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'employee',
+        },
+      },
+      {
+        $unwind: '$employee',
+      },
+      {
+        $lookup: {
+          from: 'places',
+          localField: 'place',
+          foreignField: '_id',
+          as: 'place',
+        },
+      },
+      {
+        $unwind: '$place',
+      },
+      {
+        $project: {
+          _id: { $arrayElemAt: ['$placeEmployeeIds', 0] },
+          employee: 1,
+          place: 1,
+          role: 1,
+          status: 1,
+          locationIds: 1,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      },
+    ];
+
+    const [data, totalResult] = await Promise.all([
       this.placeEmployeeModel
-        .find({ place: new Types.ObjectId(placeId) })
-        .populate('employee')
-        .skip(skip)
-        .limit(limit)
-        .exec() as unknown as Promise<PlaceEmployeePopulated[]>,
-      this.placeEmployeeModel.countDocuments({
-        place: new Types.ObjectId(placeId),
-      }),
+        .aggregate([...aggregationPipeline, { $skip: skip }, { $limit: limit }])
+        .exec(),
+      this.placeEmployeeModel
+        .aggregate([...aggregationPipeline, { $count: 'total' }])
+        .exec(),
     ]);
+
+    const total = totalResult.length > 0 ? totalResult[0].total : 0;
 
     return {
       data,
@@ -148,9 +209,24 @@ export class PlaceEmployeeRepository extends MongoRepository<
     return !!(placeEmployee && placeEmployee.employee);
   }
 
-  /**
-   * Znajdź PlaceEmployee po placeId i userId
-   */
+  async isUserBossOfLocation(
+    userId: string,
+    locationId: string,
+  ): Promise<boolean> {
+    const placeEmployee = await this.placeEmployeeModel
+      .findOne({
+        location: new Types.ObjectId(locationId),
+        role: PlaceEmployeeRole.BOSS,
+      })
+      .populate({
+        path: 'employee',
+        match: { user: new Types.ObjectId(userId) },
+      })
+      .exec();
+
+    return !!(placeEmployee && placeEmployee.employee);
+  }
+
   async findByPlaceIdAndUserId(
     placeId: string,
     userId: string,
@@ -209,6 +285,57 @@ export class PlaceEmployeeRepository extends MongoRepository<
   async countEmployeePlaceAssignments(employeeId: string): Promise<number> {
     return this.placeEmployeeModel
       .countDocuments({ employee: new Types.ObjectId(employeeId) })
+      .exec();
+  }
+
+  /**
+   * Zaktualizuj rolę dla wszystkich lokacji danego pracownika w miejscu
+   */
+  async updateRoleForAllLocations(
+    placeId: string,
+    employeeId: string,
+    role: PlaceEmployeeRole,
+  ): Promise<void> {
+    await this.placeEmployeeModel
+      .updateMany(
+        {
+          place: new Types.ObjectId(placeId),
+          employee: new Types.ObjectId(employeeId),
+        },
+        { $set: { role } },
+      )
+      .exec();
+  }
+
+  /**
+   * Znajdź wszystkie przypisania pracownika do lokacji w danym miejscu
+   */
+  async findAllByPlaceIdAndEmployeeId(
+    placeId: string,
+    employeeId: string,
+  ): Promise<PlaceEmployeeDocument[]> {
+    return this.placeEmployeeModel
+      .find({
+        place: new Types.ObjectId(placeId),
+        employee: new Types.ObjectId(employeeId),
+      })
+      .exec();
+  }
+
+  /**
+   * Usuń pracownika z konkretnej lokacji w miejscu
+   */
+  async removeByPlaceEmployeeAndLocation(
+    placeId: string,
+    employeeId: string,
+    locationId: string,
+  ): Promise<void> {
+    await this.placeEmployeeModel
+      .deleteOne({
+        place: new Types.ObjectId(placeId),
+        employee: new Types.ObjectId(employeeId),
+        location: new Types.ObjectId(locationId),
+      })
       .exec();
   }
 }

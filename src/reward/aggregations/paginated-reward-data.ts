@@ -7,52 +7,87 @@ function buildBasePipeline(
   locationIds?: Types.ObjectId[],
 ) {
   const { userId, ...rest } = entityFilterQuery;
-  const pipeline: any[] = [
-    { $match: rest },
-    {
-      $lookup: {
-        from: 'places',
-        localField: 'place',
-        foreignField: '_id',
-        as: 'place',
-      },
-    },
-  ];
+  const pipeline: any[] = [{ $match: rest }];
 
   if (userId) {
-    pipeline.push({
-      $match: {
-        'place.employees.user':
-          typeof userId === 'string' ? new Types.ObjectId(userId) : userId,
+    // Filtruj rewardy gdzie użytkownik jest employeem przynajmniej jednej z lokalizacji rewarda
+    // Struktura: User -> Employee -> PlaceEmployee -> Location
+    pipeline.push(
+      {
+        $lookup: {
+          from: 'placeemployees',
+          let: { rewardLocationIds: '$locationIds' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $in: ['$location', '$$rewardLocationIds'],
+                },
+              },
+            },
+            {
+              $lookup: {
+                from: 'employees',
+                localField: 'employee',
+                foreignField: '_id',
+                as: 'employeeData',
+              },
+            },
+            {
+              $unwind: '$employeeData',
+            },
+            {
+              $match: {
+                'employeeData.user':
+                  typeof userId === 'string'
+                    ? new Types.ObjectId(userId)
+                    : userId,
+              },
+            },
+          ],
+          as: 'placeEmployee',
+        },
       },
-    });
+      {
+        $match: {
+          placeEmployee: { $ne: [] },
+        },
+      },
+      {
+        $project: {
+          placeEmployee: 0,
+        },
+      },
+    );
   }
+
+  pipeline.push({
+    $lookup: {
+      from: 'places',
+      localField: 'place',
+      foreignField: '_id',
+      as: 'place',
+    },
+  });
 
   if (locationIds && locationIds.length > 0) {
     pipeline.push({
       $match: {
-        locationId: { $in: locationIds },
+        locationIds: { $in: locationIds },
       },
     });
-  }
-  else if (countryCode) {
+  } else if (countryCode) {
     pipeline.push({
       $lookup: {
         from: 'locations',
-        localField: 'locationId',
+        localField: 'locationIds',
         foreignField: '_id',
-        as: 'location',
-      },
-    });
-    pipeline.push({
-      $unwind: {
-        path: '$location',
-        preserveNullAndEmptyArrays: true,
+        as: 'locationData',
       },
     });
     pipeline.push({
       $match: {
-        'location.countryCode': countryCode,
+        'locationData.countryCode': countryCode,
       },
     });
   }
@@ -127,7 +162,7 @@ export function getPaginatedRewardData(
           ],
         },
         event: { $arrayElemAt: ['$event', 0] },
-        locationId: 1,
+        locationIds: 1,
         startDate: 1,
         endDate: 1,
         participators: 1,

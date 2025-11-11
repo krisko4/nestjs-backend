@@ -43,14 +43,12 @@ export class PlaceRepository extends MongoRepository<
     logoUrl?: string,
   ) {
     const location = updatePlaceDto.locations[0];
-    const { name, subtitle, description, type } = updatePlaceDto;
+    const { name, description } = updatePlaceDto;
     return this.findOneAndUpdate(
       { 'locations._id': updatePlaceDto.locationId },
       {
         name,
-        subtitle,
         description,
-        type,
         logoUrl,
         imageUrls,
         userId,
@@ -166,8 +164,14 @@ export class PlaceRepository extends MongoRepository<
     return locationIdDocs.map((doc) => doc._id);
   }
 
-  async findLocation(id: string, locationId: string, favoriteLocationIds: string[] = []) {
-    const favoriteObjectIds = favoriteLocationIds.map((id) => new Types.ObjectId(id));
+  async findLocation(
+    id: string,
+    locationId: string,
+    favoriteLocationIds: string[] = [],
+  ) {
+    const favoriteObjectIds = favoriteLocationIds.map(
+      (id) => new Types.ObjectId(id),
+    );
 
     const foundPlaces = await this.placeModel
       .aggregate()
@@ -189,7 +193,6 @@ export class PlaceRepository extends MongoRepository<
         images: 1,
         description: 1,
         createdAt: 1,
-        subtitle: 1,
         userId: 1,
         location: '$locations',
       });
@@ -343,7 +346,13 @@ export class PlaceRepository extends MongoRepository<
     const pipeline = this.placeModel.aggregate();
 
     const result = await pipeline.facet(
-      getPaginatedPlaceDataForSearch(start, limit, countryCode, undefined, favoriteLocationIds),
+      getPaginatedPlaceDataForSearch(
+        start,
+        limit,
+        countryCode,
+        undefined,
+        favoriteLocationIds,
+      ),
     );
 
     return result[0];
@@ -358,7 +367,13 @@ export class PlaceRepository extends MongoRepository<
     const pipeline = this.placeModel.aggregate();
 
     const result = await pipeline.facet(
-      getPaginatedPlaceDataForSearch(start, limit, undefined, locationIds, favoriteLocationIds),
+      getPaginatedPlaceDataForSearch(
+        start,
+        limit,
+        undefined,
+        locationIds,
+        favoriteLocationIds,
+      ),
     );
 
     return result[0];

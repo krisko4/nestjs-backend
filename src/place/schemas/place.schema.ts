@@ -1,7 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Transform, Type } from 'class-transformer';
 import { ValidateNested } from 'class-validator';
-import mongoose from 'mongoose';
 import { Document } from 'mongoose';
 import {
   CreateLocationSchema,
@@ -13,10 +12,8 @@ export type PlaceDocument = Place & Document;
 
 export type CreatePlaceSchema = {
   name: string;
-  subtitle?: string;
   type?: string;
   description?: string;
-  isBusinessChain?: boolean;
   images?: string[];
   logo?: string;
   locations: CreateLocationSchema[];
@@ -40,10 +37,6 @@ export class Place {
   images: string[];
   @Prop()
   description: string;
-  @Prop()
-  subtitle: string;
-  @Prop({ default: false })
-  isBusinessChain: boolean;
   @Prop({ default: Date.now })
   createdAt: Date;
   @ValidateNested({ each: true })
