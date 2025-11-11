@@ -50,7 +50,7 @@ export function getPaginatedPlaceDataForSearch(
       $project: {
         _id: 1,
         name: 1,
-        type: 1,
+        description: 1,
         logo: {
           $concat: [`${process.env.CLOUDI_URL}/`, '$logo'],
         },
