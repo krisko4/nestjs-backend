@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { PlaceService } from './place.service';
+import { PlaceEmployeeService } from 'src/place-employee/place-employee.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { SearchPlaceQuery } from './queries/search-place.query';
 import { FindLocationParams } from './params/find.location.params';
@@ -18,13 +19,17 @@ import { PlaceFilterQuery } from './queries/place.filter.query';
 
 @Controller('user/places')
 export class UserPlaceController {
-  constructor(private readonly placeService: PlaceService) {}
+  constructor(
+    private readonly placeService: PlaceService,
+    private readonly placeEmployeeService: PlaceEmployeeService,
+  ) {}
 
   @UseGuards(JwtAuthGuard)
   @Get()
-  findPlacesByUserId(@Req() req) {
+  async findPlacesByUserId(@Req() req) {
     const { uid } = req.user;
-    return this.placeService.findPlacesByUserId(uid);
+    const placeEmployees = await this.placeEmployeeService.getPlacesByUserId(uid);
+    return placeEmployees.map((placeEmployee) => placeEmployee.place);
   }
 
   @UseGuards(JwtAuthGuard)

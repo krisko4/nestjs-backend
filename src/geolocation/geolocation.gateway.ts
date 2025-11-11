@@ -11,6 +11,6 @@ export class GeolocationGateway {
   constructor(private readonly eventService: EventService) {}
   @SubscribeMessage('geolocation')
   handleGeolocation(@MessageBody() data: GeolocationDto) {
-    this.eventService.findNearbyEventsToday(data);
+    // this.eventService.findNearbyEventsToday(data);
   }
 }

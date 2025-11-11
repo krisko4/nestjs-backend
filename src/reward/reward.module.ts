@@ -10,15 +10,19 @@ import { CodeModule } from '../code/code.module';
 import { EventModule } from '../event/event.module';
 import { PlaceModule } from 'src/place/place.module';
 import { UserRewardController } from './reward.controller.user';
+import { UserModule } from 'src/user/user.module';
+import { PlaceEmployeeModule } from 'src/place-employee/place-employee.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Reward.name, schema: RewardSchema }]),
     EventModule,
     PlaceModule,
+    PlaceEmployeeModule,
     SubscriptionModule,
     CodeModule,
     NotificationModule,
+    UserModule,
   ],
   controllers: [AdminRewardController, UserRewardController],
   providers: [RewardService, RewardRepository],

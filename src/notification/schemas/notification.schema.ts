@@ -41,8 +41,6 @@ const ReceiverSchema = SchemaFactory.createForClass(Receiver);
 export class Notification {
   @Transform((params) => params.obj._id.toString())
   _id: string;
-  @Prop({ required: true })
-  title: string;
   @Prop({ default: Date.now })
   date: Date;
   @Prop({ type: mongoose.Schema.Types.ObjectId })

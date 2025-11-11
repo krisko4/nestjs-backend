@@ -15,12 +15,15 @@ import { ClientSession } from 'mongoose';
 import { UseCodeDto } from './dto/use-code.dto';
 import { NotFoundError } from 'rxjs';
 import { CodeSseService } from './code-sse.service';
+import { PlaceEmployeeService } from 'src/place-employee/place-employee.service';
 
 @Injectable()
 export class CodeService {
   constructor(
     private readonly codeRepository: CodeRepository,
     private readonly codeSseService: CodeSseService,
+    @Inject(forwardRef(() => PlaceEmployeeService))
+    private readonly placeEmployeeService: PlaceEmployeeService,
   ) {}
   async create(createCodeDto: CreateCodeDto, session?: ClientSession) {
     let isDuplicate = true;
@@ -46,10 +49,13 @@ export class CodeService {
       throw new BadRequestException('CODE_ALREADY_USED');
     }
     const place = code.reward.place;
-    const isUserEmployee = place.employees.some(
-      (u) => u.user.toString() === uid,
+
+    // Sprawdź czy użytkownik jest pracownikiem tego miejsca
+    const placeEmployee = await this.placeEmployeeService.findByPlaceIdAndUserId(
+      place._id.toString(),
+      uid,
     );
-    if (!isUserEmployee) {
+    if (!placeEmployee) {
       throw new UnauthorizedException('ILLEGAL_OPERATION');
     }
 
@@ -61,8 +67,6 @@ export class CodeService {
       scannedBy: uid,
       timestamp: new Date(),
     });
-
-    console.log(result);
 
     return result;
   }
@@ -198,6 +202,17 @@ export class CodeService {
     start: number = 0,
     limit: number = 10,
   ) {
-    return this.codeRepository.findScanHistoryByRewardId(rewardId, start, limit);
+    return this.codeRepository.findScanHistoryByRewardId(
+      rewardId,
+      start,
+      limit,
+    );
+  }
+
+  async countUserRewardUsage(
+    rewardId: string,
+    userId: string,
+  ): Promise<number> {
+    return this.codeRepository.countUserRewardUsage(rewardId, userId);
   }
 }

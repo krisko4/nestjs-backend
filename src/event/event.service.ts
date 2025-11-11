@@ -30,7 +30,7 @@ import { InjectConnection } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
-import { PlaceEmployeeRole } from 'src/place/schemas/place-employee.schema';
+import { PlaceEmployeeService } from 'src/place-employee/place-employee.service';
 
 @Injectable()
 export class EventService {
@@ -42,6 +42,7 @@ export class EventService {
     private readonly schedulerRegistry: SchedulerRegistry,
     private readonly subscriptionService: SubscriptionService,
     private readonly notificationService: NotificationService,
+    private readonly placeEmployeeService: PlaceEmployeeService,
     @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
 
@@ -179,71 +180,71 @@ export class EventService {
     // };
   }
 
-  async findNearbyEventsToday(geolocationDto: GeolocationDto) {
-    const { lat, lng, uid } = geolocationDto;
-    const user = await this.userService.findById(uid);
-    if (!user) {
-      throw new InternalServerErrorException(`User with uid: ${uid} not found`);
-    }
-    if (
-      await this.notificationService.hasUserAlreadyReceivedNearbyEventsNotification(
-        user._id,
-        new Date(),
-      )
-    ) {
-      return;
-    }
-    const maxDistanceInMetres = 1000;
-    const userEvents = await this.eventRepository.findByParticipatorId(uid);
-    const nearbyEventsToday = userEvents.filter((event) => {
-      const a = { lat, lng };
-      const b = {
-        lat: event.lat,
-        lng: event.lng,
-      };
-      const distance = Haversine.calculateDistance(a, b);
-      return isToday(event.startDate) && distance <= maxDistanceInMetres;
-    });
-    let createNotificationDto: CreateNotificationDto;
-    if (nearbyEventsToday.length === 0) {
-      return;
-    }
-    if (nearbyEventsToday.length === 1) {
-      const event = nearbyEventsToday[0];
-      createNotificationDto = {
-        title: `${event.title} will take place in your neighbourhood today!`,
-        body: `Starts: ${format(
-          event.startDate,
-          'yyyy-MM-dd HH:mm',
-        )}\nRewards planned: chicken salad 50% OFF🤩🤩\nAre you coming?🤔`,
-        receivers: [user._id],
-        eventId: event._id,
-        type: NotificationType.EVENT_TODAY_NEARBY,
-      };
-    }
-    if (nearbyEventsToday.length > 1) {
-      createNotificationDto = {
-        title: `${nearbyEventsToday.length} events will take place in your neighbourhood today!`,
-        body: `Click me to find out`,
-        receivers: [user._id],
-        eventIds: nearbyEventsToday.map((e) => e._id),
-        type: NotificationType.EVENT_TODAY_NEARBY,
-      };
-    }
-    const notification = await this.notificationService.create(
-      createNotificationDto,
-    );
-    const { receivers, title, body } = createNotificationDto;
-    return this.notificationService.sendNotification(receivers, {
-      data: {
-        _id: notification._id.toString(),
-      },
-      notification: {
-        title,
-        body,
-      },
-    });
-  }
+  // async findNearbyEventsToday(geolocationDto: GeolocationDto) {
+  //   const { lat, lng, uid } = geolocationDto;
+  //   const user = await this.userService.findById(uid);
+  //   if (!user) {
+  //     throw new InternalServerErrorException(`User with uid: ${uid} not found`);
+  //   }
+  //   if (
+  //     await this.notificationService.hasUserAlreadyReceivedNearbyEventsNotification(
+  //       user._id,
+  //       new Date(),
+  //     )
+  //   ) {
+  //     return;
+  //   }
+  //   const maxDistanceInMetres = 1000;
+  //   const userEvents = await this.eventRepository.findByParticipatorId(uid);
+  //   const nearbyEventsToday = userEvents.filter((event) => {
+  //     const a = { lat, lng };
+  //     const b = {
+  //       lat: event.lat,
+  //       lng: event.lng,
+  //     };
+  //     const distance = Haversine.calculateDistance(a, b);
+  //     return isToday(event.startDate) && distance <= maxDistanceInMetres;
+  //   });
+  //   let createNotificationDto: CreateNotificationDto;
+  //   if (nearbyEventsToday.length === 0) {
+  //     return;
+  //   }
+  //   if (nearbyEventsToday.length === 1) {
+  //     const event = nearbyEventsToday[0];
+  //     createNotificationDto = {
+  //       title: `${event.title} will take place in your neighbourhood today!`,
+  //       body: `Starts: ${format(
+  //         event.startDate,
+  //         'yyyy-MM-dd HH:mm',
+  //       )}\nRewards planned: chicken salad 50% OFF🤩🤩\nAre you coming?🤔`,
+  //       receivers: [user._id],
+  //       eventId: event._id,
+  //       type: NotificationType.EVENT_TODAY_NEARBY,
+  //     };
+  //   }
+  //   if (nearbyEventsToday.length > 1) {
+  //     createNotificationDto = {
+  //       title: `${nearbyEventsToday.length} events will take place in your neighbourhood today!`,
+  //       body: `Click me to find out`,
+  //       receivers: [user._id],
+  //       eventIds: nearbyEventsToday.map((e) => e._id),
+  //       type: NotificationType.EVENT_TODAY_NEARBY,
+  //     };
+  //   }
+  //   const notification = await this.notificationService.create(
+  //     createNotificationDto,
+  //   );
+  //   const { receivers, title, body } = createNotificationDto;
+  //   return this.notificationService.sendNotification(receivers, {
+  //     data: {
+  //       _id: notification._id.toString(),
+  //     },
+  //     notification: {
+  //       title,
+  //       body,
+  //     },
+  //   });
+  // }
 
   async addParticipator(id: string, uid: string) {
     const event = await this.eventRepository.findById(id);
@@ -337,10 +338,12 @@ export class EventService {
     uid: string,
     event: Event,
   ) {
-    const organizer = event.place.employees.find(
-      (u) => u.user._id.toString() === uid.toString(),
+    // Sprawdź czy użytkownik jest pracownikiem tego miejsca
+    const placeEmployee = await this.placeEmployeeService.findByPlaceIdAndUserId(
+      event.place._id.toString(),
+      uid,
     );
-    if (!organizer) {
+    if (!placeEmployee) {
       throw new ForbiddenException('USER_IS_NOT_ORGANIZER');
     }
     if (
@@ -400,10 +403,11 @@ export class EventService {
 
   async deleteById(id: string, uid: string) {
     const event = await this.findById(id);
-    const isUserBoss = event.place.employees.some(
-      (u) =>
-        u.user.toString() === uid.toString() &&
-        u.role === PlaceEmployeeRole.BOSS,
+
+    // Sprawdź czy użytkownik jest BOSS'em tego miejsca
+    const isUserBoss = await this.placeEmployeeService.isUserBossOfPlace(
+      uid,
+      event.place._id.toString(),
     );
     if (!isUserBoss) {
       throw new UnauthorizedException('ILLEGAL_OPERATION');

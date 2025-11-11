@@ -78,7 +78,7 @@ export class NotificationRepository extends MongoRepository<
     createNotificationDto: CreateNotificationDto,
     session?: ClientSession,
   ) {
-    const { receivers, eventId, eventIds, title, type, locationId } =
+    const { receivers, eventId, eventIds, type, locationId } =
       createNotificationDto;
     const mappedReceivers = receivers.map((receiverId) => ({
       receiver: new Types.ObjectId(receiverId),
@@ -87,7 +87,6 @@ export class NotificationRepository extends MongoRepository<
       {
         event: eventId && new Types.ObjectId(eventId),
         events: eventIds && eventIds.map((id) => new Types.ObjectId(id)),
-        title,
         locationId,
         receivers: mappedReceivers,
         type,

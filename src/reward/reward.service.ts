@@ -1,12 +1,12 @@
 import { StatisticsFilterQuery } from './queries/statistics-filter.query';
 import {
+  BadRequestException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
-import { CronJob } from 'cron';
 import { SubscriptionService } from 'src/subscription/subscription.service';
 import { CreateRewardDto } from './dto/create-reward.dto';
 import { RewardFilterQuery } from './queries/reward-filter.query';
@@ -15,16 +15,16 @@ import mongoose from 'mongoose';
 import { InjectConnection } from '@nestjs/mongoose';
 import { CodeService } from 'src/code/code.service';
 import { EventService } from 'src/event/event.service';
-import { Event } from 'src/event/schemas/event.schema';
 import { RewardDocument } from './schemas/reward.schema';
 import { NotificationService } from 'src/notification/notification.service';
 import { NotificationType } from 'src/notification/schemas/notification.schema';
-import { addSeconds, isBefore, subMinutes } from 'date-fns';
+import { isBefore } from 'date-fns';
 import { PlaceService } from 'src/place/place.service';
 import { PaginationQuery } from './queries/pagination.query';
 import { ActivateRewardDto } from './dto/activate-reward.dto';
-import { PlaceEmployeeRole } from 'src/place/schemas/place-employee.schema';
 import { SearchRewardQuery } from './queries/search-reward.query';
+import { UserService } from 'src/user/user.service';
+import { PlaceEmployeeService } from 'src/place-employee/place-employee.service';
 
 @Injectable()
 export class RewardService {
@@ -36,6 +36,8 @@ export class RewardService {
     private readonly codeService: CodeService,
     private readonly notificationService: NotificationService,
     private readonly placeService: PlaceService,
+    private readonly userService: UserService,
+    private readonly placeEmployeeService: PlaceEmployeeService,
     @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
 
@@ -66,10 +68,45 @@ export class RewardService {
 
   async findByIdForUser(id: string, userId: string) {
     const reward = await this.rewardRepository.findById(id);
+    if (!reward) {
+      throw new NotFoundException('INVALID_REWARD_ID');
+    }
+
     const code = await this.codeService.findByRewardIdAndUserId(id, userId);
+
+    const location = reward.place.locations.find(
+      (loc) => loc._id.toString() === reward.locationId.toString(),
+    );
+
+    if (!location) {
+      throw new NotFoundException('Location not found for this reward');
+    }
+
+    const favoriteLocationIds = await this.userService.getFavoriteLocationIds(
+      userId,
+    );
+    const isFavorite = favoriteLocationIds.includes(location._id.toString());
+
+    const usedCount = await this.codeService.countUserRewardUsage(id, userId);
+
     return {
-      ...reward.toObject(),
+      _id: reward._id,
+      name: reward.name,
+      description: reward.description,
+      createdAt: reward.createdAt,
       usedAt: code ? code.usedAt : null,
+      usageLimit: reward.usageLimit,
+      usedCount,
+      place: {
+        _id: reward.place._id,
+        name: reward.place.name,
+        logo: reward.place.logo,
+        location: {
+          _id: location._id,
+          address: location.address,
+          isFavorite,
+        },
+      },
     };
   }
 
@@ -77,8 +114,36 @@ export class RewardService {
     return this.rewardRepository.findByEventId(eventId);
   }
 
-  findByUserId(paginationQuery: PaginationQuery, userId: string) {
-    return this.rewardRepository.findByUserId(paginationQuery, userId);
+  async findByUserId(paginationQuery: PaginationQuery, userId: string) {
+    const result = await this.rewardRepository.findByUserId(
+      paginationQuery,
+      userId,
+    );
+
+    // Sprawdź czy są jakieś dane
+    if (!result.data || result.data.length === 0) {
+      return result;
+    }
+
+    // Dodaj usageLimit i usedCount dla każdego rewarda
+    const rewardsWithUsageInfo = await Promise.all(
+      result.data.map(async (reward) => {
+        const usedCount = await this.codeService.countUserRewardUsage(
+          reward._id,
+          userId,
+        );
+        return {
+          ...reward,
+          usageLimit: reward.usageLimit,
+          usedCount,
+        };
+      }),
+    );
+
+    return {
+      ...result,
+      data: rewardsWithUsageInfo,
+    };
   }
 
   async activateReward(activateRewardDto: ActivateRewardDto, userId: string) {
@@ -88,7 +153,6 @@ export class RewardService {
       throw new NotFoundException('INVALID_REWARD_ID');
     }
 
-    // Sprawdź czy użytkownik ma dostęp do tego rewarda
     if (
       reward.availableFor === 'SELECTED_USERS' &&
       reward.selectedUserIds &&
@@ -100,6 +164,19 @@ export class RewardService {
       if (!hasAccess) {
         throw new UnauthorizedException(
           'You do not have access to this reward',
+        );
+      }
+    }
+
+    // Sprawdź czy użytkownik nie przekroczył limitu użyć
+    if (reward.usageLimit !== null && reward.usageLimit !== undefined) {
+      const usedCount = await this.codeService.countUserRewardUsage(
+        rewardId,
+        userId,
+      );
+      if (usedCount >= reward.usageLimit) {
+        throw new BadRequestException(
+          `You have reached the usage limit for this reward (${reward.usageLimit} times)`,
         );
       }
     }
@@ -129,10 +206,11 @@ export class RewardService {
     if (!reward) {
       throw new NotFoundException('INVALID_REWARD_ID');
     }
-    const isUserBoss = reward.place.employees.some(
-      (u) =>
-        u.user.toString() === uid.toString() &&
-        u.role === PlaceEmployeeRole.BOSS,
+
+    // Sprawdź czy użytkownik jest BOSS'em tego miejsca
+    const isUserBoss = await this.placeEmployeeService.isUserBossOfPlace(
+      uid,
+      reward.place._id.toString(),
     );
     if (!isUserBoss) {
       throw new UnauthorizedException('ILLEGAL_OPERATION');
@@ -148,91 +226,6 @@ export class RewardService {
     return true;
   }
 
-  // private async createRewardWithCodes(
-  //   description: string,
-  //   event: Event,
-  //   authorizedParticipatorsIds: string[],
-  //   rewardPercentage: number,
-  //   scheduledFor?: Date,
-  //   rewardId?: string,
-  // ) {
-  //   const { _id: eventId, locationId } = event;
-  //   const winnersAmount = Math.ceil(
-  //     rewardPercentage * 0.01 * authorizedParticipatorsIds.length,
-  //   );
-  //   const shuffled = [...authorizedParticipatorsIds].sort(
-  //     () => 0.5 - Math.random(),
-  //   );
-  //   const happyWinners = shuffled.slice(0, winnersAmount);
-  //   // const happyWinners = await this.subscriptionService.drawWinners(
-  //   //   rewardPercentage,
-  //   //   locationId,
-  //   //   authorizedParticipators
-  //   // );
-
-  //   const session = await this.connection.startSession();
-  //   await session.withTransaction(async () => {
-  //     let reward: RewardDocument;
-  //     if (rewardId) {
-  //       reward = await this.rewardRepository.findByIdAndUpdate(
-  //         rewardId,
-  //         {
-  //           description,
-  //           eventId,
-  //           rewardPercentage,
-  //           date: new Date(),
-  //         },
-  //         session,
-  //       );
-  //     } else {
-  //       reward = await this.rewardRepository.createReward(
-  //         description,
-  //         eventId,
-  //         authorizedParticipatorsIds,
-  //         rewardPercentage,
-  //         session,
-  //         scheduledFor,
-  //       );
-  //     }
-  //     await Promise.all(
-  //       happyWinners.map((winner) =>
-  //         this.codeService.create(
-  //           {
-  //             userId: winner,
-  //             rewardId: reward._id,
-  //           },
-  //           session,
-  //         ),
-  //       ),
-  //     );
-  //     if (happyWinners.length > 0) {
-  //       const createNotificationDto = {
-  //         title: `Congratulations🥳 You have won a reward!💰`,
-  //         body: `Event: ${event.title}\nClick to view your special code🤫`,
-  //         eventId: event._id.toString(),
-  //         locationId,
-  //         receivers: happyWinners,
-  //         type: NotificationType.REWARD,
-  //       };
-  //       const notification = await this.notificationService.create(
-  //         createNotificationDto,
-  //         session,
-  //       );
-  //       const { receivers, body } = createNotificationDto;
-  //       await this.notificationService.sendNotification(receivers, {
-  //         data: {
-  //           _id: notification._id.toString(),
-  //         },
-  //         notification: {
-  //           title: createNotificationDto.title,
-  //           body,
-  //         },
-  //       });
-  //     }
-  //   });
-  //   await session.endSession();
-  // }
-
   async create(createRewardDto: CreateRewardDto, uid: string) {
     const {
       description,
@@ -241,6 +234,7 @@ export class RewardService {
       locationId,
       availableFor,
       selectedUserIds,
+      usageLimit,
     } = createRewardDto;
     const duplicateEvent = await this.findByEventId(eventId);
     if (duplicateEvent) {
@@ -255,95 +249,79 @@ export class RewardService {
       }
     }
     const place = await this.placeService.findByLocationId(locationId);
-    const isUserOwner = place.employees.some(
-      (u) =>
-        u.user.toString() === uid.toString() &&
-        u.role === PlaceEmployeeRole.BOSS,
+
+    // Sprawdź czy użytkownik jest BOSS'em tego miejsca
+    const isUserOwner = await this.placeEmployeeService.isUserBossOfPlace(
+      uid,
+      place._id.toString(),
     );
     if (!isUserOwner) {
       throw new InternalServerErrorException(`ILLEGAL_OPERATION`);
     }
-    // const authorizedParticipatorsIds = event.participators
-    //   .filter((p) => p.isSubscriber)
-    //   .map((p) => p.user._id);
-    // if (scheduledFor) {
-    //   if (isBefore(new Date(scheduledFor), new Date())) {
-    //     throw new InternalServerErrorException(
-    //       `REWARD_DRAWING_SCHEDULED_FOR_THE_PAST`,
-    //     );
-    //   }
-    //   const reward = await this.rewardRepository.createReward(
-    //     description,
-    //     eventId,
-    //     authorizedParticipatorsIds,
-    //     rewardPercentage,
-    //     undefined,
-    //     scheduledFor,
-    //   );
-    //   const remindJob = new CronJob(
-    //     subMinutes(new Date(scheduledFor), 5),
-    //     async () => {
-    //       const createNotificationDto = {
-    //         title: `A reward drawing starts in 5 minutes! ⏰`,
-    //         body: `Event: ${event.title}\nFingers crossed 🤞🤞`,
-    //         eventId: event._id.toString(),
-    //         receivers: event.participators.map((u) => u.user._id),
-    //         type: NotificationType.EVENT_REMINDER,
-    //       };
-    //       const { title, body, receivers } = createNotificationDto;
-    //       const notification = await this.notificationService.create(
-    //         createNotificationDto,
-    //       );
-    //       return this.notificationService.sendNotification(receivers, {
-    //         data: {
-    //           _id: notification._id.toString(),
-    //         },
-    //         notification: {
-    //           title,
-    //           body,
-    //         },
-    //       });
-    //     },
-    //   );
-    //   const createRewardJob = new CronJob(new Date(scheduledFor), async () => {
-    //     this.createRewardWithCodes(
-    //       description,
-    //       event,
-    //       authorizedParticipatorsIds,
-    //       rewardPercentage,
-    //       new Date(scheduledFor),
-    //       reward._id,
-    //     );
-    //   });
-    //   this.schedulerRegistry.addCronJob(new Date().toString(), createRewardJob);
-    //   this.schedulerRegistry.addCronJob(
-    //     addSeconds(new Date(), 1).toString(),
-    //     remindJob,
-    //   );
-    //   createRewardJob.start();
-    //   remindJob.start();
-    //   return;
-    // }
 
     const session = await this.connection.startSession();
 
-    this.rewardRepository.createReward({
-      name,
-      description,
-      eventId,
-      session,
-      availableFor,
-      placeId: place._id,
-      locationId,
-      selectedUserIds,
+    let reward: RewardDocument;
+    await session.withTransaction(async () => {
+      reward = await this.rewardRepository.createReward({
+        name,
+        description,
+        eventId,
+        session,
+        availableFor,
+        placeId: place._id,
+        locationId,
+        selectedUserIds,
+        usageLimit,
+      });
     });
 
-    // await this.createRewardWithCodes(
-    //   description,
-    //   event,
-    //   authorizedParticipatorsIds,
-    //   rewardPercentage,
-    // );
+    await session.endSession();
+
+    this.sendRewardNotificationsAsync(
+      locationId,
+      place.name,
+      name,
+      reward._id.toString(),
+    );
+
+    return reward;
+  }
+
+  private async sendRewardNotificationsAsync(
+    locationId: string,
+    placeName: string,
+    rewardName: string,
+    rewardId: string,
+  ): Promise<void> {
+    try {
+      const usersWithFavoriteLocation =
+        await this.userService.findUsersByFavoriteLocation(locationId);
+
+      if (usersWithFavoriteLocation.length > 0) {
+        const receiverIds = usersWithFavoriteLocation.map((user) =>
+          user._id.toString(),
+        );
+
+        await this.notificationService.createAndSendPersonalizedNotifications(
+          NotificationType.REWARD,
+          receiverIds,
+          {
+            placeName: placeName,
+            rewardName: rewardName,
+          },
+          {
+            rewardId: rewardId,
+          },
+          {
+            locationId,
+            rewardId,
+          },
+        );
+      }
+    } catch (error) {
+      console.error('Error sending reward notifications:', error);
+    }
   }
 
   async search(searchQuery: SearchRewardQuery) {
@@ -410,11 +388,10 @@ export class RewardService {
       throw new NotFoundException('INVALID_REWARD_ID');
     }
 
-    // Sprawdź czy użytkownik jest właścicielem place'a
-    const isUserBoss = reward.place.employees.some(
-      (u) =>
-        u.user.toString() === userId.toString() &&
-        u.role === PlaceEmployeeRole.BOSS,
+    // Sprawdź czy użytkownik jest właścicielem place'a (BOSS'em)
+    const isUserBoss = await this.placeEmployeeService.isUserBossOfPlace(
+      userId,
+      reward.place._id.toString(),
     );
     if (!isUserBoss) {
       throw new UnauthorizedException('ILLEGAL_OPERATION');

@@ -16,6 +16,7 @@ import {
 } from './schemas/participator.schema';
 import { UserEventController } from './event.controller.user';
 import { AdminEventController } from './event.controller.admin';
+import { PlaceEmployeeModule } from 'src/place-employee/place-employee.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { AdminEventController } from './event.controller.admin';
       { name: Participator.name, schema: ParticipatorSchema },
     ]),
     PlaceModule,
+    PlaceEmployeeModule,
     NotificationModule,
     UserModule,
     CloudinaryModule,

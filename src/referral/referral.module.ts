@@ -10,10 +10,12 @@ import { forwardRef, Module } from '@nestjs/common';
 import { ReferralService } from './referral.service';
 import { ReferralController } from './referral.controller';
 import { MongooseModule } from '@nestjs/mongoose';
+import { PlaceEmployeeModule } from 'src/place-employee/place-employee.module';
 
 @Module({
   imports: [
     PlaceModule,
+    PlaceEmployeeModule,
     SubscriptionModule,
     NotificationModule,
     forwardRef(() => InvitationModule),

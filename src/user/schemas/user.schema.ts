@@ -37,6 +37,8 @@ export class User {
   notificationTokens: string[];
   @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId }], default: [] })
   favoriteLocationIds: mongoose.Types.ObjectId[];
+  @Prop({ default: 'en' })
+  userLanguage: string;
   @Exclude()
   __v: number;
 }

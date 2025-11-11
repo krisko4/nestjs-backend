@@ -25,6 +25,8 @@ import { ReferralModule } from './referral/referral.module';
 import { InvitationModule } from './invitation/invitation.module';
 import { FirebaseModule } from './firebase/firebase.module';
 import { ClientModule } from './client/client.module';
+import { EmployeeModule } from './employee/employee.module';
+import { PlaceEmployeeModule } from './place-employee/place-employee.module';
 
 @Module({
   imports: [
@@ -55,6 +57,8 @@ import { ClientModule } from './client/client.module';
     InvitationModule,
     FirebaseModule,
     ClientModule,
+    EmployeeModule,
+    PlaceEmployeeModule,
   ],
 })
 export class AppModule {}

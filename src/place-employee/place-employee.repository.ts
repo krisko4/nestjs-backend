@@ -1,0 +1,214 @@
+import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
+import { MongoRepository } from '../database/repository';
+import {
+  CreatePlaceEmployeeSchema,
+  PlaceEmployee,
+  PlaceEmployeeDocument,
+  PlaceEmployeePopulated,
+  PlaceEmployeeRole,
+} from './schemas/place-employee.schema';
+
+@Injectable()
+export class PlaceEmployeeRepository extends MongoRepository<
+  PlaceEmployeeDocument,
+  CreatePlaceEmployeeSchema
+> {
+  constructor(
+    @InjectModel(PlaceEmployee.name)
+    private readonly placeEmployeeModel: Model<PlaceEmployeeDocument>,
+  ) {
+    super(placeEmployeeModel);
+  }
+
+  async findByPlaceId(placeId: string): Promise<PlaceEmployeeDocument[]> {
+    return this.placeEmployeeModel
+      .find({ place: new Types.ObjectId(placeId) })
+      .populate('employee')
+      .exec();
+  }
+
+  async findByPlaceIdAndPopulate(
+    placeId: string,
+    page: number = 1,
+    limit: number = 10,
+  ) {
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.placeEmployeeModel
+        .find({ place: new Types.ObjectId(placeId) })
+        .populate('employee')
+        .skip(skip)
+        .limit(limit)
+        .exec() as unknown as Promise<PlaceEmployeePopulated[]>,
+      this.placeEmployeeModel.countDocuments({
+        place: new Types.ObjectId(placeId),
+      }),
+    ]);
+
+    return {
+      data,
+      metadata: {
+        start: skip,
+        limit,
+        total,
+      },
+    };
+  }
+
+  async findByEmployeeId(employeeId: string): Promise<PlaceEmployeeDocument[]> {
+    return this.placeEmployeeModel
+      .find({ employee: new Types.ObjectId(employeeId) })
+      .populate('place')
+      .exec();
+  }
+
+  async findByPlaceIdAndEmployeeId(
+    placeId: string,
+    employeeId: string,
+  ): Promise<PlaceEmployeeDocument | null> {
+    return this.placeEmployeeModel
+      .findOne({
+        place: new Types.ObjectId(placeId),
+        employee: new Types.ObjectId(employeeId),
+      })
+      .exec();
+  }
+
+  async isEmployeeBossOfPlace(
+    employeeId: string,
+    placeId: string,
+  ): Promise<boolean> {
+    const placeEmployee = await this.placeEmployeeModel
+      .findOne({
+        place: new Types.ObjectId(placeId),
+        employee: new Types.ObjectId(employeeId),
+        role: PlaceEmployeeRole.BOSS,
+      })
+      .exec();
+    return !!placeEmployee;
+  }
+
+  async updatePlaceEmployee(
+    placeEmployeeId: string,
+    updateData: { role?: PlaceEmployeeRole },
+  ): Promise<PlaceEmployeeDocument | null> {
+    return this.placeEmployeeModel
+      .findByIdAndUpdate(
+        placeEmployeeId,
+        { $set: updateData },
+        { new: true, runValidators: true },
+      )
+      .exec();
+  }
+
+  async removePlaceEmployee(
+    placeEmployeeId: string,
+  ): Promise<PlaceEmployeeDocument | null> {
+    return this.placeEmployeeModel.findByIdAndDelete(placeEmployeeId).exec();
+  }
+
+  async findByIdWithPopulate(
+    placeEmployeeId: string,
+  ): Promise<PlaceEmployeePopulated | null> {
+    return this.placeEmployeeModel
+      .findById(placeEmployeeId)
+      .populate('employee')
+      .populate('place')
+      .exec() as unknown as Promise<PlaceEmployeePopulated | null>;
+  }
+
+  async findByUserId(userId: string): Promise<PlaceEmployeeDocument[]> {
+    const employees = await this.placeEmployeeModel
+      .find()
+      .populate({
+        path: 'employee',
+        match: { user: new Types.ObjectId(userId) },
+      })
+      .populate('place')
+      .exec();
+
+    return employees.filter((pe) => pe.employee != null);
+  }
+
+  async isUserBossOfPlace(userId: string, placeId: string): Promise<boolean> {
+    const placeEmployee = await this.placeEmployeeModel
+      .findOne({
+        place: new Types.ObjectId(placeId),
+        role: PlaceEmployeeRole.BOSS,
+      })
+      .populate({
+        path: 'employee',
+        match: { user: new Types.ObjectId(userId) },
+      })
+      .exec();
+
+    return !!(placeEmployee && placeEmployee.employee);
+  }
+
+  /**
+   * Znajdź PlaceEmployee po placeId i userId
+   */
+  async findByPlaceIdAndUserId(
+    placeId: string,
+    userId: string,
+  ): Promise<PlaceEmployeeDocument | null> {
+    const placeEmployees = await this.placeEmployeeModel
+      .find({ place: new Types.ObjectId(placeId) })
+      .populate({
+        path: 'employee',
+        match: { user: new Types.ObjectId(userId) },
+      })
+      .exec();
+
+    const result = placeEmployees.find((pe) => pe.employee != null);
+    return result || null;
+  }
+
+  async findAllEmployeesByUserId(
+    userId: string,
+    page: number = 1,
+    limit: number = 10,
+  ) {
+    // Najpierw znajdź wszystkie miejsca użytkownika
+    const userPlaces = await this.findByUserId(userId);
+    const placeIds = userPlaces.map((pe) => pe.place._id);
+
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.placeEmployeeModel
+        .find({
+          place: { $in: placeIds },
+        })
+        .populate('employee')
+        .populate('place')
+        .skip(skip)
+        .limit(limit)
+        .exec() as unknown as Promise<PlaceEmployeePopulated[]>,
+      this.placeEmployeeModel.countDocuments({
+        place: { $in: placeIds },
+      }),
+    ]);
+
+    return {
+      data,
+      metadata: {
+        start: skip,
+        limit,
+        total,
+      },
+    };
+  }
+
+  /**
+   * Sprawdź czy pracownik ma inne przypisania do miejsc
+   */
+  async countEmployeePlaceAssignments(employeeId: string): Promise<number> {
+    return this.placeEmployeeModel
+      .countDocuments({ employee: new Types.ObjectId(employeeId) })
+      .exec();
+  }
+}

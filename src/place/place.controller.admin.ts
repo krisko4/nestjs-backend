@@ -29,8 +29,6 @@ import {
 } from './dto/update-opening-hours.dto';
 import { PlaceDto } from './dto/place.dto';
 import { CoordsQuery } from './queries/coords.query';
-import { PaginationQuery } from './queries/pagination.query';
-import { AddPlaceEmployeeDto } from './dto/add-place-employee.dto';
 
 @Controller('admin/places')
 export class AdminPlaceController {
@@ -200,37 +198,6 @@ export class AdminPlaceController {
   @Patch(':id/visit-count')
   incrementVisitCount(@Param('id') id: string) {
     return this.placeService.incrementVisitCount(id);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('/employees')
-  async get(@Req() req, @Query() paginationQuery: PaginationQuery) {
-    const { uid } = req.cookies;
-    const employees = await this.placeService.findEmployeesByUserId(
-      uid,
-      paginationQuery,
-    );
-    return employees;
-  }
-
-  @Post(':id/employees')
-  async addEmployee(
-    @Param('id') id: string,
-    @Body() addEmployeeDto: AddPlaceEmployeeDto,
-    @Req() req,
-  ) {
-    const { uid } = req.cookies;
-    return this.placeService.addEmployee(id, uid, addEmployeeDto);
-  }
-
-  @Delete(':id/employees/:employeeId')
-  async removeEmployee(
-    @Param('id') id: string,
-    @Param('employeeId') employeeId: string,
-    @Req() req,
-  ) {
-    const { uid } = req.cookies;
-    return this.placeService.removeEmployee(uid, id, employeeId);
   }
 
   @Get(':id')

@@ -8,7 +8,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UserRepository } from './user.repository';
 import { ClientSession } from 'mongoose';
 import * as bcrypt from 'bcrypt';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateNotificationTokenDto } from './dto/update-notification-token.dto';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 
 @Injectable()
@@ -51,9 +51,16 @@ export class UserService {
     this.userRepository.updateProfilePicture(uid, logoId);
   }
 
-  setNotificationToken(id: string, updateUserDto: UpdateUserDto) {
-    const { notificationToken } = updateUserDto;
-    return this.userRepository.setNotificationToken(id, notificationToken);
+  setNotificationToken(
+    id: string,
+    updateNotificationTokenDto: UpdateNotificationTokenDto,
+  ) {
+    const { notificationToken, userLanguage } = updateNotificationTokenDto;
+    return this.userRepository.setNotificationToken(
+      id,
+      notificationToken,
+      userLanguage,
+    );
   }
 
   removeNotificationTokens(uid: string) {
@@ -87,5 +94,9 @@ export class UserService {
 
   async getFavoriteLocationIds(userId: string): Promise<string[]> {
     return this.userRepository.getFavoriteLocationIds(userId);
+  }
+
+  async findUsersByFavoriteLocation(locationId: string) {
+    return this.userRepository.findUsersByFavoriteLocation(locationId);
   }
 }

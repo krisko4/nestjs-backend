@@ -20,6 +20,7 @@ export type CreateRewardSchema = {
   event: string;
   place: string;
   selectedUserIds?: string[];
+  usageLimit?: number | null;
 };
 
 @Schema()
@@ -51,6 +52,8 @@ export class Reward {
   availableFor: RewardAvailableFor;
   @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] })
   selectedUserIds?: mongoose.Types.ObjectId[];
+  @Prop({ type: Number, default: null })
+  usageLimit?: number | null;
   @Prop({ default: Date.now })
   createdAt: Date;
 }

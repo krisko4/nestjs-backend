@@ -16,13 +16,16 @@ export class UserRepository extends MongoRepository<
     return this.findOne({ email: email });
   }
 
-  async setNotificationToken(id: string, token: string) {
+  async setNotificationToken(id: string, token: string, language: string) {
     const { notificationTokens } = await this.findById(id);
     const tokens = notificationTokens.filter(
       (notificationToken) => notificationToken !== token,
     );
     tokens.push(token);
-    return this.findByIdAndUpdate(id, { notificationTokens: tokens });
+    return this.findByIdAndUpdate(id, {
+      notificationTokens: tokens,
+      userLanguage: language,
+    });
   }
 
   updateProfilePicture(uid: string, logoId: string) {
@@ -67,5 +70,11 @@ export class UserRepository extends MongoRepository<
       return [];
     }
     return user.favoriteLocationIds.map((id) => id.toString());
+  }
+
+  async findUsersByFavoriteLocation(locationId: string): Promise<UserDocument[]> {
+    return this.userModel.find({
+      favoriteLocationIds: new Types.ObjectId(locationId),
+    });
   }
 }

@@ -18,6 +18,7 @@ import { User } from 'src/user/schemas/user.schema';
 import { InjectConnection } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
 import { InvitationQuery } from './queries/invitation.query';
+import { PlaceEmployeeService } from 'src/place-employee/place-employee.service';
 
 @Injectable()
 export class InvitationService {
@@ -29,6 +30,7 @@ export class InvitationService {
     private readonly userService: UserService,
     private readonly placeService: PlaceService,
     private readonly codeService: CodeService,
+    private readonly placeEmployeeService: PlaceEmployeeService,
     @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
 
@@ -53,11 +55,14 @@ export class InvitationService {
       throw new BadRequestException('USER_ALREADY_SUBSCRIBES');
     }
     const place = await this.placeService.findByLocationId(referral.locationId);
-    if (
-      place.employees.some(
-        (u) => u.user._id.toString() === invitedUser._id.toString(),
-      )
-    ) {
+
+    // Sprawdź czy użytkownik już jest pracownikiem tego miejsca
+    const existingPlaceEmployee =
+      await this.placeEmployeeService.findByPlaceIdAndUserId(
+        place._id.toString(),
+        invitedUser._id.toString(),
+      );
+    if (existingPlaceEmployee) {
       throw new InternalServerErrorException('USER_ALREADY_INVITED');
     }
     const existingInvitation = await this.findByReferralIdAndReferrerId(

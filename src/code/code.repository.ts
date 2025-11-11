@@ -135,7 +135,10 @@ export class CodeRepository extends MongoRepository<
     );
   }
 
-  async findUnusedCodeByLocationIdAndUserId(locationId: string, userId: string) {
+  async findUnusedCodeByLocationIdAndUserId(
+    locationId: string,
+    userId: string,
+  ) {
     return this.codeModel.findOne({
       locationId: toMongoObjectId(locationId),
       user: toMongoObjectId(userId),
@@ -511,5 +514,16 @@ export class CodeRepository extends MongoRepository<
       data: filteredCodes.slice(skip, skip + limit),
       total: filteredCodes.length,
     };
+  }
+
+  async countUserRewardUsage(
+    rewardId: string,
+    userId: string,
+  ): Promise<number> {
+    return this.codeModel.countDocuments({
+      reward: toMongoObjectId(rewardId),
+      user: toMongoObjectId(userId),
+      usedAt: { $exists: true },
+    });
   }
 }

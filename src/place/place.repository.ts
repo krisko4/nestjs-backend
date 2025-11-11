@@ -6,7 +6,6 @@ import {
   CreatePlaceSchema,
   Place,
   PlaceDocument,
-  PlaceWithPopulatedEmployees,
 } from './schemas/place.schema';
 import { PlaceFilterQuery } from './queries/place.filter.query';
 import { getPaginatedPlaceData } from './aggregations/paginated-place-data';
@@ -18,17 +17,9 @@ import {
   LocationIdsDto,
   UpdateOpeningHoursDto,
 } from './dto/update-opening-hours.dto';
-import { toMongoObjectId } from 'src/utils/mongo';
-import { getPaginatedEmployees } from './aggregations/paginated-employees-data';
-import { PaginationQuery } from './queries/pagination.query';
-import {
-  CreatePlaceEmployeeSchema,
-  PlaceEmployeeRole,
-  PlaceEmployeeStatus,
-} from './schemas/place-employee.schema';
-import { AddPlaceEmployeeDto } from './dto/add-place-employee.dto';
-import { User, UserDocument } from 'src/user/schemas/user.schema';
+import { UserDocument } from 'src/user/schemas/user.schema';
 import { Haversine } from 'src/haversine/haversine';
+import { PaginationQuery } from './queries/pagination.query';
 
 @Injectable()
 export class PlaceRepository extends MongoRepository<
@@ -89,40 +80,9 @@ export class PlaceRepository extends MongoRepository<
         images: imageUrls,
         logo: logoUrl,
         ...createPlaceDto,
-        employees: [
-          {
-            user: user._id,
-            email: user.email,
-            role: PlaceEmployeeRole.BOSS,
-            status: PlaceEmployeeStatus.ACTIVE,
-          },
-        ],
       },
       session,
     );
-  }
-
-  async findByUserId(id: string, shouldPopulateUsers?: boolean) {
-    const query = this.placeModel.find({
-      'employees.user': toMongoObjectId(id),
-      'employees.role': PlaceEmployeeRole.BOSS,
-    });
-
-    if (shouldPopulateUsers) {
-      query.populate('employees.user');
-    }
-
-    return query.exec();
-  }
-
-  async findPlacesByEmployeeUserId(userId: string) {
-    return this.placeModel
-      .find({
-        'employees.user': toMongoObjectId(userId),
-        'employees.status': PlaceEmployeeStatus.ACTIVE,
-      })
-      .select('-employees')
-      .exec();
   }
 
   setStatus(locationId: string, updateStatusDto: UpdateStatusDto) {
@@ -338,74 +298,6 @@ export class PlaceRepository extends MongoRepository<
       },
     );
     return aggregationResult[0];
-  }
-
-  async findPaginatedEmployees(
-    userId: string,
-    paginationQuery: PaginationQuery,
-  ) {
-    const data = await this.placeModel
-      .aggregate()
-      .facet(
-        getPaginatedEmployees(
-          userId,
-          paginationQuery.start,
-          paginationQuery.limit,
-        ),
-      );
-    return data[0];
-  }
-
-  async findByIdWithEmployees(id: string) {
-    return this.placeModel
-      .findById(id)
-      .populate('employees.user')
-      .exec() as unknown as Promise<PlaceWithPopulatedEmployees | undefined>;
-  }
-
-  async addEmployee(
-    placeId: string,
-    addEmployeeDto: AddPlaceEmployeeDto,
-    userId?: Types.ObjectId,
-  ) {
-    const newEmployee: CreatePlaceEmployeeSchema = {
-      role: addEmployeeDto.role,
-      name: addEmployeeDto.name,
-      email: addEmployeeDto.email,
-      status: PlaceEmployeeStatus.WAITING_FOR_CONFIRMATION,
-      user: userId,
-    };
-    return this.placeModel
-      .findByIdAndUpdate(
-        placeId,
-        {
-          $push: {
-            employees: newEmployee,
-          },
-        },
-        {
-          new: true,
-          runValidators: true,
-        },
-      )
-      .exec();
-  }
-
-  async removeEmployee(placeId: string, employeeId: string) {
-    return this.placeModel
-      .findByIdAndUpdate(
-        placeId,
-        {
-          $pull: {
-            employees: { _id: employeeId },
-          },
-        },
-        {
-          new: true,
-          runValidators: true,
-        },
-      )
-      .exec();
   }
 
   async findLocationIdsWithinRadius(

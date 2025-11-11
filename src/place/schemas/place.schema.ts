@@ -8,12 +8,6 @@ import {
   Location,
   LocationSchema,
 } from './location.schema';
-import {
-  CreatePlaceEmployeeSchema,
-  PlaceEmployee,
-  PlaceEmployeePopulated,
-  PlaceEmployeeSchema,
-} from './place-employee.schema';
 
 export type PlaceDocument = Place & Document;
 
@@ -25,7 +19,6 @@ export type CreatePlaceSchema = {
   isBusinessChain?: boolean;
   images?: string[];
   logo?: string;
-  employees: CreatePlaceEmployeeSchema[];
   locations: CreateLocationSchema[];
 };
 
@@ -54,17 +47,9 @@ export class Place {
   @Prop({ default: Date.now })
   createdAt: Date;
   @ValidateNested({ each: true })
-  @Type(() => PlaceEmployee)
-  @Prop({ required: true, type: [PlaceEmployeeSchema] })
-  employees: PlaceEmployee[];
-  @ValidateNested({ each: true })
   @Type(() => Location)
   @Prop({ required: true, type: [LocationSchema] })
   locations: Location[];
 }
-
-export type PlaceWithPopulatedEmployees = Omit<Place, 'employees'> & {
-  employees: PlaceEmployeePopulated[];
-} & Document;
 
 export const PlaceSchema = SchemaFactory.createForClass(Place);

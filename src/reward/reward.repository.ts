@@ -61,6 +61,7 @@ export class RewardRepository extends MongoRepository<
     locationId,
     placeId,
     selectedUserIds,
+    usageLimit,
   }: {
     name: string;
     description: string;
@@ -70,6 +71,7 @@ export class RewardRepository extends MongoRepository<
     locationId: string;
     placeId: string;
     selectedUserIds?: string[];
+    usageLimit?: number | null;
   }) {
     const reward: any = {
       name,
@@ -78,6 +80,7 @@ export class RewardRepository extends MongoRepository<
       availableFor,
       place: placeId,
       locationId,
+      usageLimit: usageLimit ?? null,
     };
 
     // Dodaj selectedUserIds tylko gdy availableFor = SELECTED_USERS

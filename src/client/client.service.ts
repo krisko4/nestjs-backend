@@ -150,7 +150,6 @@ export class ClientService {
         limit,
       );
 
-    // Mapuj na DTO
     const scans: ScanHistoryItemDto[] = scannedCodes.map((code) => ({
       codeId: code._id.toString(),
       codeValue: code.value,

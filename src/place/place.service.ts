@@ -1,7 +1,5 @@
-import { PaginationQuery } from './../event/queries/pagination.query';
 import {
   BadRequestException,
-  ForbiddenException,
   forwardRef,
   Inject,
   Injectable,
@@ -16,18 +14,17 @@ import mongoose from 'mongoose';
 import { InjectConnection } from '@nestjs/mongoose';
 import { PlaceDocument } from './schemas/place.schema';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
-import { UpdatePlaceDto } from './dto/update-place.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
-import {
-  LocationIdsDto,
-  UpdateOpeningHoursDto,
-} from './dto/update-opening-hours.dto';
 import { SubscriptionService } from 'src/subscription/subscription.service';
 import { SubscriptionDocument } from 'src/subscription/schemas/subscription.schema';
-import { AddPlaceEmployeeDto } from './dto/add-place-employee.dto';
-import { PlaceEmployeeRole } from './schemas/place-employee.schema';
 import { SearchPlaceQuery } from './queries/search-place.query';
 import { CodeService } from 'src/code/code.service';
+import { PlaceEmployeeService } from 'src/place-employee/place-employee.service';
+import {
+  PlaceEmployeeRole,
+  PlaceEmployeeStatus,
+} from 'src/place-employee/schemas/place-employee.schema';
+import { EmployeeService } from 'src/employee/employee.service';
 
 @Injectable()
 export class PlaceService {
@@ -38,6 +35,9 @@ export class PlaceService {
     private readonly subscriptionService: SubscriptionService,
     @Inject(forwardRef(() => CodeService))
     private readonly codeService: CodeService,
+    @Inject(forwardRef(() => PlaceEmployeeService))
+    private readonly placeEmployeeService: PlaceEmployeeService,
+    private readonly employeeService: EmployeeService,
     @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
 
@@ -151,6 +151,27 @@ export class PlaceService {
         user,
         session,
       );
+
+      let employee = await this.employeeService.findByEmail(user.email);
+      if (!employee) {
+        employee = await this.employeeService.createEmployee(
+          {
+            user: user._id,
+            email: user.email,
+          },
+          session,
+        );
+      }
+
+      await this.placeEmployeeService.createPlaceEmployee(
+        {
+          place: registeredPlace._id,
+          employee: employee._id,
+          role: PlaceEmployeeRole.BOSS,
+          status: PlaceEmployeeStatus.ACTIVE,
+        },
+        session,
+      );
     });
     await session.endSession();
     return registeredPlace;
@@ -160,16 +181,8 @@ export class PlaceService {
     return this.placeRepository.findById(id);
   }
 
-  findByIdWithEmployees(id: string) {
-    return this.placeRepository.findByIdWithEmployees(id);
-  }
-
   findAll() {
     return this.placeRepository.find();
-  }
-
-  findPlacesByUserId(userId: string) {
-    return this.placeRepository.findPlacesByEmployeeUserId(userId);
   }
 
   findByLatLng(lat: number, lng: number) {
@@ -278,8 +291,26 @@ export class PlaceService {
   findPopular(placeFilterQuery: PlaceFilterQuery) {
     return this.placeRepository.findPopular(placeFilterQuery);
   }
-  findByUserId(uid: string, shouldPopulateUsers?: boolean) {
-    return this.placeRepository.findByUserId(uid, shouldPopulateUsers);
+
+  async findByUserId(uid: string) {
+    // Pobierz PlaceEmployee dla użytkownika którzy są BOSS'ami
+    const placeEmployees = await this.placeEmployeeService.findByUserId(uid);
+    const bossPlaceEmployees = placeEmployees.filter(
+      (pe) => pe.role === PlaceEmployeeRole.BOSS,
+    );
+
+    // Zwróć miejsca dla których użytkownik jest BOSS'em
+    const placeIds = bossPlaceEmployees
+      .map((pe) => pe.place?._id || pe.place)
+      .filter((place) => place); // Filter out null/undefined
+
+    if (placeIds.length === 0) {
+      return [];
+    }
+
+    return this.placeRepository.find({
+      _id: { $in: placeIds },
+    });
   }
   async removePlace(id: string) {
     const session = await this.connection.startSession();
@@ -291,71 +322,6 @@ export class PlaceService {
     } finally {
       await session.endSession();
     }
-  }
-
-  async findEmployeesByUserId(uid: string, pagination: PaginationQuery) {
-    return this.placeRepository.findPaginatedEmployees(uid, pagination);
-  }
-
-  async addEmployee(
-    placeId: string,
-    userId: string,
-    addEmployeeDto: AddPlaceEmployeeDto,
-  ) {
-    const place = await this.findByIdWithEmployees(placeId);
-    if (!place) {
-      throw new InternalServerErrorException('INVALID_PLACE_ID');
-    }
-    const isUserBoss = place.employees.some(
-      (e) =>
-        e.user &&
-        e.user._id.toString() === userId &&
-        e.role === PlaceEmployeeRole.BOSS,
-    );
-    if (!isUserBoss) {
-      throw new ForbiddenException('NOT_ALLOWED');
-    }
-    const { email } = addEmployeeDto;
-    if (place.employees.some((e) => e.email === email)) {
-      throw new BadRequestException('EMPLOYEE_ALREADY_ADDED');
-    }
-    const employeeUser = await this.userService.findByEmail(
-      addEmployeeDto.email,
-    );
-    return this.placeRepository.addEmployee(
-      placeId,
-      addEmployeeDto,
-      employeeUser?._id,
-    );
-  }
-
-  async removeEmployee(userId: string, placeId: string, employeeId: string) {
-    const place = await this.findByIdWithEmployees(placeId);
-    if (!place) {
-      throw new InternalServerErrorException('INVALID_PLACE_ID');
-    }
-    const isUserBoss = place.employees.some(
-      (e) =>
-        e.user &&
-        e.user._id.toString() === userId &&
-        e.role === PlaceEmployeeRole.BOSS,
-    );
-    if (!isUserBoss) {
-      throw new ForbiddenException('NOT_ALLOWED');
-    }
-    const deletedEmployee = place.employees.find(
-      (e) => e._id.toString() === employeeId,
-    );
-    if (!deletedEmployee) {
-      throw new BadRequestException('INVALID_EMPLOYEE_ID');
-    }
-    if (
-      deletedEmployee.user &&
-      deletedEmployee.user._id.toString() === userId
-    ) {
-      throw new BadRequestException('CANNOT_DELETE_YOURSELF');
-    }
-    return this.placeRepository.removeEmployee(placeId, employeeId);
   }
 
   async search(searchQuery: SearchPlaceQuery, userId: string) {

@@ -9,14 +9,14 @@ import { PlaceModule } from 'src/place/place.module';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
 import { UserModule } from 'src/user/user.module';
 import { Invitation, InvitationSchema } from './schemas/invitation.schema';
+import { PlaceEmployeeModule } from 'src/place-employee/place-employee.module';
 
 @Module({
   imports: [
     PlaceModule,
     UserModule,
+    PlaceEmployeeModule,
     forwardRef(() => ReferralModule),
-
-    // ReferralModule,
     SubscriptionModule,
     MongooseModule.forFeature([
       { name: Invitation.name, schema: InvitationSchema },

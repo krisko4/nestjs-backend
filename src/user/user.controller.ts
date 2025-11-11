@@ -14,7 +14,7 @@ import {
 import { UserService } from './user.service';
 import { plainToInstance } from 'class-transformer';
 import { User } from './schemas/user.schema';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateNotificationTokenDto } from './dto/update-notification-token.dto';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 
@@ -40,12 +40,16 @@ export class UserController {
     return this.userService.findById(id);
   }
 
-  @Patch(':id')
+  @Patch('me/notification-tokens')
   setNotificationToken(
-    @Param('id') id: string,
-    @Body() updateUserDto: UpdateUserDto,
+    @Body() updateNotificationTokenDto: UpdateNotificationTokenDto,
+    @Req() req,
   ) {
-    return this.userService.setNotificationToken(id, updateUserDto);
+    const { uid } = req.cookies;
+    return this.userService.setNotificationToken(
+      uid,
+      updateNotificationTokenDto,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

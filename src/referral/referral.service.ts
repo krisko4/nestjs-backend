@@ -15,6 +15,7 @@ import { CreateReferralDto } from './dto/create-referral.dto';
 import mongoose from 'mongoose';
 import { InjectConnection } from '@nestjs/mongoose';
 import { NotificationType } from 'src/notification/schemas/notification.schema';
+import { PlaceEmployeeService } from 'src/place-employee/place-employee.service';
 
 @Injectable()
 export class ReferralService {
@@ -25,6 +26,7 @@ export class ReferralService {
     private readonly notificationService: NotificationService,
     @Inject(forwardRef(() => InvitationService))
     private invitationService: InvitationService,
+    private readonly placeEmployeeService: PlaceEmployeeService,
     @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
 
@@ -75,7 +77,13 @@ export class ReferralService {
   private async validateReferralLocation(locationId: string, userId: string) {
     const place = await this.placeService.findByLocationId(locationId);
     if (!place) throw new InternalServerErrorException('PLACE_NOT_FOUND');
-    if (!place.employees.some((u) => u.user._id.toString() === userId)) {
+
+    // Sprawdź czy użytkownik jest pracownikiem tego miejsca
+    const placeEmployee = await this.placeEmployeeService.findByPlaceIdAndUserId(
+      place._id.toString(),
+      userId,
+    );
+    if (!placeEmployee) {
       throw new InternalServerErrorException('OPERATION_FORBIDDEN');
     }
     return place;
@@ -83,8 +91,11 @@ export class ReferralService {
 
   async findByLocationId(locationId: string, userId: string) {
     const place = await this.placeService.findByLocationId(locationId);
-    const isUserOwner = place.employees.some(
-      (u) => u.user._id.toString() === userId.toString(),
+
+    // Sprawdź czy użytkownik jest BOSS'em tego miejsca
+    const isUserOwner = await this.placeEmployeeService.isUserBossOfPlace(
+      userId,
+      place._id.toString(),
     );
     const refs = await this.referralRepository.findByLocationId(locationId);
     const subscriptions = await this.subscriptionService.findByLocationId(
