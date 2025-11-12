@@ -16,7 +16,7 @@ export type CreateEventSchema = {
   content: string;
   img?: string;
   place: string;
-  locationId: string;
+  locationIds: string[];
 };
 
 @Schema()
@@ -32,12 +32,15 @@ export class Event {
   @Prop({ required: true })
   content: string;
   @Prop()
+  @Transform(({ value }) => `${process.env.CLOUDI_URL}/${value}`)
   img: string;
   @Exclude()
   __v?: number;
-  @Prop({ type: mongoose.Schema.Types.ObjectId })
-  @Transform((params) => params.obj.locationId.toString())
-  locationId: string;
+  @Prop({ type: [mongoose.Schema.Types.ObjectId], required: true, default: [] })
+  @Transform((params) =>
+    params.obj.locationIds.map((id: mongoose.Types.ObjectId) => id.toString()),
+  )
+  locationIds: string[];
   @Prop()
   address: string;
   @Prop()

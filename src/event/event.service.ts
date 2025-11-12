@@ -31,6 +31,7 @@ import mongoose from 'mongoose';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
 import { PlaceEmployeeService } from 'src/place-employee/place-employee.service';
+import { SearchEventQuery } from './queries/search-event.query';
 
 @Injectable()
 export class EventService {
@@ -47,15 +48,32 @@ export class EventService {
   ) {}
 
   async create(createEventDto: CreateEventDto, img?: Express.Multer.File) {
-    const { title, startDate, endDate, locationId } = createEventDto;
+    const { title, startDate, endDate, locationIds } = createEventDto;
     if (isBefore(new Date(endDate), new Date(startDate))) {
       throw new BadRequestException(
         'Event should not end before it has started',
       );
     }
-    const place = await this.placeService.findByLocationId(locationId);
-    if (!place)
-      throw new NotFoundException(`location with id: ${locationId} not found`);
+
+    // Weryfikujemy czy wszystkie lokacje istnieją
+    const places = await Promise.all(
+      locationIds.map((locationId) =>
+        this.placeService.findByLocationId(locationId),
+      ),
+    );
+
+    const notFoundLocationIds = locationIds.filter(
+      (id, index) => !places[index],
+    );
+    if (notFoundLocationIds.length > 0) {
+      throw new NotFoundException(
+        `Locations with ids: ${notFoundLocationIds.join(', ')} not found`,
+      );
+    }
+
+    // Używamy pierwszego place jako głównego miejsca (dla kompatybilności)
+    const primaryPlace = places[0];
+
     let imageId: string;
     let event: EventDocument;
     const session = await this.connection.startSession();
@@ -65,58 +83,69 @@ export class EventService {
       }
       event = await this.eventRepository.createEvent(
         createEventDto,
-        place._id,
+        primaryPlace._id,
         session,
         imageId,
       );
-      const subs = await this.subscriptionService.findByLocationId(locationId);
-      const receivers = subs.map((sub) => sub.user._id);
-      if (receivers.length > 0) {
-        const createNotificationDto = {
-          title: `${place.name} has added a new event! 🎉`,
-          body: `Name: ${title}\nStarts: ${format(
-            new Date(startDate),
-            'yyyy-MM-dd HH:mm',
-          )}`,
-          eventId: event._id.toString(),
-          locationId,
-          receivers,
-          type: NotificationType.NEW_EVENT,
-        };
-        const notification = await this.notificationService.create(
-          createNotificationDto,
-          session,
-        );
-        const { body, eventId } = createNotificationDto;
-        await this.notificationService.sendNotification(receivers, {
-          data: {
-            _id: notification._id.toString(),
-            title,
-            body,
-            startDate: format(new Date(startDate), 'yyyy-MM-dd hh:mm'),
-            endDate: format(new Date(endDate), 'yyyy-MM-dd hh:mm'),
-            eventId,
-            locationName: place.name,
-            img: `${process.env.CLOUDI_URL}/${imageId}`,
-          },
-          notification: {
-            title: createNotificationDto.title,
-            body,
-            image: `${process.env.CLOUDI_URL}/${imageId}`,
-          },
-        });
-        const rateRequestJob = new CronJob(
-          addMinutes(new Date(endDate), 1),
-          () => {
-            this.sendRateRequestNotifications(event._id);
-          },
-        );
-        this.schedulerRegistry.addCronJob(
-          new Date().toString(),
-          rateRequestJob,
-        );
-        rateRequestJob.start();
-      }
+
+      // // Zbieramy subskrybentów ze wszystkich lokacji
+      // const allSubs = await Promise.all(
+      //   locationIds.map((locationId) =>
+      //     this.subscriptionService.findByLocationId(locationId),
+      //   ),
+      // );
+
+      // // Usuwamy duplikaty użytkowników
+      // const uniqueReceivers = Array.from(
+      //   new Set(allSubs.flat().map((sub) => sub.user._id.toString())),
+      // );
+
+      // if (uniqueReceivers.length > 0) {
+      //   const createNotificationDto = {
+      //     title: `${primaryPlace.name} has added a new event! 🎉`,
+      //     body: `Name: ${title}\nStarts: ${format(
+      //       new Date(startDate),
+      //       'yyyy-MM-dd HH:mm',
+      //     )}`,
+      //     eventId: event._id.toString(),
+      //     locationId: locationIds[0], // dla kompatybilności
+      //     receivers: uniqueReceivers,
+      //     type: NotificationType.NEW_EVENT,
+      //   };
+      //   const notification = await this.notificationService.create(
+      //     createNotificationDto,
+      //     session,
+      //   );
+      //   const { body, eventId } = createNotificationDto;
+      //   await this.notificationService.sendNotification(uniqueReceivers, {
+      //     data: {
+      //       _id: notification._id.toString(),
+      //       title,
+      //       body,
+      //       startDate: format(new Date(startDate), 'yyyy-MM-dd hh:mm'),
+      //       endDate: format(new Date(endDate), 'yyyy-MM-dd hh:mm'),
+      //       eventId,
+      //       locationName: primaryPlace.name,
+      //       img: `${process.env.CLOUDI_URL}/${imageId}`,
+      //     },
+      //     notification: {
+      //       title: createNotificationDto.title,
+      //       body,
+      //       image: `${process.env.CLOUDI_URL}/${imageId}`,
+      //     },
+      //   });
+      //   const rateRequestJob = new CronJob(
+      //     addMinutes(new Date(endDate), 1),
+      //     () => {
+      //       this.sendRateRequestNotifications(event._id);
+      //     },
+      //   );
+      //   this.schedulerRegistry.addCronJob(
+      //     new Date().toString(),
+      //     rateRequestJob,
+      //   );
+      //   rateRequestJob.start();
+      // }
     });
     await session.endSession();
     return event;
@@ -125,23 +154,31 @@ export class EventService {
   async sendRateRequestNotifications(eventId: string) {
     const event = await this.eventRepository.findEventById(eventId);
     if (!event) throw new InternalServerErrorException(`EVENT_NOT_FOUND`);
-    const subs = await this.subscriptionService.findByLocationId(
-      event.locationId,
+
+    // Zbieramy subskrybentów ze wszystkich lokacji tego eventu
+    const allSubs = await Promise.all(
+      event.locationIds.map((locationId) =>
+        this.subscriptionService.findByLocationId(locationId),
+      ),
     );
-    const receivers = subs.map((sub) => sub.user._id);
-    if (receivers.length > 0) {
+
+    // Usuwamy duplikaty użytkowników
+    const uniqueReceivers = Array.from(
+      new Set(allSubs.flat().map((sub) => sub.user._id.toString())),
+    );
+    if (uniqueReceivers.length > 0) {
       const createNotificationDto = {
         title: `Hey, have you enjoyed the event: ${event.title}?🤠`,
         body: `Let us know, we can't wait to hear your opinion!🤔`,
         eventId: event._id.toString(),
-        receivers,
+        receivers: uniqueReceivers,
         type: NotificationType.RATING_REQUEST,
       };
       const notification = await this.notificationService.create(
         createNotificationDto,
       );
       const { body, eventId } = createNotificationDto;
-      await this.notificationService.sendNotification(receivers, {
+      await this.notificationService.sendNotification(uniqueReceivers, {
         data: {
           _id: notification._id.toString(),
           body,
@@ -159,25 +196,27 @@ export class EventService {
     return this.eventRepository.findByLocationId(locationId);
   }
 
-  async findById(id: string) {
+  async findById(id: string, uid?: string) {
     const event = await this.eventRepository.findEventById(id);
     if (!event) throw new BadRequestException(`INVALID_EVENT_ID`);
-    return event;
-    // if (!event) throw new InternalServerErrorException(`EVENT_NOT_FOUND`);
-    // const subs = await this.subscriptionService.findByLocationId(
-    //   event.locationId,
-    // );
-    // event.participators.forEach((participator) => {
-    //   participator['isSubscriber'] = subs.some(({ user }) => {
-    //     return user._id.toString() === participator.user._id.toString();
-    //   });
-    // });
-    // return {
-    //   event,
-    //   isUserOwner: uid
-    //     ? event.place.employees.some((u) => u.user._id.toString() === uid)
-    //     : false,
-    // };
+
+    if (uid) {
+      const isUserParticipator = event.participators.some((participator) => {
+        return participator.user._id.toString() === uid.toString();
+      });
+
+      const { participators, ...rest } = event;
+      return {
+        ...rest,
+        isUserParticipator,
+      };
+    }
+
+    const { participators, ...rest } = event;
+    return {
+      ...rest,
+      isUserParticipator: false,
+    };
   }
 
   // async findNearbyEventsToday(geolocationDto: GeolocationDto) {
@@ -247,13 +286,19 @@ export class EventService {
   // }
 
   async addParticipator(id: string, uid: string) {
-    const event = await this.eventRepository.findById(id);
+    const event = await this.eventRepository.findEventById(id);
     if (!event) throw new InternalServerErrorException(`EVENT_NOT_FOUND`);
     if (isBefore(new Date(event.endDate), new Date())) {
       throw new InternalServerErrorException('EVENT_HAS_ENDED');
     }
-    // if (participatedEvent)
-    //   throw new InternalServerErrorException(`USER_ALREADY_PARTICIPATES`);
+
+    const isAlreadyParticipating = event.participators.some((participator) => {
+      return participator.user._id.toString() === uid.toString();
+    });
+    if (isAlreadyParticipating) {
+      throw new BadRequestException('USER_ALREADY_PARTICIPATING');
+    }
+
     return this.eventRepository.addParticipator(id, uid);
   }
 
@@ -278,11 +323,16 @@ export class EventService {
       });
     }
     for (const event of events) {
-      const subs = await this.subscriptionService.findByLocationId(
-        event.locationId,
+      // Zbieramy subskrybentów ze wszystkich lokacji tego eventu
+      const allSubs = await Promise.all(
+        event.locationIds.map((locationId) =>
+          this.subscriptionService.findByLocationId(locationId),
+        ),
       );
+      const flatSubs = allSubs.flat();
+
       event.participators.forEach((participator) => {
-        participator['isSubscriber'] = subs.some(({ user }) => {
+        participator['isSubscriber'] = flatSubs.some(({ user }) => {
           return user._id.toString() === participator.user._id.toString();
         });
       });
@@ -339,10 +389,11 @@ export class EventService {
     event: Event,
   ) {
     // Sprawdź czy użytkownik jest pracownikiem tego miejsca
-    const placeEmployee = await this.placeEmployeeService.findByPlaceIdAndUserId(
-      event.place._id.toString(),
-      uid,
-    );
+    const placeEmployee =
+      await this.placeEmployeeService.findByPlaceIdAndUserId(
+        event.place._id.toString(),
+        uid,
+      );
     if (!placeEmployee) {
       throw new ForbiddenException('USER_IS_NOT_ORGANIZER');
     }
@@ -360,20 +411,9 @@ export class EventService {
     return this.eventRepository.removeParticipator(id, uid);
   }
 
-  async findByQuery(eventFilterQuery: EventFilterQuery) {
-    const { locationId, participatorId, userId, active, start, limit } =
-      eventFilterQuery;
+  async findByQuery(userId: string, eventFilterQuery: EventFilterQuery) {
+    const { locationId, participatorId, start, limit } = eventFilterQuery;
     if (userId) {
-      // const places = await this.placeService.findByUserId(userId);
-      // const events = await this.eventRepository.findByPlacesIds(
-      //   places.map((p) => p._id),
-      // );
-      // if (active) {
-      //   return events.filter((e) => {
-      //     return isBefore(new Date(), e.endDate);
-      //   });
-      // }
-      // return events;
       return this.eventRepository.findByUserId({ start, limit }, userId);
     }
     if (participatorId) {
@@ -413,5 +453,28 @@ export class EventService {
       throw new UnauthorizedException('ILLEGAL_OPERATION');
     }
     return this.eventRepository.findByIdAndDelete(id);
+  }
+
+  async search(searchQuery: SearchEventQuery) {
+    const { lat, lng, countryCode, start, limit } = searchQuery;
+
+    const nearbyLocationIds =
+      await this.placeService.findLocationIdsWithinRadius(
+        lat,
+        lng,
+        15000, // 15 km in metres
+      );
+
+    if (nearbyLocationIds.length > 0) {
+      return this.eventRepository.findPaginatedByLocationIds(
+        { start, limit },
+        nearbyLocationIds,
+      );
+    }
+
+    return this.eventRepository.findPaginatedByCountryCode(
+      { start, limit },
+      countryCode,
+    );
   }
 }

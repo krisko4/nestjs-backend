@@ -1,4 +1,4 @@
-import { IsMongoId, IsString, MaxLength } from 'class-validator';
+import { IsArray, IsMongoId, MaxLength } from 'class-validator';
 
 export class CreateEventDto {
   @MaxLength(100)
@@ -8,6 +8,7 @@ export class CreateEventDto {
   endDate: Date;
   // @IsString()
   // address: string;
-  @IsMongoId()
-  locationId: string;
+  @IsArray()
+  @IsMongoId({ each: true })
+  locationIds: string[];
 }

@@ -8,9 +8,6 @@ export class EventFilterQuery extends PaginationQuery {
   @IsMongoId()
   @IsOptional()
   participatorId?: string;
-  @IsMongoId()
-  @IsOptional()
-  userId?: string;
   @IsBooleanString()
   @IsOptional()
   active?: boolean;

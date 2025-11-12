@@ -36,7 +36,7 @@ export class EventRepository extends MongoRepository<
   }
   findByLocationId(locationId: string) {
     return this.eventModel
-      .find({ locationId: new Types.ObjectId(locationId) })
+      .find({ locationIds: new Types.ObjectId(locationId) })
       .populate('place')
       .populate('participators')
       .lean();
@@ -169,5 +169,34 @@ export class EventRepository extends MongoRepository<
     return this.eventModel.findByIdAndDelete(toMongoObjectId(id), {
       session,
     });
+  }
+
+  async findPaginatedByCountryCode(
+    paginationQuery: PaginationQuery,
+    countryCode: string,
+  ) {
+    const { start, limit } = paginationQuery;
+    let pipeline = this.eventModel.aggregate();
+
+    const result = await pipeline.facet(
+      getPaginatedEventData(start, limit, {}, undefined, countryCode),
+    );
+
+    return result[0];
+  }
+
+  async findPaginatedByLocationIds(
+    paginationQuery: PaginationQuery,
+    locationIds: string[],
+  ) {
+    const { start, limit } = paginationQuery;
+    const objectIds = locationIds.map((id) => new Types.ObjectId(id));
+    let pipeline = this.eventModel.aggregate();
+
+    const result = await pipeline.facet(
+      getPaginatedEventData(start, limit, {}, undefined, undefined, objectIds),
+    );
+
+    return result[0];
   }
 }

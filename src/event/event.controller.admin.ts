@@ -23,6 +23,7 @@ import { plainToInstance } from 'class-transformer';
 import { EventDto } from './dto/event.dto';
 import { PaginationQuery } from 'src/place/queries/pagination.query';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { Event } from './schemas/event.schema';
 
 @Controller('admin/events')
 export class AdminEventController {
@@ -38,9 +39,11 @@ export class AdminEventController {
     return this.eventService.create(createEventDto, img);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get()
-  async find(@Query() eventFilterQuery: EventFilterQuery) {
-    return this.eventService.findByQuery(eventFilterQuery);
+  async find(@Req() req, @Query() eventFilterQuery: EventFilterQuery) {
+    const { uid } = req.user;
+    return this.eventService.findByQuery(uid, eventFilterQuery);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -51,7 +54,8 @@ export class AdminEventController {
 
   @Get(':id')
   async findById(@Param('id') id: string) {
-    return this.eventService.findById(id);
+    const event = await this.eventService.findById(id);
+    return plainToInstance(Event, event);
   }
 
   @UseGuards(JwtAuthGuard)

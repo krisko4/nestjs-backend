@@ -19,10 +19,11 @@ import { EventService } from './event.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { EventFilterQuery } from './queries/event-filter.query';
-import { plainToInstance } from 'class-transformer';
-import { EventDto } from './dto/event.dto';
 import { PaginationQuery } from 'src/place/queries/pagination.query';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { SearchEventQuery } from './queries/search-event.query';
+import { plainToInstance } from 'class-transformer';
+import { Event } from './schemas/event.schema';
 
 @Controller('user/events')
 export class UserEventController {
@@ -38,20 +39,16 @@ export class UserEventController {
     return this.eventService.create(createEventDto, img);
   }
 
-  @Get()
-  async find(@Query() eventFilterQuery: EventFilterQuery) {
-    return this.eventService.findByQuery(eventFilterQuery);
+  @Get('/search')
+  async search(@Query() searchEventQuery: SearchEventQuery) {
+    return this.eventService.search(searchEventQuery);
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('statistics')
-  async findStatistics(@Query() statisticsFilterQuery: StatisticsFilterQuery) {
-    return this.eventService.findStatistics(statisticsFilterQuery);
-  }
-
   @Get(':id')
   async findById(@Param('id') id: string) {
-    return this.eventService.findById(id);
+    const event = await this.eventService.findById(id);
+    return plainToInstance(Event, event);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -83,30 +80,5 @@ export class UserEventController {
       uid,
       updateParticipatorDto,
     );
-  }
-
-  @Get('/search/popular')
-  async findPopular(@Query() paginationQuery: PaginationQuery) {
-    const events = await this.eventService.findPopular(paginationQuery);
-    const { metadata, data } = events;
-    if (data.length > 0) {
-      return {
-        metadata,
-        data: data.map((event) => plainToInstance(EventDto, event)),
-      };
-    }
-    return events;
-  }
-  @Get('/search/today')
-  async findToday(@Query() paginationQuery: PaginationQuery) {
-    const events = await this.eventService.findToday(paginationQuery);
-    const { metadata, data } = events;
-    if (data.length > 0) {
-      return {
-        metadata,
-        data: data.map((event) => plainToInstance(EventDto, event)),
-      };
-    }
-    return events;
   }
 }
