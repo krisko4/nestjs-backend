@@ -12,7 +12,7 @@ export type EventDocument = Event & Document;
 export type CreateEventSchema = {
   title: string;
   startDate: Date;
-  endDate: Date;
+  endDate?: Date;
   content: string;
   img?: string;
   place: string;
@@ -27,8 +27,8 @@ export class Event {
   title: string;
   @Prop({ required: true })
   startDate: Date;
-  @Prop({ required: true })
-  endDate: Date;
+  @Prop()
+  endDate?: Date;
   @Prop({ required: true })
   content: string;
   @Prop()

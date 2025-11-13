@@ -24,6 +24,8 @@ export class CodeService {
     private readonly codeSseService: CodeSseService,
     @Inject(forwardRef(() => PlaceEmployeeService))
     private readonly placeEmployeeService: PlaceEmployeeService,
+    @Inject(forwardRef(() => PlaceService))
+    private readonly placeService: PlaceService,
   ) {}
   async create(createCodeDto: CreateCodeDto, session?: ClientSession) {
     let isDuplicate = true;
@@ -48,13 +50,25 @@ export class CodeService {
     if (code.usedAt) {
       throw new BadRequestException('CODE_ALREADY_USED');
     }
-    const place = code.reward.place;
 
-    // Sprawdź czy użytkownik jest pracownikiem tego miejsca
-    const placeEmployee = await this.placeEmployeeService.findByPlaceIdAndUserId(
-      place._id.toString(),
-      uid,
-    );
+    let placeId: string;
+
+    if (code.reward) {
+      placeId = code.reward.place._id.toString();
+    } else if (code.locationId) {
+      const place = await this.placeService.findByLocationId(
+        code.locationId.toString(),
+      );
+      if (!place) {
+        throw new NotFoundException('PLACE_NOT_FOUND');
+      }
+      placeId = place._id.toString();
+    } else {
+      throw new BadRequestException('INVALID_CODE_CONFIGURATION');
+    }
+
+    const placeEmployee =
+      await this.placeEmployeeService.findByPlaceIdAndUserId(placeId, uid);
     if (!placeEmployee) {
       throw new UnauthorizedException('ILLEGAL_OPERATION');
     }
@@ -214,5 +228,13 @@ export class CodeService {
     userId: string,
   ): Promise<number> {
     return this.codeRepository.countUserRewardUsage(rewardId, userId);
+  }
+
+  async findUsedCodesByUserId(
+    userId: string,
+    start: number = 0,
+    limit: number = 10,
+  ) {
+    return this.codeRepository.findUsedCodesByUserId(userId, start, limit);
   }
 }

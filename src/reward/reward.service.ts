@@ -25,6 +25,7 @@ import { ActivateRewardDto } from './dto/activate-reward.dto';
 import { SearchRewardQuery } from './queries/search-reward.query';
 import { UserService } from 'src/user/user.service';
 import { PlaceEmployeeService } from 'src/place-employee/place-employee.service';
+import { UserRewardsQuery } from './queries/user-rewards.query';
 
 @Injectable()
 export class RewardService {

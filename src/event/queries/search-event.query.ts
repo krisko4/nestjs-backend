@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsNotEmpty, IsNumber, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class SearchEventQuery {
   @IsInt()
@@ -22,4 +22,8 @@ export class SearchEventQuery {
   @IsString()
   @IsNotEmpty()
   countryCode: string;
+  @IsBoolean()
+  @IsOptional()
+  @Type(() => Boolean)
+  activeOnly?: boolean;
 }

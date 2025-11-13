@@ -32,6 +32,7 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
 import { PlaceEmployeeService } from 'src/place-employee/place-employee.service';
 import { SearchEventQuery } from './queries/search-event.query';
+import { UserEventsQuery } from './queries/user-events.query';
 
 @Injectable()
 export class EventService {
@@ -456,7 +457,7 @@ export class EventService {
   }
 
   async search(searchQuery: SearchEventQuery) {
-    const { lat, lng, countryCode, start, limit } = searchQuery;
+    const { lat, lng, countryCode, start, limit, activeOnly } = searchQuery;
 
     const nearbyLocationIds =
       await this.placeService.findLocationIdsWithinRadius(
@@ -469,12 +470,23 @@ export class EventService {
       return this.eventRepository.findPaginatedByLocationIds(
         { start, limit },
         nearbyLocationIds,
+        activeOnly,
       );
     }
 
     return this.eventRepository.findPaginatedByCountryCode(
       { start, limit },
       countryCode,
+      activeOnly,
+    );
+  }
+
+  async findUserEvents(userEventsQuery: UserEventsQuery, userId: string) {
+    const { start, limit, activeOnly } = userEventsQuery;
+    return this.eventRepository.findPaginatedByParticipatorId(
+      { start, limit },
+      userId,
+      activeOnly,
     );
   }
 }

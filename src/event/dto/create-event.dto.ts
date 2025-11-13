@@ -5,9 +5,7 @@ export class CreateEventDto {
   title: string;
   content: string;
   startDate: Date;
-  endDate: Date;
-  // @IsString()
-  // address: string;
+  endDate?: Date;
   @IsArray()
   @IsMongoId({ each: true })
   locationIds: string[];

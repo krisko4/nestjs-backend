@@ -24,6 +24,7 @@ import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { SearchEventQuery } from './queries/search-event.query';
 import { plainToInstance } from 'class-transformer';
 import { Event } from './schemas/event.schema';
+import { UserEventsQuery } from './queries/user-events.query';
 
 @Controller('user/events')
 export class UserEventController {
@@ -45,9 +46,17 @@ export class UserEventController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('/my-events')
+  async findUserEvents(@Query() userEventsQuery: UserEventsQuery, @Req() req) {
+    const { uid } = req.user;
+    return this.eventService.findUserEvents(userEventsQuery, uid);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
-  async findById(@Param('id') id: string) {
-    const event = await this.eventService.findById(id);
+  async findById(@Param('id') id: string, @Req() req) {
+    const { uid } = req.user;
+    const event = await this.eventService.findById(id, uid);
     return plainToInstance(Event, event);
   }
 

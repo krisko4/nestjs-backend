@@ -174,12 +174,13 @@ export class EventRepository extends MongoRepository<
   async findPaginatedByCountryCode(
     paginationQuery: PaginationQuery,
     countryCode: string,
+    activeOnly?: boolean,
   ) {
     const { start, limit } = paginationQuery;
     let pipeline = this.eventModel.aggregate();
 
     const result = await pipeline.facet(
-      getPaginatedEventData(start, limit, {}, undefined, countryCode),
+      getPaginatedEventData(start, limit, {}, undefined, countryCode, undefined, activeOnly),
     );
 
     return result[0];
@@ -188,14 +189,98 @@ export class EventRepository extends MongoRepository<
   async findPaginatedByLocationIds(
     paginationQuery: PaginationQuery,
     locationIds: string[],
+    activeOnly?: boolean,
   ) {
     const { start, limit } = paginationQuery;
     const objectIds = locationIds.map((id) => new Types.ObjectId(id));
     let pipeline = this.eventModel.aggregate();
 
     const result = await pipeline.facet(
-      getPaginatedEventData(start, limit, {}, undefined, undefined, objectIds),
+      getPaginatedEventData(start, limit, {}, undefined, undefined, objectIds, activeOnly),
     );
+
+    return result[0];
+  }
+
+  async findPaginatedByParticipatorId(
+    paginationQuery: PaginationQuery,
+    userId: string,
+    activeOnly?: boolean,
+  ) {
+    const { start, limit } = paginationQuery;
+    let pipeline = this.eventModel.aggregate();
+
+    // Dodaj filtr po participatorId
+    pipeline = pipeline.match({
+      'participators.user': new Types.ObjectId(userId),
+    });
+
+    // Opcjonalnie filtruj tylko aktywne eventy
+    if (activeOnly) {
+      pipeline = pipeline.match({
+        endDate: { $gte: new Date() },
+      });
+    }
+
+    // Populate place
+    pipeline = pipeline.lookup({
+      from: 'places',
+      localField: 'place',
+      foreignField: '_id',
+      as: 'place',
+    });
+
+    const dataPipeline = [
+      { $skip: start },
+      { $limit: limit },
+      {
+        $project: {
+          locationIds: 1,
+          startDate: 1,
+          endDate: 1,
+          participators: 1,
+          title: 1,
+          content: 1,
+          img: {
+            $cond: {
+              if: { $ne: ['$img', null] },
+              then: {
+                $concat: [`${process.env.CLOUDI_URL}/`, '$img'],
+              },
+              else: null,
+            },
+          },
+          place: {
+            $mergeObjects: [
+              { $arrayElemAt: ['$place', 0] },
+              {
+                logo: {
+                  $concat: [
+                    `${process.env.CLOUDI_URL}/`,
+                    { $arrayElemAt: ['$place.logo', 0] },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      },
+    ];
+
+    const metadataPipeline = [
+      { $count: 'total' },
+      {
+        $addFields: {
+          start: start,
+          limit: limit,
+        },
+      },
+    ];
+
+    const result = await pipeline.facet({
+      metadata: metadataPipeline,
+      data: dataPipeline,
+    });
 
     return result[0];
   }

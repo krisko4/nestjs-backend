@@ -5,9 +5,22 @@ function buildBasePipeline(
   entityFilterQuery: FilterQuery<Model<EventDocument>>,
   countryCode?: string,
   locationIds?: Types.ObjectId[],
+  activeOnly?: boolean,
 ) {
   const { userId, ...rest } = entityFilterQuery;
   const pipeline: any[] = [{ $match: rest }];
+
+  if (activeOnly) {
+    pipeline.push({
+      $match: {
+        $or: [
+          { endDate: { $gte: new Date() } },
+          { endDate: { $eq: null } },
+          { endDate: { $exists: false } },
+        ],
+      },
+    });
+  }
 
   if (userId) {
     // Filtruj eventy gdzie użytkownik jest employeem przynajmniej jednej z lokalizacji eventu
@@ -102,11 +115,13 @@ export function getPaginatedEventData(
   locationFilter?: { lat?: number; lng?: number }, // Deprecated - nie używamy już
   countryCode?: string,
   locationIds?: Types.ObjectId[],
+  activeOnly?: boolean,
 ) {
   const dataPipeline = buildBasePipeline(
     entityFilterQuery,
     countryCode,
     locationIds,
+    activeOnly,
   );
 
   dataPipeline.push(
@@ -150,6 +165,7 @@ export function getPaginatedEventData(
     entityFilterQuery,
     countryCode,
     locationIds,
+    activeOnly,
   );
 
   metadataPipeline.push(
