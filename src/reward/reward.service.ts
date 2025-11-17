@@ -9,6 +9,7 @@ import {
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { SubscriptionService } from 'src/subscription/subscription.service';
 import { CreateRewardDto } from './dto/create-reward.dto';
+import { UpdateRewardDto } from './dto/update-reward.dto';
 import { RewardFilterQuery } from './queries/reward-filter.query';
 import { RewardRepository } from './reward.repository';
 import mongoose from 'mongoose';
@@ -139,7 +140,6 @@ export class RewardService {
         );
         return {
           ...reward,
-          usageLimit: reward.usageLimit,
           usedCount,
         };
       }),
@@ -429,5 +429,80 @@ export class RewardService {
 
     // Pobierz historię skanów
     return this.codeService.findScanHistoryByRewardId(rewardId, start, limit);
+  }
+
+  async updateById(id: string, uid: string, updateRewardDto: UpdateRewardDto) {
+    const reward = await this.findById(id);
+    if (!reward) {
+      throw new NotFoundException('INVALID_REWARD_ID');
+    }
+
+    // Sprawdź czy użytkownik jest BOSS'em miejsca
+    const isUserBoss = await this.placeEmployeeService.isUserBossOfPlace(
+      uid,
+      reward.place._id.toString(),
+    );
+    if (!isUserBoss) {
+      throw new UnauthorizedException('ILLEGAL_OPERATION');
+    }
+
+    const { locationIds, eventId, selectedUserIds } = updateRewardDto;
+    const updateData: any = { ...updateRewardDto };
+
+    // Jeśli są nowe locationIds, weryfikujemy czy należą do tego samego place
+    if (locationIds && locationIds.length > 0) {
+      const place = await this.placeService.findByLocationId(locationIds[0]);
+
+      // Zweryfikuj czy wszystkie locationIds należą do tego samego place
+      for (const locationId of locationIds) {
+        const locationPlace = await this.placeService.findByLocationId(
+          locationId,
+        );
+        if (locationPlace._id.toString() !== place._id.toString()) {
+          throw new BadRequestException(
+            'All locations must belong to the same place',
+          );
+        }
+      }
+
+      // Sprawdź czy nowe locationIds należą do tego samego place co obecny reward
+      if (place._id.toString() !== reward.place._id.toString()) {
+        throw new BadRequestException(
+          'Cannot change reward to a different place',
+        );
+      }
+
+      // Sprawdź czy użytkownik jest BOSS'em przynajmniej jednej z nowych lokalizacji
+      const hasAccessToAnyLocation = await Promise.all(
+        locationIds.map((locationId) =>
+          this.placeEmployeeService.isUserBossOfLocation(uid, locationId),
+        ),
+      );
+
+      if (!hasAccessToAnyLocation.some((hasAccess) => hasAccess)) {
+        throw new UnauthorizedException('ILLEGAL_OPERATION');
+      }
+    }
+
+    // Jeśli jest nowy eventId, zweryfikuj go
+    if (eventId) {
+      const event = await this.eventService.findById(eventId);
+      if (isBefore(new Date(event.endDate), new Date())) {
+        throw new BadRequestException('EVENT_HAS_ENDED');
+      }
+    }
+
+    // Przekształć selectedUserIds jeśli istnieją
+    if (selectedUserIds && selectedUserIds.length > 0) {
+      updateData.selectedUserIds = selectedUserIds;
+    }
+
+    // Aktualizuj reward
+    const updatedReward = await this.rewardRepository.updateReward(
+      id,
+      updateData,
+    );
+
+    return updatedReward;
   }
 }

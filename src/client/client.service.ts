@@ -1,41 +1,32 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { CodeRepository } from 'src/code/code.repository';
+import { CodeService } from 'src/code/code.service';
 import { PlaceService } from 'src/place/place.service';
+import { UserService } from 'src/user/user.service';
 import { ClientResponseDto } from './dto/client-response.dto';
 import {
   ScanHistoryItemDto,
   ScanHistoryResponseDto,
 } from './dto/scan-history-response.dto';
-import { PaginatedResponse } from './dto/pagination.query';
+import {
+  PaginatedResponse,
+  SimplePaginatedResponse,
+  ScanHistoryPaginatedResponse,
+} from './dto/pagination.query';
 
 @Injectable()
 export class ClientService {
   constructor(
-    private readonly codeRepository: CodeRepository,
+    private readonly codeService: CodeService,
     private readonly placeService: PlaceService,
+    private readonly userService: UserService,
   ) {}
 
-  /**
-   * Pobiera listę wszystkich klientów dla place'ów należących do użytkownika
-   * @param userId - ID użytkownika (owner/employee place'ów)
-   * @param page - Numer strony
-   * @param limit - Liczba elementów na stronę
-   * @param placeId - Opcjonalny filtr po konkretnym placeId
-   * @param locationId - Opcjonalny filtr po konkretnej lokalizacji
-   * @param email - Opcjonalny filtr po emailu klienta
-   * @param minScans - Minimalna liczba skanów
-   * @param maxScans - Maksymalna liczba skanów
-   * @param lastScanDateFrom - Data początkowa ostatniej wizyty
-   * @param lastScanDateTo - Data końcowa ostatniej wizyty
-   * @param sortBy - Pole według którego sortować
-   * @param sortOrder - Kierunek sortowania
-   */
   async getClientsByUserId(
     userId: string,
     page: number = 1,
     limit: number = 10,
     placeId?: string,
-    locationId?: string,
+    locationIds?: string[],
     email?: string,
     minScans?: number,
     maxScans?: number,
@@ -71,12 +62,12 @@ export class ClientService {
 
     // Pobierz klientów z agregacji MongoDB (z paginacją i filtrami)
     const { data: clientsData, total } =
-      await this.codeRepository.findClientsByPlaceIds(
+      await this.codeService.findClientsByPlaceIds(
         placeIds,
         page,
         limit,
         placeId,
-        locationId,
+        locationIds,
         email,
         minScans,
         maxScans,
@@ -118,59 +109,77 @@ export class ClientService {
     };
   }
 
-  /**
-   * Pobiera historię skanów dla konkretnego klienta
-   * @param userId - ID użytkownika (owner/employee place'ów)
-   * @param clientId - ID klienta
-   * @param page - Numer strony
-   * @param limit - Liczba elementów na stronę
-   */
   async getScanHistoryByClientId(
     userId: string,
     clientId: string,
     page: number = 1,
     limit: number = 10,
-  ): Promise<PaginatedResponse<ScanHistoryItemDto>> {
-    // Pobierz wszystkie place'y użytkownika
+  ): Promise<ScanHistoryPaginatedResponse<ScanHistoryItemDto>> {
     const places = await this.placeService.findByUserId(userId);
 
     if (!places || places.length === 0) {
       throw new NotFoundException('No places found for this user');
     }
 
-    // Wyciągnij ID place'ów
     const placeIds = places.map((place) => place._id.toString());
 
-    // Pobierz historię skanów (z paginacją)
+    const client = await this.userService.findById(clientId);
+
     const { data: scannedCodes, total } =
-      await this.codeRepository.findScanHistoryByClientAndPlaceIds(
+      await this.codeService.findScanHistoryByClientAndPlaceIds(
         clientId,
         placeIds,
         page,
         limit,
       );
 
+    const clientInfo = {
+      _id: clientId,
+      email: client?.email,
+    };
+
     const scans: ScanHistoryItemDto[] = scannedCodes.map((code) => ({
       codeId: code._id.toString(),
-      codeValue: code.value,
       scannedAt: code.usedAt,
-      scannedBy: code.usedBy?.toString() || 'Unknown',
-      placeName: code.reward?.place?.name || 'Unknown Place',
-      placeId: code.reward?.place?._id?.toString() || '',
-      rewardDescription: code.reward?.description,
+      ...(code.usedBy && {
+        scannedBy: {
+          _id: code.usedBy._id.toString(),
+          firstName: code.usedBy.firstName,
+          lastName: code.usedBy.lastName,
+          email: code.usedBy.email,
+          img: code.usedBy.img,
+        },
+      }),
+      ...(code.placeEmployee && {
+        placeEmployee: {
+          _id: code.placeEmployee._id.toString(),
+          name: code.placeEmployee.name,
+        },
+      }),
+      placeName: code.place?.name,
+      placeId: code.place?._id?.toString() || '',
+      ...(code.location &&
+        code.location._id && {
+          location: {
+            _id: code.location._id.toString(),
+            address: code.location.address,
+          },
+        }),
+      ...(code.reward && {
+        reward: {
+          _id: code.reward._id.toString(),
+          name: code.reward.name,
+        },
+      }),
     }));
 
-    const totalPages = Math.ceil(total / limit);
-
     return {
+      client: clientInfo,
       data: scans,
       metadata: {
         start: page,
         limit,
         total,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1,
       },
     };
   }

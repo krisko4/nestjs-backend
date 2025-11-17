@@ -299,13 +299,11 @@ export class PlaceService {
   }
 
   async findByUserId(uid: string) {
-    // Pobierz PlaceEmployee dla użytkownika którzy są BOSS'ami
     const placeEmployees = await this.placeEmployeeService.findByUserId(uid);
     const bossPlaceEmployees = placeEmployees.filter(
       (pe) => pe.role === PlaceEmployeeRole.BOSS,
     );
 
-    // Zwróć miejsca dla których użytkownik jest BOSS'em
     const placeIds = bossPlaceEmployees
       .map((pe) => pe.place?._id || pe.place)
       .filter((place) => place); // Filter out null/undefined

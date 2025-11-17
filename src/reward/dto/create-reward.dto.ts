@@ -28,19 +28,11 @@ export class CreateRewardDto {
   @IsMongoId({ each: true })
   locationIds: string[];
 
-  /**
-   * Lista ID użytkowników którzy mają dostęp do tego rewarda.
-   * Wymagane tylko gdy availableFor = SELECTED_USERS
-   */
   @ValidateIf((o) => o.availableFor === RewardAvailableFor.SELECTED_USERS)
   @IsArray()
   @IsMongoId({ each: true })
   selectedUserIds?: string[];
 
-  /**
-   * Limit użyć rewarda przez jednego użytkownika.
-   * null = bez limitu, liczba = konkretny limit (min 1)
-   */
   @IsOptional()
   @IsNumber()
   @Min(1)

@@ -8,19 +8,6 @@ import { PaginationQuery } from './dto/pagination.query';
 export class AdminClientController {
   constructor(private readonly clientService: ClientService) {}
 
-  /**
-   * GET /admin/clients?page=1&limit=10&placeId=xxx&locationId=xxx&email=xxx&minScans=5&maxScans=50&lastScanDateFrom=2024-01-01&lastScanDateTo=2024-12-31&sortBy=totalScans&sortOrder=desc
-   * Pobiera listę wszystkich klientów (użytkowników którzy zeskanowali kody)
-   * dla place'ów należących do zalogowanego użytkownika
-   * Opcjonalnie można filtrować po:
-   * - placeId - konkretny place
-   * - locationId - konkretna lokalizacja
-   * - email - email klienta (częściowe dopasowanie, case-insensitive)
-   * - minScans, maxScans - zakres liczby skanów
-   * - lastScanDateFrom, lastScanDateTo - zakres dat ostatniej wizyty (format ISO 8601)
-   * - sortBy - pole sortowania (lastScanDate | totalScans, domyślnie: lastScanDate)
-   * - sortOrder - kierunek sortowania (asc | desc, domyślnie: desc)
-   */
   @UseGuards(JwtAuthGuard)
   @Get()
   async getClients(@Query() query: ClientFilterQuery, @Req() req) {
@@ -29,7 +16,7 @@ export class AdminClientController {
       page = 1,
       limit = 10,
       placeId,
-      locationId,
+      locationIds,
       email,
       minScans,
       maxScans,
@@ -43,7 +30,7 @@ export class AdminClientController {
       page,
       limit,
       placeId,
-      locationId,
+      locationIds,
       email,
       minScans,
       maxScans,
@@ -54,11 +41,6 @@ export class AdminClientController {
     );
   }
 
-  /**
-   * GET /admin/clients/:clientId/scan-history?page=1&limit=10
-   * Pobiera historię skanowanych kodów dla konkretnego klienta
-   * w place'ach należących do zalogowanego użytkownika
-   */
   @UseGuards(JwtAuthGuard)
   @Get(':clientId/scan-history')
   async getScanHistory(

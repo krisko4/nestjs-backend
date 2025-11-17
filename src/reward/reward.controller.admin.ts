@@ -10,9 +10,11 @@ import {
   UseGuards,
   Param,
   Delete,
+  Patch,
 } from '@nestjs/common';
 import { RewardService } from './reward.service';
 import { CreateRewardDto } from './dto/create-reward.dto';
+import { UpdateRewardDto } from './dto/update-reward.dto';
 import { RewardFilterQuery } from './queries/reward-filter.query';
 import { PaginationQuery } from './queries/pagination.query';
 import { plainToInstance } from 'class-transformer';
@@ -44,6 +46,17 @@ export class AdminRewardController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch(':id')
+  updateById(
+    @Param('id') id: string,
+    @Body() updateRewardDto: UpdateRewardDto,
+    @Req() req: any,
+  ) {
+    const { uid } = req.user;
+    return this.rewardService.updateById(id, uid, updateRewardDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   deleteById(@Param('id') id: string, @Req() req) {
     const { uid } = req.user;
@@ -56,13 +69,6 @@ export class AdminRewardController {
     return this.rewardService.findStatistics(statisticsFilterQuery);
   }
 
-  /**
-   * GET /admin/rewards/:id/scan-history?start=0&limit=10
-   * Pobiera historię skanów dla konkretnego rewarda (kuponu)
-   * Zwraca informacje o tym kiedy kod został zeskanowany,
-   * kto go zeskanował oraz dla jakiego użytkownika był kod
-   * start - offset (0 = pierwsza strona, 10 = druga strona przy limit=10)
-   */
   @UseGuards(JwtAuthGuard)
   @Get(':id/scan-history')
   async getRewardScanHistory(

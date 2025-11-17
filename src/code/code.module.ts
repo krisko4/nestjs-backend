@@ -17,6 +17,6 @@ import { PlaceEmployeeModule } from 'src/place-employee/place-employee.module';
   ],
   controllers: [CodeController, UserCodeController],
   providers: [CodeService, CodeRepository, CodeSseService],
-  exports: [CodeService, CodeRepository],
+  exports: [CodeService],
 })
 export class CodeModule {}

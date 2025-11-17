@@ -1,8 +1,10 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { PlaceEmployeeRepository } from './place-employee.repository';
 import { EmployeeService } from 'src/employee/employee.service';
@@ -14,6 +16,7 @@ import {
 } from './schemas/place-employee.schema';
 import { CreatePlaceEmployeeDto } from './dto/create-place-employee.dto';
 import { InjectConnection } from '@nestjs/mongoose';
+import { CodeService } from 'src/code/code.service';
 
 @Injectable()
 export class PlaceEmployeeService {
@@ -21,6 +24,8 @@ export class PlaceEmployeeService {
     private readonly placeEmployeeRepository: PlaceEmployeeRepository,
     private readonly employeeService: EmployeeService,
     @InjectConnection() private readonly connection: mongoose.Connection,
+    @Inject(forwardRef(() => CodeService))
+    private readonly codeService: CodeService,
   ) {}
 
   async addEmployeeToPlace(
@@ -257,6 +262,24 @@ export class PlaceEmployeeService {
     );
   }
 
+  async getPlaceEmployeeById(placeEmployeeId: string, userId: string) {
+    const placeEmployee =
+      await this.placeEmployeeRepository.findByIdWithPopulate(placeEmployeeId);
+    if (!placeEmployee) {
+      throw new NotFoundException('PLACE_EMPLOYEE_NOT_FOUND');
+    }
+
+    const isUserBoss = await this.isUserBossOfPlace(
+      userId,
+      placeEmployee.place._id.toString(),
+    );
+    if (!isUserBoss) {
+      throw new ForbiddenException('NOT_ALLOWED');
+    }
+
+    return placeEmployee;
+  }
+
   /**
    * Pobierz miejsca użytkownika
    */
@@ -303,5 +326,59 @@ export class PlaceEmployeeService {
     session?: ClientSession,
   ) {
     return this.placeEmployeeRepository.create(data, session);
+  }
+
+  /**
+   * Pobiera historię skanów wykonanych przez pracownika
+   */
+  async getScanHistoryByPlaceEmployeeId(
+    placeEmployeeId: string,
+    requestingUserId: string,
+    page: number = 1,
+    limit: number = 10,
+  ) {
+    const placeEmployee =
+      await this.placeEmployeeRepository.findByIdWithPopulate(placeEmployeeId);
+
+    if (!placeEmployee) {
+      throw new NotFoundException('PLACE_EMPLOYEE_NOT_FOUND');
+    }
+
+    const isUserBoss = await this.isUserBossOfPlace(
+      requestingUserId,
+      placeEmployee.place._id.toString(),
+    );
+
+    if (!isUserBoss) {
+      throw new ForbiddenException('NOT_ALLOWED');
+    }
+
+    if (!placeEmployee.employee.user) {
+      return {
+        data: [],
+        metadata: {
+          start: page,
+          limit,
+          total: 0,
+        },
+      };
+    }
+
+    const userId = placeEmployee.employee.user._id.toString();
+
+    const { data, total } = await this.codeService.findScanHistoryByUserId(
+      userId,
+      page,
+      limit,
+    );
+
+    return {
+      data,
+      metadata: {
+        start: page,
+        limit,
+        total,
+      },
+    };
   }
 }

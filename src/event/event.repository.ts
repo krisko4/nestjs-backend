@@ -5,6 +5,7 @@ import { MongoRepository } from '../database/repository';
 import { CreateEventSchema, EventDocument } from './schemas/event.schema';
 import { CreateEventDto } from './dto/create-event.dto';
 import { PaginationQuery } from 'src/place/queries/pagination.query';
+import { ParticipatorsFilterQuery } from './dto/participators-filter.query';
 import { endOfDay, startOfDay } from 'date-fns';
 import { getPaginatedEventData } from './aggregations/paginated-event-data';
 import { Event } from './schemas/event.schema';
@@ -171,6 +172,22 @@ export class EventRepository extends MongoRepository<
     });
   }
 
+  async updateEvent(
+    id: string,
+    updateData: Partial<CreateEventSchema>,
+  ) {
+    return this.eventModel
+      .findByIdAndUpdate(
+        toMongoObjectId(id),
+        { $set: updateData },
+        { new: true },
+      )
+      .populate('place')
+      .populate('participators.user')
+      .lean()
+      .exec();
+  }
+
   async findPaginatedByCountryCode(
     paginationQuery: PaginationQuery,
     countryCode: string,
@@ -283,5 +300,54 @@ export class EventRepository extends MongoRepository<
     });
 
     return result[0];
+  }
+
+  async findPaginatedParticipators(
+    eventId: string,
+    filterQuery: ParticipatorsFilterQuery,
+  ) {
+    const page = filterQuery.page || 1;
+    const limit = filterQuery.limit || 10;
+    const start = (page - 1) * limit;
+    const { email } = filterQuery;
+
+    const event = await this.eventModel
+      .findById(eventId)
+      .select('participators')
+      .populate({
+        path: 'participators.user',
+        select: '_id email',
+      })
+      .lean()
+      .exec();
+
+    if (!event) {
+      return null;
+    }
+
+    let filteredParticipators = event.participators;
+
+    // Filtruj po email jeśli został podany
+    if (email) {
+      filteredParticipators = filteredParticipators.filter((participator) => {
+        const userEmail = participator.user?.email;
+        return userEmail && userEmail.toLowerCase().includes(email.toLowerCase());
+      });
+    }
+
+    const total = filteredParticipators.length;
+    const paginatedParticipators = filteredParticipators.slice(start, start + limit);
+
+    return {
+      data: paginatedParticipators,
+      metadata: {
+        start,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: start + limit < total,
+        hasPreviousPage: page > 1,
+      },
+    };
   }
 }

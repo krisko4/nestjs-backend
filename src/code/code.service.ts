@@ -237,4 +237,60 @@ export class CodeService {
   ) {
     return this.codeRepository.findUsedCodesByUserId(userId, start, limit);
   }
+
+  async findClientsByPlaceIds(
+    placeIds: string[],
+    page: number = 1,
+    limit: number = 10,
+    placeId?: string,
+    locationIds?: string[],
+    email?: string,
+    minScans?: number,
+    maxScans?: number,
+    lastScanDateFrom?: string,
+    lastScanDateTo?: string,
+    sortBy: string = 'lastScanDate',
+    sortOrder: string = 'desc',
+  ) {
+    return this.codeRepository.findClientsByPlaceIds(
+      placeIds,
+      page,
+      limit,
+      placeId,
+      locationIds,
+      email,
+      minScans,
+      maxScans,
+      lastScanDateFrom,
+      lastScanDateTo,
+      sortBy,
+      sortOrder,
+    );
+  }
+
+  async findScanHistoryByClientAndPlaceIds(
+    clientUserId: string,
+    placeIds: string[],
+    page: number = 1,
+    limit: number = 10,
+  ) {
+    return this.codeRepository.findScanHistoryByClientAndPlaceIds(
+      clientUserId,
+      placeIds,
+      page,
+      limit,
+    );
+  }
+
+  async findScanHistoryByUserId(
+    scannedByUserId: string,
+    page: number = 1,
+    limit: number = 10,
+  ) {
+    return this.codeRepository.findScanHistoryByUserId(
+      scannedByUserId,
+      page,
+      limit,
+    );
+  }
 }

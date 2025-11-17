@@ -151,7 +151,7 @@ export class CodeRepository extends MongoRepository<
     page: number = 1,
     limit: number = 10,
     placeId?: string,
-    locationId?: string,
+    locationIds?: string[],
     email?: string,
     minScans?: number,
     maxScans?: number,
@@ -165,13 +165,11 @@ export class CodeRepository extends MongoRepository<
 
     const pipeline = [
       {
-        // Tylko kody które zostały użyte
         $match: {
           usedAt: { $exists: true },
         },
       },
       {
-        // Populujemy reward żeby dostać się do place i locationId
         $lookup: {
           from: 'rewards',
           localField: 'reward',
@@ -187,9 +185,12 @@ export class CodeRepository extends MongoRepository<
           'rewardData.place': placeId
             ? new Types.ObjectId(placeId)
             : { $in: placeObjectIds },
-          ...(locationId && {
-            'rewardData.locationIds': new Types.ObjectId(locationId),
-          }),
+          ...(locationIds &&
+            locationIds.length > 0 && {
+              'rewardData.locationIds': {
+                $in: locationIds.map((id) => new Types.ObjectId(id)),
+              },
+            }),
         },
       },
       {
@@ -453,14 +454,6 @@ export class CodeRepository extends MongoRepository<
     };
   }
 
-  /**
-   * Pobiera historię skanowanych kodów dla konkretnego klienta (user)
-   * w place'ach należących do danego właściciela
-   * @param clientUserId - ID klienta
-   * @param placeIds - Lista ID place'ów należących do właściciela
-   * @param page - Numer strony (zaczyna się od 1)
-   * @param limit - Liczba elementów na stronę
-   */
   async findScanHistoryByClientAndPlaceIds(
     clientUserId: string,
     placeIds: string[],
@@ -470,33 +463,404 @@ export class CodeRepository extends MongoRepository<
     const placeObjectIds = placeIds.map((id) => new Types.ObjectId(id));
     const skip = (page - 1) * limit;
 
-    // Najpierw pobieramy wszystkie kody i filtrujemy
-    const allCodes = await this.codeModel
-      .find({
-        user: toMongoObjectId(clientUserId),
-        usedAt: { $exists: true },
-      })
-      .populate({
-        path: 'reward',
-        populate: {
-          path: 'place',
+    // Agregacja MongoDB dla bardziej efektywnego pobierania danych
+    const pipeline: any[] = [
+      {
+        $match: {
+          user: toMongoObjectId(clientUserId),
+          usedAt: { $exists: true },
         },
-      })
-      .populate('usedBy')
-      .sort({ usedAt: -1 });
+      },
+      {
+        $sort: { usedAt: -1 },
+      },
+      // Populate reward
+      {
+        $lookup: {
+          from: 'rewards',
+          localField: 'reward',
+          foreignField: '_id',
+          as: 'rewardData',
+        },
+      },
+      {
+        $unwind: {
+          path: '$rewardData',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      // Populate place from reward
+      {
+        $lookup: {
+          from: 'places',
+          localField: 'rewardData.place',
+          foreignField: '_id',
+          as: 'placeFromReward',
+        },
+      },
+      {
+        $unwind: {
+          path: '$placeFromReward',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      // Populate place from locationId (jeśli reward nie istnieje)
+      {
+        $lookup: {
+          from: 'places',
+          let: { locationId: '$locationId' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $in: ['$$locationId', '$locations._id'],
+                },
+              },
+            },
+          ],
+          as: 'placeFromLocation',
+        },
+      },
+      {
+        $unwind: {
+          path: '$placeFromLocation',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      // Populate usedBy
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'usedBy',
+          foreignField: '_id',
+          as: 'usedByData',
+        },
+      },
+      {
+        $unwind: {
+          path: '$usedByData',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      // Determine which place to use
+      {
+        $addFields: {
+          finalPlace: {
+            $cond: {
+              if: { $ne: ['$placeFromReward', null] },
+              then: '$placeFromReward',
+              else: '$placeFromLocation',
+            },
+          },
+        },
+      },
+      // Lookup PlaceEmployee to get placeEmployeeId
+      {
+        $lookup: {
+          from: 'placeemployees',
+          let: {
+            placeId: '$finalPlace._id',
+            userId: '$usedByData._id',
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: ['$place', '$$placeId'],
+                },
+              },
+            },
+            {
+              $lookup: {
+                from: 'employees',
+                localField: 'employee',
+                foreignField: '_id',
+                as: 'employeeData',
+              },
+            },
+            {
+              $unwind: '$employeeData',
+            },
+            {
+              $match: {
+                $expr: {
+                  $eq: ['$employeeData.user', '$$userId'],
+                },
+              },
+            },
+            {
+              $project: {
+                _id: 1,
+                name: '$employeeData.name',
+              },
+            },
+          ],
+          as: 'placeEmployeeData',
+        },
+      },
+      {
+        $addFields: {
+          placeEmployee: {
+            $arrayElemAt: ['$placeEmployeeData', 0],
+          },
+        },
+      },
+      // Find location in finalPlace.locations based on locationId
+      {
+        $addFields: {
+          location: {
+            $cond: {
+              if: {
+                $and: [
+                  { $ne: ['$locationId', null] },
+                  { $ne: ['$finalPlace', null] },
+                  { $isArray: '$finalPlace.locations' },
+                ],
+              },
+              then: {
+                $let: {
+                  vars: {
+                    foundLocation: {
+                      $arrayElemAt: [
+                        {
+                          $filter: {
+                            input: '$finalPlace.locations',
+                            as: 'loc',
+                            cond: { $eq: ['$$loc._id', '$locationId'] },
+                          },
+                        },
+                        0,
+                      ],
+                    },
+                  },
+                  in: {
+                    $cond: {
+                      if: { $ne: ['$$foundLocation', null] },
+                      then: {
+                        _id: '$$foundLocation._id',
+                        address: '$$foundLocation.address',
+                      },
+                      else: null,
+                    },
+                  },
+                },
+              },
+              else: null,
+            },
+          },
+        },
+      },
+      // Filter by placeIds
+      {
+        $match: {
+          'finalPlace._id': { $in: placeObjectIds },
+        },
+      },
+      // Project final structure
+      {
+        $project: {
+          _id: 1,
+          value: 1,
+          usedAt: 1,
+          locationId: 1,
+          usedBy: '$usedByData',
+          placeEmployee: 1,
+          location: 1,
+          reward: '$rewardData',
+          place: '$finalPlace',
+        },
+      },
+    ];
 
-    // Filtrujemy tylko kody z place'ów użytkownika
-    const filteredCodes = allCodes.filter((code) => {
-      if (!code.reward || !code.reward.place) return false;
-      return placeObjectIds.some(
-        (id) => id.toString() === code.reward.place._id.toString(),
-      );
-    });
+    const result = await this.codeModel.aggregate([
+      ...pipeline,
+      {
+        $facet: {
+          data: [{ $skip: skip }, { $limit: limit }],
+          metadata: [{ $count: 'total' }],
+        },
+      },
+    ]);
 
-    // Zwracamy tylko odpowiednią stronę
     return {
-      data: filteredCodes.slice(skip, skip + limit),
-      total: filteredCodes.length,
+      data: result[0]?.data || [],
+      total: result[0]?.metadata[0]?.total || 0,
+    };
+  }
+
+  async findScanHistoryByUserId(
+    scannedByUserId: string,
+    page: number = 1,
+    limit: number = 10,
+  ) {
+    const skip = (page - 1) * limit;
+
+    // Agregacja MongoDB dla historii skanów wykonanych przez danego użytkownika
+    const pipeline: any[] = [
+      {
+        $match: {
+          usedBy: toMongoObjectId(scannedByUserId),
+          usedAt: { $exists: true },
+        },
+      },
+      {
+        $sort: { usedAt: -1 },
+      },
+      // Populate reward
+      {
+        $lookup: {
+          from: 'rewards',
+          localField: 'reward',
+          foreignField: '_id',
+          as: 'rewardData',
+        },
+      },
+      {
+        $unwind: {
+          path: '$rewardData',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      // Populate place from reward
+      {
+        $lookup: {
+          from: 'places',
+          localField: 'rewardData.place',
+          foreignField: '_id',
+          as: 'placeFromReward',
+        },
+      },
+      {
+        $unwind: {
+          path: '$placeFromReward',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      // Populate place from locationId (jeśli reward nie istnieje)
+      {
+        $lookup: {
+          from: 'places',
+          let: { locationId: '$locationId' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $in: ['$$locationId', '$locations._id'],
+                },
+              },
+            },
+          ],
+          as: 'placeFromLocation',
+        },
+      },
+      {
+        $unwind: {
+          path: '$placeFromLocation',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      // Populate user (właściciel kodu)
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'user',
+          foreignField: '_id',
+          as: 'userData',
+        },
+      },
+      {
+        $unwind: {
+          path: '$userData',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      // Determine which place to use
+      {
+        $addFields: {
+          finalPlace: {
+            $cond: {
+              if: { $ne: ['$placeFromReward', null] },
+              then: '$placeFromReward',
+              else: '$placeFromLocation',
+            },
+          },
+        },
+      },
+      // Find location in finalPlace.locations based on locationId
+      {
+        $addFields: {
+          location: {
+            $cond: {
+              if: {
+                $and: [
+                  { $ne: ['$locationId', null] },
+                  { $ne: ['$finalPlace', null] },
+                  { $isArray: '$finalPlace.locations' },
+                ],
+              },
+              then: {
+                $let: {
+                  vars: {
+                    foundLocation: {
+                      $arrayElemAt: [
+                        {
+                          $filter: {
+                            input: '$finalPlace.locations',
+                            as: 'loc',
+                            cond: { $eq: ['$$loc._id', '$locationId'] },
+                          },
+                        },
+                        0,
+                      ],
+                    },
+                  },
+                  in: {
+                    $cond: {
+                      if: { $ne: ['$$foundLocation', null] },
+                      then: {
+                        _id: '$$foundLocation._id',
+                        address: '$$foundLocation.address',
+                      },
+                      else: null,
+                    },
+                  },
+                },
+              },
+              else: null,
+            },
+          },
+        },
+      },
+      // Project final structure
+      {
+        $project: {
+          _id: 1,
+          value: 1,
+          usedAt: 1,
+          locationId: 1,
+          user: {
+            _id: '$userData._id',
+            email: '$userData.email',
+          },
+          reward: '$rewardData',
+          place: '$finalPlace',
+        },
+      },
+    ];
+
+    const result = await this.codeModel.aggregate([
+      ...pipeline,
+      {
+        $facet: {
+          data: [{ $skip: skip }, { $limit: limit }],
+          metadata: [{ $count: 'total' }],
+        },
+      },
+    ]);
+
+    return {
+      data: result[0]?.data || [],
+      total: result[0]?.metadata[0]?.total || 0,
     };
   }
 

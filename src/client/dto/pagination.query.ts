@@ -27,3 +27,25 @@ export interface PaginatedResponse<T> {
     hasPreviousPage: boolean;
   };
 }
+
+export interface SimplePaginatedResponse<T> {
+  data: T[];
+  metadata: {
+    start: number;
+    limit: number;
+    total: number;
+  };
+}
+
+export interface ScanHistoryPaginatedResponse<T> {
+  client: {
+    _id: string;
+    email?: string;
+  };
+  data: T[];
+  metadata: {
+    start: number;
+    limit: number;
+    total: number;
+  };
+}

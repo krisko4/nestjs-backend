@@ -5,6 +5,7 @@ import { PlaceEmployeeService } from './place-employee.service';
 import { PlaceEmployeeRepository } from './place-employee.repository';
 import { PlaceEmployeeController } from './place-employee.controller';
 import { EmployeeModule } from 'src/employee/employee.module';
+import { CodeModule } from 'src/code/code.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { EmployeeModule } from 'src/employee/employee.module';
       { name: PlaceEmployee.name, schema: PlaceEmployeeSchema },
     ]),
     forwardRef(() => EmployeeModule),
+    forwardRef(() => CodeModule),
   ],
   providers: [PlaceEmployeeService, PlaceEmployeeRepository],
   controllers: [PlaceEmployeeController],

@@ -158,4 +158,19 @@ export class RewardRepository extends MongoRepository<
 
     return result[0];
   }
+
+  async updateReward(
+    id: string,
+    updateData: Partial<CreateRewardSchema>,
+  ) {
+    return this.rewardModel
+      .findByIdAndUpdate(
+        toMongoObjectId(id),
+        { $set: updateData },
+        { new: true },
+      )
+      .populate('place')
+      .lean()
+      .exec();
+  }
 }

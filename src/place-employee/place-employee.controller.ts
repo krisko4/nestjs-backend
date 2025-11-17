@@ -16,12 +16,12 @@ import { UpdatePlaceEmployeeDto } from './dto/update-place-employee.dto';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { EmployeeFilterQuery } from './dto/employee-filter.query';
 
-@Controller('admin/places/:placeId/employees')
+@Controller('admin')
 @UseGuards(JwtAuthGuard)
 export class PlaceEmployeeController {
   constructor(private readonly placeEmployeeService: PlaceEmployeeService) {}
 
-  @Post()
+  @Post('places/:placeId/employees')
   async addEmployee(
     @Param('placeId') placeId: string,
     @Body() createPlaceEmployeeDto: CreatePlaceEmployeeDto,
@@ -35,7 +35,7 @@ export class PlaceEmployeeController {
     );
   }
 
-  @Get()
+  @Get('places/:placeId/employees')
   async getEmployees(
     @Param('placeId') placeId: string,
     @Query() filterQuery: EmployeeFilterQuery,
@@ -56,7 +56,32 @@ export class PlaceEmployeeController {
     return this.placeEmployeeService.getAllEmployees(uid, page, limit);
   }
 
-  @Patch(':placeEmployeeId')
+  @Get('places/employees/:placeEmployeeId')
+  async getEmployeeDetails(
+    @Param('placeEmployeeId') placeEmployeeId: string,
+    @Req() req: any,
+  ) {
+    const { uid } = req.user;
+    return this.placeEmployeeService.getPlaceEmployeeById(placeEmployeeId, uid);
+  }
+
+  @Get('places/employees/:placeEmployeeId/scan-history')
+  async getScanHistoryByEmployeeId(
+    @Param('placeEmployeeId') placeEmployeeId: string,
+    @Query() query: { page?: number; limit?: number },
+    @Req() req: any,
+  ) {
+    const { uid } = req.user;
+    const { page = 1, limit = 10 } = query;
+    return this.placeEmployeeService.getScanHistoryByPlaceEmployeeId(
+      placeEmployeeId,
+      uid,
+      page,
+      limit,
+    );
+  }
+
+  @Patch('places/employees/:placeEmployeeId')
   async updateEmployee(
     @Param('placeEmployeeId') placeEmployeeId: string,
     @Body() updatePlaceEmployeeDto: UpdatePlaceEmployeeDto,
@@ -70,7 +95,7 @@ export class PlaceEmployeeController {
     );
   }
 
-  @Delete(':placeEmployeeId')
+  @Delete('places/employees/:placeEmployeeId')
   async removeEmployee(
     @Param('placeEmployeeId') placeEmployeeId: string,
     @Req() req,

@@ -7,8 +7,9 @@ import {
   IsDateString,
   IsString,
   IsEnum,
+  IsArray,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { PaginationQuery } from './pagination.query';
 
 export enum SortBy {
@@ -22,71 +23,49 @@ export enum SortOrder {
 }
 
 export class ClientFilterQuery extends PaginationQuery {
-  /**
-   * Opcjonalny filtr - jeśli podany, zwraca tylko klientów
-   * którzy zeskanowali kody w tym konkretnym placeId
-   */
   @IsOptional()
   @IsMongoId()
   placeId?: string;
 
-  /**
-   * Opcjonalny filtr - jeśli podany, zwraca tylko klientów
-   * którzy zeskanowali kody w tym konkretnym locationId
-   */
   @IsOptional()
-  @IsMongoId()
-  locationId?: string;
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return value.split(',').map((id) => id.trim());
+    }
+    return value;
+  })
+  @IsArray()
+  @IsMongoId({ each: true })
+  locationIds?: string[];
 
-  /**
-   * Filtrowanie po emailu klienta (partial match)
-   */
   @IsOptional()
   @IsString()
   email?: string;
 
-  /**
-   * Minimalna liczba skanów
-   */
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(0)
   minScans?: number;
 
-  /**
-   * Maksymalna liczba skanów
-   */
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(0)
   maxScans?: number;
 
-  /**
-   * Data początkowa ostatniej wizyty (format ISO 8601)
-   */
   @IsOptional()
   @IsDateString()
   lastScanDateFrom?: string;
 
-  /**
-   * Data końcowa ostatniej wizyty (format ISO 8601)
-   */
   @IsOptional()
   @IsDateString()
   lastScanDateTo?: string;
 
-  /**
-   * Pole według którego sortować (domyślnie: lastScanDate)
-   */
   @IsOptional()
   @IsEnum(SortBy)
   sortBy?: SortBy;
 
-  /**
-   * Kierunek sortowania (domyślnie: desc)
-   */
   @IsOptional()
   @IsEnum(SortOrder)
   sortOrder?: SortOrder;

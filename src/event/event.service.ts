@@ -21,8 +21,10 @@ import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { NotificationService } from 'src/notification/notification.service';
 import { NotificationType } from 'src/notification/schemas/notification.schema';
 import { PaginationQuery } from 'src/place/queries/pagination.query';
+import { ParticipatorsFilterQuery } from './dto/participators-filter.query';
 import { SubscriptionService } from 'src/subscription/subscription.service';
 import { CreateEventDto } from './dto/create-event.dto';
+import { UpdateEventDto } from './dto/update-event.dto';
 import { EventRepository } from './event.repository';
 import { EventFilterQuery } from './queries/event-filter.query';
 import { PlaceService } from 'src/place/place.service';
@@ -488,5 +490,107 @@ export class EventService {
       userId,
       activeOnly,
     );
+  }
+
+  async findParticipators(
+    eventId: string,
+    filterQuery: ParticipatorsFilterQuery,
+  ) {
+    const result = await this.eventRepository.findPaginatedParticipators(
+      eventId,
+      filterQuery,
+    );
+
+    if (!result) {
+      throw new NotFoundException('Event not found');
+    }
+
+    return result;
+  }
+
+  async updateEvent(
+    id: string,
+    uid: string,
+    updateEventDto: UpdateEventDto,
+    img?: Express.Multer.File,
+  ) {
+    const event = await this.eventRepository.findEventById(id);
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
+    // Sprawdź czy użytkownik jest BOSS'em miejsca
+    const isUserBoss = await this.placeEmployeeService.isUserBossOfPlace(
+      uid,
+      event.place._id.toString(),
+    );
+    if (!isUserBoss) {
+      throw new UnauthorizedException('ILLEGAL_OPERATION');
+    }
+
+    // Walidacja dat
+    const { startDate, endDate, locationIds, shouldUpdateImg } = updateEventDto;
+    if (
+      startDate &&
+      endDate &&
+      isBefore(new Date(endDate), new Date(startDate))
+    ) {
+      throw new BadRequestException(
+        'Event should not end before it has started',
+      );
+    }
+
+    const updateData: any = { ...updateEventDto };
+    delete updateData.shouldUpdateImg; // Nie zapisujemy tego pola w bazie
+
+    // Jeśli są nowe locationIds, weryfikujemy czy istnieją
+    if (locationIds && locationIds.length > 0) {
+      const places = await Promise.all(
+        locationIds.map((locationId) =>
+          this.placeService.findByLocationId(locationId),
+        ),
+      );
+
+      const notFoundLocationIds = locationIds.filter(
+        (_id, index) => !places[index],
+      );
+      if (notFoundLocationIds.length > 0) {
+        throw new NotFoundException(
+          `Locations with ids: ${notFoundLocationIds.join(', ')} not found`,
+        );
+      }
+
+      // Aktualizujemy place na pierwszy z nowych locationIds
+      updateData.place = places[0]._id;
+    }
+
+    // Obsługa nowego obrazka - tylko jeśli shouldUpdateImg jest true
+    let oldImageId: string | undefined;
+    if (shouldUpdateImg && img) {
+      // Zapisz stary imageId do usunięcia
+      oldImageId = event.img?.replace(`${process.env.CLOUDI_URL}/`, '');
+
+      // Upload nowego obrazka
+      const newImageId = await this.cloudinaryService.uploadImage(
+        img,
+        'events',
+      );
+      updateData.img = newImageId;
+    }
+
+    // Aktualizuj event
+    const updatedEvent = await this.eventRepository.updateEvent(id, updateData);
+
+    // Usuń stary obrazek z Cloudinary jeśli był nowy upload
+    if (oldImageId && shouldUpdateImg && img) {
+      try {
+        await this.cloudinaryService.destroyImage(oldImageId);
+      } catch (error) {
+        // Logujemy błąd, ale nie przerywamy operacji
+        console.error('Failed to delete old image from Cloudinary:', error);
+      }
+    }
+
+    return updatedEvent;
   }
 }
