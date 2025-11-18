@@ -1,13 +1,20 @@
 import { Model, FilterQuery, Types } from 'mongoose';
-import { RewardDocument } from '../schemas/reward.schema';
+import { RewardDocument, RewardStatus } from '../schemas/reward.schema';
 
 function buildBasePipeline(
   entityFilterQuery: FilterQuery<Model<RewardDocument>>,
   countryCode?: string,
   locationIds?: Types.ObjectId[],
+  filterByActiveStatus: boolean = false,
 ) {
   const { userId, ...rest } = entityFilterQuery;
-  const pipeline: any[] = [{ $match: rest }];
+  const matchConditions: any = { ...rest };
+
+  if (filterByActiveStatus) {
+    matchConditions.status = RewardStatus.ACTIVE;
+  }
+
+  const pipeline: any[] = [{ $match: matchConditions }];
 
   if (userId) {
     // Filtruj rewardy gdzie użytkownik jest employeem przynajmniej jednej z lokalizacji rewarda
@@ -102,11 +109,13 @@ export function getPaginatedRewardData(
   locationFilter?: { lat?: number; lng?: number }, // Deprecated - nie używamy już
   countryCode?: string,
   locationIds?: Types.ObjectId[],
+  filterByActiveStatus: boolean = false,
 ) {
   const dataPipeline = buildBasePipeline(
     entityFilterQuery,
     countryCode,
     locationIds,
+    filterByActiveStatus,
   );
 
   dataPipeline.push(
@@ -146,6 +155,7 @@ export function getPaginatedRewardData(
         name: 1,
         description: 1,
         availableFor: 1,
+        status: 1,
         createdAt: 1,
         totalScans: 1,
         place: {
@@ -178,6 +188,7 @@ export function getPaginatedRewardData(
     entityFilterQuery,
     countryCode,
     locationIds,
+    filterByActiveStatus,
   );
 
   metadataPipeline.push(

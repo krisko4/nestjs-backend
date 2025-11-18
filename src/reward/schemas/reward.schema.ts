@@ -12,6 +12,11 @@ export enum RewardAvailableFor {
   SELECTED_USERS = 'SELECTED_USERS',
 }
 
+export enum RewardStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+}
+
 export type CreateRewardSchema = {
   name: string;
   description: string;
@@ -21,6 +26,7 @@ export type CreateRewardSchema = {
   place: string;
   selectedUserIds?: string[];
   usageLimit?: number | null;
+  status?: RewardStatus;
 };
 
 @Schema()
@@ -50,6 +56,8 @@ export class Reward {
   selectedUserIds?: mongoose.Types.ObjectId[];
   @Prop({ type: Number, default: null })
   usageLimit?: number | null;
+  @Prop({ required: true, enum: Object.values(RewardStatus), default: RewardStatus.ACTIVE })
+  status: RewardStatus;
   @Prop({ default: Date.now })
   createdAt: Date;
 }

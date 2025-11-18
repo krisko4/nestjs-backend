@@ -7,6 +7,7 @@ import {
   Reward,
   RewardAvailableFor,
   RewardDocument,
+  RewardStatus,
 } from './schemas/reward.schema';
 import { PaginationQuery } from './queries/pagination.query';
 import { getPaginatedRewardData } from './aggregations/paginated-reward-data';
@@ -29,12 +30,18 @@ export class RewardRepository extends MongoRepository<
       event: new Types.ObjectId(eventId),
     });
   }
-  findByUserId(paginationQuery: PaginationQuery, uid: string) {
+  findByUserId(paginationQuery: PaginationQuery, uid: string, status?: RewardStatus) {
+    const filterQuery: any = {
+      userId: uid,
+    };
+
+    if (status) {
+      filterQuery.status = status;
+    }
+
     return this.findPaginated(
       paginationQuery,
-      {
-        userId: uid,
-      },
+      filterQuery,
       {
         createdAt: -1,
       },
@@ -138,7 +145,7 @@ export class RewardRepository extends MongoRepository<
     let pipeline = this.rewardModel.aggregate();
 
     const result = await pipeline.facet(
-      getPaginatedRewardData(start, limit, {}, undefined, countryCode),
+      getPaginatedRewardData(start, limit, {}, undefined, countryCode, undefined, true),
     );
 
     return result[0];
@@ -153,7 +160,7 @@ export class RewardRepository extends MongoRepository<
     let pipeline = this.rewardModel.aggregate();
 
     const result = await pipeline.facet(
-      getPaginatedRewardData(start, limit, {}, undefined, undefined, objectIds),
+      getPaginatedRewardData(start, limit, {}, undefined, undefined, objectIds, true),
     );
 
     return result[0];

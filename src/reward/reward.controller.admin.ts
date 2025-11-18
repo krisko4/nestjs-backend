@@ -18,7 +18,7 @@ import { UpdateRewardDto } from './dto/update-reward.dto';
 import { RewardFilterQuery } from './queries/reward-filter.query';
 import { PaginationQuery } from './queries/pagination.query';
 import { plainToInstance } from 'class-transformer';
-import { Reward } from './schemas/reward.schema';
+import { Reward, RewardStatus } from './schemas/reward.schema';
 
 @Controller('admin/rewards')
 export class AdminRewardController {
@@ -84,5 +84,16 @@ export class AdminRewardController {
       start,
       limit,
     );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/status')
+  async toggleRewardStatus(
+    @Param('id') id: string,
+    @Body('status') status: RewardStatus,
+    @Req() req,
+  ) {
+    const { uid } = req.user;
+    return this.rewardService.toggleRewardStatus(id, uid, status);
   }
 }

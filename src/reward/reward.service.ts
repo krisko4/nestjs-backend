@@ -16,7 +16,7 @@ import mongoose from 'mongoose';
 import { InjectConnection } from '@nestjs/mongoose';
 import { CodeService } from 'src/code/code.service';
 import { EventService } from 'src/event/event.service';
-import { RewardDocument } from './schemas/reward.schema';
+import { RewardDocument, RewardStatus } from './schemas/reward.schema';
 import { NotificationService } from 'src/notification/notification.service';
 import { NotificationType } from 'src/notification/schemas/notification.schema';
 import { isBefore } from 'date-fns';
@@ -44,7 +44,7 @@ export class RewardService {
   ) {}
 
   async find(rewardFilterQuery: RewardFilterQuery, uid: string) {
-    const { eventId } = rewardFilterQuery;
+    const { eventId, status } = rewardFilterQuery;
     if (eventId) {
       return this.findByUserIdAndEventId(uid, eventId);
     }
@@ -54,6 +54,7 @@ export class RewardService {
         limit: rewardFilterQuery.limit,
       },
       uid,
+      status,
     );
     // if (eventId) {
     //   return this.findByEventId(eventId);
@@ -120,10 +121,11 @@ export class RewardService {
     return this.rewardRepository.findByEventId(eventId);
   }
 
-  async findByUserId(paginationQuery: PaginationQuery, userId: string) {
+  async findByUserId(paginationQuery: PaginationQuery, userId: string, status?: RewardStatus) {
     const result = await this.rewardRepository.findByUserId(
       paginationQuery,
       userId,
+      status,
     );
 
     console.log(result);
@@ -502,6 +504,29 @@ export class RewardService {
       id,
       updateData,
     );
+
+    return updatedReward;
+  }
+
+  async toggleRewardStatus(id: string, uid: string, status: RewardStatus) {
+    const reward = await this.findById(id);
+    if (!reward) {
+      throw new NotFoundException('INVALID_REWARD_ID');
+    }
+
+    // Sprawdź czy użytkownik jest BOSS'em miejsca
+    const isUserBoss = await this.placeEmployeeService.isUserBossOfPlace(
+      uid,
+      reward.place._id.toString(),
+    );
+    if (!isUserBoss) {
+      throw new UnauthorizedException('ILLEGAL_OPERATION');
+    }
+
+    // Aktualizuj status
+    const updatedReward = await this.rewardRepository.updateReward(id, {
+      status,
+    });
 
     return updatedReward;
   }
