@@ -15,6 +15,7 @@ import { CreatePlaceEmployeeDto } from './dto/create-place-employee.dto';
 import { UpdatePlaceEmployeeDto } from './dto/update-place-employee.dto';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { EmployeeFilterQuery } from './dto/employee-filter.query';
+import { PaginationQuery } from './queries/pagination.query';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard)
@@ -68,15 +69,15 @@ export class PlaceEmployeeController {
   @Get('places/employees/:placeEmployeeId/scan-history')
   async getScanHistoryByEmployeeId(
     @Param('placeEmployeeId') placeEmployeeId: string,
-    @Query() query: { page?: number; limit?: number },
+    @Query() query: PaginationQuery,
     @Req() req: any,
   ) {
     const { uid } = req.user;
-    const { page = 1, limit = 10 } = query;
+    const { start = 0, limit = 10 } = query;
     return this.placeEmployeeService.getScanHistoryByPlaceEmployeeId(
       placeEmployeeId,
       uid,
-      page,
+      start,
       limit,
     );
   }

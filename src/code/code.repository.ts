@@ -344,6 +344,56 @@ export class CodeRepository extends MongoRepository<
         },
       },
       {
+        // Lookup PlaceEmployee to get placeEmployeeId
+        $lookup: {
+          from: 'placeemployees',
+          let: {
+            placeId: '$placeInfo._id',
+            userId: '$usedBy',
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: ['$place', '$$placeId'],
+                },
+              },
+            },
+            {
+              $lookup: {
+                from: 'employees',
+                localField: 'employee',
+                foreignField: '_id',
+                as: 'employeeData',
+              },
+            },
+            {
+              $unwind: '$employeeData',
+            },
+            {
+              $match: {
+                $expr: {
+                  $eq: ['$employeeData.user', '$$userId'],
+                },
+              },
+            },
+            {
+              $project: {
+                _id: 1,
+              },
+            },
+          ],
+          as: 'placeEmployeeData',
+        },
+      },
+      {
+        $addFields: {
+          placeEmployee: {
+            $arrayElemAt: ['$placeEmployeeData', 0],
+          },
+        },
+      },
+      {
         $addFields: {
           scannedByEmployee: {
             $cond: {
@@ -388,9 +438,6 @@ export class CodeRepository extends MongoRepository<
           _id: 1,
           value: 1,
           usedAt: 1,
-          usedBy: 1, // debug
-          usedByUser: 1, // debug
-          'placeInfo.employees': 1, // debug
           codeOwner: {
             _id: 1,
             firstName: 1,
@@ -407,6 +454,7 @@ export class CodeRepository extends MongoRepository<
                 status: '$scannedByEmployee.status',
                 email: '$scannedByEmployee.email',
                 name: '$scannedByEmployee.name',
+                placeEmployeeId: '$placeEmployee._id',
                 user: {
                   _id: '$scannedByEmployee.user._id',
                   firstName: '$scannedByEmployee.user.firstName',

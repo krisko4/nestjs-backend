@@ -328,13 +328,10 @@ export class PlaceEmployeeService {
     return this.placeEmployeeRepository.create(data, session);
   }
 
-  /**
-   * Pobiera historię skanów wykonanych przez pracownika
-   */
   async getScanHistoryByPlaceEmployeeId(
     placeEmployeeId: string,
     requestingUserId: string,
-    page: number = 1,
+    start: number = 0,
     limit: number = 10,
   ) {
     const placeEmployee =
@@ -357,7 +354,7 @@ export class PlaceEmployeeService {
       return {
         data: [],
         metadata: {
-          start: page,
+          start,
           limit,
           total: 0,
         },
@@ -365,6 +362,9 @@ export class PlaceEmployeeService {
     }
 
     const userId = placeEmployee.employee.user._id.toString();
+
+    // Konwertuj start (offset) na page (numer strony)
+    const page = Math.floor(start / limit) + 1;
 
     const { data, total } = await this.codeService.findScanHistoryByUserId(
       userId,
@@ -375,7 +375,7 @@ export class PlaceEmployeeService {
     return {
       data,
       metadata: {
-        start: page,
+        start,
         limit,
         total,
       },

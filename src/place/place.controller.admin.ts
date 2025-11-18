@@ -110,35 +110,35 @@ export class AdminPlaceController {
   //   });
   // }
 
-  @Get('/by-coords')
-  async findByLatLng(@Query() coordsQuery: CoordsQuery) {
-    const { lat, lng } = coordsQuery;
-    return this.placeService.findByLatLng(lat, lng);
-  }
+  // @Get('/by-coords')
+  // async findByLatLng(@Query() coordsQuery: CoordsQuery) {
+  //   const { lat, lng } = coordsQuery;
+  //   return this.placeService.findByLatLng(lat, lng);
+  // }
 
-  @Get('/popular')
-  async findPopular(@Query() placeFilterQuery: PlaceFilterQuery) {
-    return this.placeService.findPopular(placeFilterQuery);
-  }
+  // @Get('/popular')
+  // async findPopular(@Query() placeFilterQuery: PlaceFilterQuery) {
+  //   return this.placeService.findPopular(placeFilterQuery);
+  // }
 
-  @Get('/recent')
-  async findRecentlyAdded(@Query() placeFilterQuery: PlaceFilterQuery) {
-    return this.placeService.findRecentlyAdded(placeFilterQuery);
-  }
+  // @Get('/recent')
+  // async findRecentlyAdded(@Query() placeFilterQuery: PlaceFilterQuery) {
+  //   return this.placeService.findRecentlyAdded(placeFilterQuery);
+  // }
 
-  @Get('/top')
-  async findTopRated(@Query() placeFilterQuery: PlaceFilterQuery) {
-    return this.placeService.findTopRated(placeFilterQuery);
-  }
+  // @Get('/top')
+  // async findTopRated(@Query() placeFilterQuery: PlaceFilterQuery) {
+  //   return this.placeService.findTopRated(placeFilterQuery);
+  // }
 
-  @UseGuards(JwtAuthGuard)
-  @Get('/subscribed')
-  async findSubscribed(
-    @Req() req,
-    @Query() placeFilterQuery: PlaceFilterQuery,
-  ) {
-    return this.placeService.findSubscribed(placeFilterQuery, req.user.uid);
-  }
+  // @UseGuards(JwtAuthGuard)
+  // @Get('/subscribed')
+  // async findSubscribed(
+  //   @Req() req,
+  //   @Query() placeFilterQuery: PlaceFilterQuery,
+  // ) {
+  //   return this.placeService.findSubscribed(placeFilterQuery, req.user.uid);
+  // }
 
   // @Get('/favorite')
   // async findFavorite(
@@ -195,10 +195,10 @@ export class AdminPlaceController {
     return placeDto;
   }
 
-  @Patch(':id/visit-count')
-  incrementVisitCount(@Param('id') id: string) {
-    return this.placeService.incrementVisitCount(id);
-  }
+  // @Patch(':id/visit-count')
+  // incrementVisitCount(@Param('id') id: string) {
+  //   return this.placeService.incrementVisitCount(id);
+  // }
 
   @Get(':id')
   async findById(@Param('id') id: string) {
