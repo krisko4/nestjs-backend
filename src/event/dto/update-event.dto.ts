@@ -1,5 +1,6 @@
-import { IsArray, IsBoolean, IsMongoId, IsOptional, MaxLength } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsMongoId, IsOptional, MaxLength } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { EventStatus } from '../schemas/event.schema';
 
 export class UpdateEventDto {
   @IsOptional()
@@ -24,4 +25,8 @@ export class UpdateEventDto {
   @IsBoolean()
   @Transform(({ value }) => value === 'true' || value === true)
   shouldUpdateImg?: boolean;
+
+  @IsOptional()
+  @IsEnum(EventStatus)
+  status?: EventStatus;
 }

@@ -30,9 +30,31 @@ export class RewardRepository extends MongoRepository<
       event: new Types.ObjectId(eventId),
     });
   }
-  findByUserId(paginationQuery: PaginationQuery, uid: string, status?: RewardStatus) {
+  findByUserId(paginationQuery: PaginationQuery, uid: string, status?: RewardStatus, placeId?: string) {
     const filterQuery: any = {
       userId: uid,
+    };
+
+    if (status) {
+      filterQuery.status = status;
+    }
+
+    if (placeId) {
+      filterQuery.place = new Types.ObjectId(placeId);
+    }
+
+    return this.findPaginated(
+      paginationQuery,
+      filterQuery,
+      {
+        createdAt: -1,
+      },
+    );
+  }
+
+  findByPlaceId(paginationQuery: PaginationQuery, placeId: string, status?: RewardStatus) {
+    const filterQuery: any = {
+      place: new Types.ObjectId(placeId),
     };
 
     if (status) {

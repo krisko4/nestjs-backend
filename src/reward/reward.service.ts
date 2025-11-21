@@ -44,7 +44,7 @@ export class RewardService {
   ) {}
 
   async find(rewardFilterQuery: RewardFilterQuery, uid: string) {
-    const { eventId, status } = rewardFilterQuery;
+    const { eventId, placeId, status } = rewardFilterQuery;
     if (eventId) {
       return this.findByUserIdAndEventId(uid, eventId);
     }
@@ -55,10 +55,8 @@ export class RewardService {
       },
       uid,
       status,
+      placeId,
     );
-    // if (eventId) {
-    //   return this.findByEventId(eventId);
-    // }
   }
 
   private findByUserIdAndEventId(uid: string, eventId: string) {
@@ -121,14 +119,18 @@ export class RewardService {
     return this.rewardRepository.findByEventId(eventId);
   }
 
-  async findByUserId(paginationQuery: PaginationQuery, userId: string, status?: RewardStatus) {
+  async findByUserId(
+    paginationQuery: PaginationQuery,
+    userId: string,
+    status?: RewardStatus,
+    placeId?: string,
+  ) {
     const result = await this.rewardRepository.findByUserId(
       paginationQuery,
       userId,
       status,
+      placeId,
     );
-
-    console.log(result);
 
     if (!result.data || result.data.length === 0) {
       return result;

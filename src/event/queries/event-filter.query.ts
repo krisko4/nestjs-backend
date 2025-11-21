@@ -1,5 +1,6 @@
-import { IsMongoId, IsOptional, IsBooleanString } from 'class-validator';
+import { IsMongoId, IsOptional, IsBooleanString, IsEnum } from 'class-validator';
 import { PaginationQuery } from './pagination.query';
+import { EventStatus } from '../schemas/event.schema';
 
 export class EventFilterQuery extends PaginationQuery {
   @IsMongoId()
@@ -11,4 +12,7 @@ export class EventFilterQuery extends PaginationQuery {
   @IsBooleanString()
   @IsOptional()
   active?: boolean;
+  @IsOptional()
+  @IsEnum(EventStatus)
+  status?: EventStatus;
 }

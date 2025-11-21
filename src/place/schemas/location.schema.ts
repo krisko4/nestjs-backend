@@ -27,12 +27,14 @@ export class Location {
   @Prop()
   instagram: string;
   @Prop()
+  phone: string;
+  @Prop()
   email: string;
   @Prop()
   website: string;
   @Prop({ default: false })
   alwaysOpen: boolean;
-  @Prop({ default: 'closed', enum: ['open', 'closed'] })
+  @Prop({ default: 'open', enum: ['open', 'closed'] })
   status: string;
   @Prop({ type: OpeningHoursSchema })
   openingHours: OpeningHours;

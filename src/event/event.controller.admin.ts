@@ -25,7 +25,7 @@ import { EventDto } from './dto/event.dto';
 import { PaginationQuery } from 'src/place/queries/pagination.query';
 import { ParticipatorsFilterQuery } from './dto/participators-filter.query';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
-import { Event } from './schemas/event.schema';
+import { Event, EventStatus } from './schemas/event.schema';
 
 @Controller('admin/events')
 export class AdminEventController {
@@ -100,6 +100,17 @@ export class AdminEventController {
   async deleteById(@Param('id') id: string, @Req() req) {
     const { uid } = req.user;
     return this.eventService.deleteById(id, uid);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/status')
+  async toggleEventStatus(
+    @Param('id') id: string,
+    @Body('status') status: EventStatus,
+    @Req() req,
+  ) {
+    const { uid } = req.user;
+    return this.eventService.toggleEventStatus(id, uid, status);
   }
 
   // @UseGuards(JwtAuthGuard)

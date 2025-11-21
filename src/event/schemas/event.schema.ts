@@ -9,6 +9,11 @@ import { Participator, ParticipatorSchema } from './participator.schema';
 
 export type EventDocument = Event & Document;
 
+export enum EventStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+}
+
 export type CreateEventSchema = {
   title: string;
   startDate: Date;
@@ -17,6 +22,7 @@ export type CreateEventSchema = {
   img?: string;
   place: string;
   locationIds: string[];
+  status?: EventStatus;
 };
 
 @Schema()
@@ -62,6 +68,8 @@ export class Event {
     }));
   })
   participators: Participator[];
+  @Prop({ required: true, enum: Object.values(EventStatus), default: EventStatus.ACTIVE })
+  status: EventStatus;
 }
 
 export const EventSchema = SchemaFactory.createForClass(Event);

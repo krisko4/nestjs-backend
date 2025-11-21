@@ -7,6 +7,9 @@ export class RewardFilterQuery extends PaginationQuery {
   @IsMongoId()
   @IsOptional()
   eventId?: string;
+  @IsMongoId()
+  @IsOptional()
+  placeId?: string;
   @IsOptional()
   @IsNumber()
   @Type(() => Number)

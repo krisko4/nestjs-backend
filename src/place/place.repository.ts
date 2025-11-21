@@ -11,7 +11,7 @@ import { PlaceFilterQuery } from './queries/place.filter.query';
 import { getPaginatedPlaceData } from './aggregations/paginated-place-data';
 import { getPaginatedPlaceDataForSearch } from './aggregations/paginated-place-data-for-search';
 import { CreatePlaceDto } from './dto/create-place.dto';
-import { UpdatePlaceDto } from './dto/update-place.dto';
+import { UpdateLocationDto } from './dto/update-place.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
 import {
   LocationIdsDto,
@@ -35,35 +35,56 @@ export class PlaceRepository extends MongoRepository<
     return this.find({ 'locations.isActive': true });
   }
 
-  updatePlace(
-    updatePlaceDto: UpdatePlaceDto,
-    userId: Types.ObjectId,
-    session: ClientSession,
-    imageUrls?: string[],
-    logoUrl?: string,
+  updateLocation(
+    placeId: Types.ObjectId,
+    locationId: string,
+    location: UpdateLocationDto,
+    session?: ClientSession,
   ) {
-    const location = updatePlaceDto.locations[0];
-    const { name, description } = updatePlaceDto;
     return this.findOneAndUpdate(
-      { 'locations._id': updatePlaceDto.locationId },
       {
-        name,
-        description,
-        logoUrl,
-        imageUrls,
-        userId,
-        'locations.$.email': location.email,
+        _id: placeId,
+        'locations._id': new Types.ObjectId(locationId),
+      },
+      {
+        'locations.$.address': location.address,
+        'locations.$.addressId': location.addressId,
+        'locations.$.countryCode': location.countryCode,
+        'locations.$.lat': location.lat,
+        'locations.$.lng': location.lng,
         'locations.$.phone': location.phone,
+        'locations.$.email': location.email,
         'locations.$.website': location.website,
         'locations.$.facebook': location.facebook,
         'locations.$.instagram': location.instagram,
-        'locations.$.lat': location.lat,
-        'locations.$.lng': location.lng,
-        'locations.$.address': location.address,
-        'locations.$.countryCode': location.countryCode,
       },
       session,
     );
+  }
+
+  addLocation(placeId: string, location: UpdateLocationDto, session?: ClientSession) {
+    const newLocation = {
+      _id: new Types.ObjectId(),
+      address: location.address,
+      addressId: location.addressId,
+      countryCode: location.countryCode,
+      lat: location.lat,
+      lng: location.lng,
+      phone: location.phone,
+      email: location.email,
+      website: location.website,
+      facebook: location.facebook,
+      instagram: location.instagram,
+      isActive: true,
+      status: 'closed',
+      visitCount: 0,
+    };
+
+    return this.findByIdAndUpdate(
+      placeId,
+      { $push: { locations: newLocation } },
+      { session },
+    ).then(() => newLocation);
   }
 
   createPlace(

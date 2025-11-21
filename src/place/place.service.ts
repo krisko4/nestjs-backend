@@ -6,6 +6,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { UserService } from 'src/user/user.service';
 import { CreatePlaceDto } from './dto/create-place.dto';
@@ -26,6 +27,7 @@ import {
   PlaceEmployeeStatus,
 } from 'src/place-employee/schemas/place-employee.schema';
 import { EmployeeService } from 'src/employee/employee.service';
+import { UpdatePlaceDto } from './dto/update-place.dto';
 
 @Injectable()
 export class PlaceService {
@@ -51,79 +53,167 @@ export class PlaceService {
     return user;
   }
 
-  // async update(
-  //   updatePlaceDto: UpdatePlaceDto,
-  //   uid: string,
-  //   logo?: Express.Multer.File[],
-  //   images?: Express.Multer.File[],
-  // ) {
-  //   const user = await this.validateUser(uid);
-  //   const place = await this.findByLocationId(updatePlaceDto.locationId);
-  //   if (!place) throw new InternalServerErrorException('Invalid locationId');
-  //   if (!user._id.equals(place.userId))
-  //     throw new InternalServerErrorException('Illegal operation');
-  //   const { locations } = updatePlaceDto;
-  //   for (const location of locations) {
-  //     const { lat, lng } = location;
-  //     const occupiedAddress = await this.findByLatLng(lat, lng);
-  //     if (occupiedAddress)
-  //       throw new InternalServerErrorException(
-  //         `The address: ${occupiedAddress} is already occupied by another place`,
-  //       );
-  //   }
-  //   const session = await this.connection.startSession();
-  //   let updatedPlace: PlaceDocument;
-  //   await session.withTransaction(async () => {
-  //     let newLogoId: string;
-  //     if (logo) {
-  //       await this.cloudinaryService.destroyImage(place.logo);
-  //       newLogoId = await this.cloudinaryService.uploadImage(
-  //         logo[0],
-  //         'place_logos',
-  //       );
-  //     }
-  //     let newImages: string[];
-  //     if (images) {
-  //       await place.images.map((image) =>
-  //         this.cloudinaryService.destroyImage(image),
-  //       );
-  //       for (const image of images) {
-  //         const newImageId = await this.cloudinaryService.uploadImage(
-  //           image,
-  //           'place_images',
-  //         );
-  //         newImages.push(newImageId);
-  //       }
-  //     }
-  //     updatedPlace = await this.placeRepository.updatePlace(
-  //       updatePlaceDto,
-  //       user._id,
-  //       session,
-  //       newImages,
-  //       newLogoId,
-  //     );
-  //   });
-  //   await session.endSession();
-  //   return updatedPlace;
-  // }
+  async update(
+    id: string,
+    updatePlaceDto: UpdatePlaceDto,
+    uid: string,
+    logo?: Express.Multer.File[],
+  ) {
+    await this.validateUser(uid);
+    const place = await this.findById(id);
+    if (!place) throw new NotFoundException('Place not found');
+
+    // Check if user is boss of this place
+    const isUserBoss = await this.placeEmployeeService.isUserBossOfPlace(
+      uid,
+      place._id.toString(),
+    );
+    if (!isUserBoss) {
+      throw new UnauthorizedException('ILLEGAL_OPERATION');
+    }
+
+    const { locations } = updatePlaceDto;
+
+    // Validate that we won't delete all locations
+    if (locations) {
+      if (locations.length === 0) {
+        throw new BadRequestException('Place must have at least one location');
+      }
+    }
+
+    const session = await this.connection.startSession();
+    let updatedPlace: PlaceDocument;
+
+    try {
+      await session.withTransaction(async () => {
+        // Handle logo update
+        let newLogoId: string | undefined;
+        if (logo && logo.length > 0) {
+          if (place.logo) {
+            await this.cloudinaryService.destroyImage(place.logo);
+          }
+          newLogoId = await this.cloudinaryService.uploadImage(
+            logo[0],
+            'place_logos',
+          );
+        }
+
+        // Build update object
+        const updateData: Record<string, unknown> = {};
+
+        if (updatePlaceDto.name) {
+          updateData.name = updatePlaceDto.name;
+        }
+        if (updatePlaceDto.description !== undefined) {
+          updateData.description = updatePlaceDto.description;
+        }
+        if (newLogoId) {
+          updateData.logo = newLogoId;
+        }
+
+        // Build new locations array if locations provided
+        const newLocationsArray = [];
+        const addedLocationIds: mongoose.Types.ObjectId[] = [];
+
+        if (locations) {
+          // Process each incoming location
+          for (const location of locations) {
+            if (location._id) {
+              // Update existing location - find original to preserve fields
+              const existingLoc = place.locations.find(
+                (loc) => loc._id.toString() === location._id,
+              );
+              if (existingLoc) {
+                newLocationsArray.push({
+                  _id: existingLoc._id,
+                  address: location.address,
+                  addressId: location.addressId,
+                  countryCode: location.countryCode,
+                  lat: location.lat,
+                  lng: location.lng,
+                  phone: location.phone,
+                  email: location.email,
+                  website: location.website,
+                  facebook: location.facebook,
+                  instagram: location.instagram,
+                  alwaysOpen: existingLoc.alwaysOpen,
+                  status: existingLoc.status,
+                  openingHours: existingLoc.openingHours,
+                  isActive: existingLoc.isActive,
+                  visitCount: existingLoc.visitCount,
+                  averageNote: existingLoc.averageNote,
+                });
+              }
+            } else {
+              // Add new location
+              const newLocId = new mongoose.Types.ObjectId();
+              newLocationsArray.push({
+                _id: newLocId,
+                address: location.address,
+                addressId: location.addressId,
+                countryCode: location.countryCode,
+                lat: location.lat,
+                lng: location.lng,
+                phone: location.phone,
+                email: location.email,
+                website: location.website,
+                facebook: location.facebook,
+                instagram: location.instagram,
+                isActive: true,
+                status: 'closed',
+                visitCount: 0,
+              });
+              addedLocationIds.push(newLocId);
+            }
+          }
+
+          updateData.locations = newLocationsArray;
+        }
+
+        // Create PlaceEmployee for new locations
+        if (addedLocationIds.length > 0) {
+          const employees = await this.employeeService.findByUserId(uid);
+          if (employees && employees.length > 0) {
+            for (const newLocId of addedLocationIds) {
+              await this.placeEmployeeService.createPlaceEmployee(
+                {
+                  place: place._id,
+                  location: newLocId,
+                  employee: employees[0]._id,
+                  role: PlaceEmployeeRole.BOSS,
+                  status: PlaceEmployeeStatus.ACTIVE,
+                },
+                session,
+              );
+            }
+          }
+        }
+
+        // Apply basic field updates
+        if (Object.keys(updateData).length > 0) {
+          await this.placeRepository.findByIdAndUpdate(
+            place._id.toString(),
+            updateData,
+            { session },
+          );
+        }
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    return updatedPlace;
+  }
+
   async create(
     createPlaceDto: CreatePlaceDto,
     logo: Express.Multer.File[] | undefined,
     images: Express.Multer.File[],
     uid: string,
   ) {
-    // const { locations } = createPlaceDto;
     const user = await this.validateUser(uid);
     if (logo && logo.length > 1)
       throw new BadRequestException('Exactly one logo file is required');
-    // for (const location of locations) {
-    //   const { lat, lng } = location;
-    //   const occupiedAddress = await this.findByLatLng(lat, lng);
-    //   if (occupiedAddress)
-    //     throw new InternalServerErrorException(
-    //       `The address: ${occupiedAddress} is already occupied by another place`,
-    //     );
-    // }
     const session = await this.connection.startSession();
     let registeredPlace: PlaceDocument;
     await session.withTransaction(async () => {
@@ -163,8 +253,6 @@ export class PlaceService {
           session,
         );
       }
-
-      console.log(registeredPlace.locations);
 
       for (const location of registeredPlace.locations) {
         await this.placeEmployeeService.createPlaceEmployee(

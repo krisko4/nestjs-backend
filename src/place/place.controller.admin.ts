@@ -34,28 +34,24 @@ import { CoordsQuery } from './queries/coords.query';
 export class AdminPlaceController {
   constructor(private readonly placeService: PlaceService) {}
 
-  // @Put()
-  // @UseInterceptors(
-  //   FileFieldsInterceptor([
-  //     { name: 'logo', maxCount: 1 },
-  //     { name: 'images', maxCount: 4 },
-  //   ]),
-  // )
-  // @UseGuards(JwtAuthGuard)
-  // update(
-  //   @Body() updatePlaceDto: UpdatePlaceDto,
-  //   @Req() req,
-  //   @UploadedFiles()
-  //   files: { logo?: Express.Multer.File[]; images?: Express.Multer.File[] },
-  // ) {
-  //   const { uid } = req.cookies;
-  //   return this.placeService.update(
-  //     updatePlaceDto,
-  //     uid,
-  //     files.logo,
-  //     files.images,
-  //   );
-  // }
+  @Put(':id')
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'logo', maxCount: 1 },
+      { name: 'images', maxCount: 4 },
+    ]),
+  )
+  @UseGuards(JwtAuthGuard)
+  update(
+    @Body() updatePlaceDto: UpdatePlaceDto,
+    @Req() req,
+    @Param('id') id: string,
+    @UploadedFiles()
+    files: { logo?: Express.Multer.File[]; images?: Express.Multer.File[] },
+  ) {
+    const { uid } = req.cookies;
+    return this.placeService.update(id, updatePlaceDto, uid, files.logo);
+  }
 
   @Post()
   @UseInterceptors(

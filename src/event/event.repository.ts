@@ -2,7 +2,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, Types, ClientSession } from 'mongoose';
 import { Injectable } from '@nestjs/common';
 import { MongoRepository } from '../database/repository';
-import { CreateEventSchema, EventDocument } from './schemas/event.schema';
+import { CreateEventSchema, EventDocument, EventStatus } from './schemas/event.schema';
 import { CreateEventDto } from './dto/create-event.dto';
 import { PaginationQuery } from 'src/place/queries/pagination.query';
 import { ParticipatorsFilterQuery } from './dto/participators-filter.query';
@@ -142,10 +142,16 @@ export class EventRepository extends MongoRepository<
     return this.eventModel.find().lean();
   }
 
-  findByUserId(paginationQuery: PaginationQuery, uid: string) {
-    return this.findPaginated(paginationQuery, {
+  findByUserId(paginationQuery: PaginationQuery, uid: string, status?: EventStatus) {
+    const filterQuery: any = {
       userId: uid,
-    });
+    };
+
+    if (status) {
+      filterQuery.status = status;
+    }
+
+    return this.findPaginated(paginationQuery, filterQuery);
   }
 
   async findPaginated(

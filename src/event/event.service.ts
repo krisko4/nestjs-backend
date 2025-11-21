@@ -3,7 +3,7 @@ import {
   StatisticsType,
 } from './queries/statistics-filter.query';
 import { UpdateParticipatorDto } from './dto/update-participator.dto';
-import { Event, EventDocument } from './schemas/event.schema';
+import { Event, EventDocument, EventStatus } from './schemas/event.schema';
 import { Haversine } from './../haversine/haversine';
 import { CreateNotificationDto } from './../notification/dto/create-notification.dto';
 import { UserService } from 'src/user/user.service';
@@ -208,16 +208,14 @@ export class EventService {
         return participator.user._id.toString() === uid.toString();
       });
 
-      const { participators, ...rest } = event;
       return {
-        ...rest,
+        ...event,
         isUserParticipator,
       };
     }
 
-    const { participators, ...rest } = event;
     return {
-      ...rest,
+      ...event,
       isUserParticipator: false,
     };
   }
@@ -415,9 +413,14 @@ export class EventService {
   }
 
   async findByQuery(userId: string, eventFilterQuery: EventFilterQuery) {
-    const { locationId, participatorId, start, limit } = eventFilterQuery;
+    const { locationId, participatorId, start, limit, status } =
+      eventFilterQuery;
     if (userId) {
-      return this.eventRepository.findByUserId({ start, limit }, userId);
+      return this.eventRepository.findByUserId(
+        { start, limit },
+        userId,
+        status,
+      );
     }
     if (participatorId) {
       return this.eventRepository.findByParticipatorId(participatorId);
@@ -490,6 +493,29 @@ export class EventService {
       userId,
       activeOnly,
     );
+  }
+
+  async toggleEventStatus(id: string, uid: string, status: EventStatus) {
+    const event = await this.findById(id);
+    if (!event) {
+      throw new NotFoundException('INVALID_EVENT_ID');
+    }
+
+    // Sprawdź czy użytkownik jest BOSS'em miejsca
+    const isUserBoss = await this.placeEmployeeService.isUserBossOfPlace(
+      uid,
+      event.place._id.toString(),
+    );
+    if (!isUserBoss) {
+      throw new UnauthorizedException('ILLEGAL_OPERATION');
+    }
+
+    // Aktualizuj status
+    const updatedEvent = await this.eventRepository.updateEvent(id, {
+      status,
+    });
+
+    return updatedEvent;
   }
 
   async findParticipators(
