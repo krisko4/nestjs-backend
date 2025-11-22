@@ -13,6 +13,7 @@ export enum PlaceEmployeeRole {
 export enum PlaceEmployeeStatus {
   ACTIVE = 'ACTIVE',
   WAITING_FOR_CONFIRMATION = 'WAITING_FOR_CONFIRMATION',
+  REJECTED = 'REJECTED',
 }
 
 export type PlaceEmployeeDocument = PlaceEmployee & Document;

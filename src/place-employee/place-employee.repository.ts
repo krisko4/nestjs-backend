@@ -8,6 +8,7 @@ import {
   PlaceEmployeeDocument,
   PlaceEmployeePopulated,
   PlaceEmployeeRole,
+  PlaceEmployeeStatus,
 } from './schemas/place-employee.schema';
 
 @Injectable()
@@ -182,16 +183,73 @@ export class PlaceEmployeeRepository extends MongoRepository<
   }
 
   async findByUserId(userId: string): Promise<PlaceEmployeeDocument[]> {
-    const employees = await this.placeEmployeeModel
-      .find()
-      .populate({
-        path: 'employee',
-        match: { user: new Types.ObjectId(userId) },
-      })
-      .populate('place')
+    console.log('findByUserId called with userId:', userId);
+
+    // Debug: sprawdź czy są jakieś rekordy z tym employee.user
+    const debugResult = await this.placeEmployeeModel
+      .aggregate([
+        {
+          $lookup: {
+            from: 'employees',
+            localField: 'employee',
+            foreignField: '_id',
+            as: 'employeeData',
+          },
+        },
+        {
+          $unwind: {
+            path: '$employeeData',
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $project: {
+            employee: 1,
+            'employeeData.user': 1,
+            'employeeData._id': 1,
+          },
+        },
+      ])
+      .exec();
+    console.log('Debug - all placeEmployees with employee data:', JSON.stringify(debugResult, null, 2));
+
+    const result = await this.placeEmployeeModel
+      .aggregate([
+        {
+          $lookup: {
+            from: 'employees',
+            localField: 'employee',
+            foreignField: '_id',
+            as: 'employee',
+          },
+        },
+        {
+          $unwind: '$employee',
+        },
+        {
+          $match: {
+            'employee.user': new Types.ObjectId(userId),
+          },
+        },
+        {
+          $lookup: {
+            from: 'places',
+            localField: 'place',
+            foreignField: '_id',
+            as: 'place',
+          },
+        },
+        {
+          $unwind: {
+            path: '$place',
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+      ])
       .exec();
 
-    return employees.filter((pe) => pe.employee != null);
+    console.log('findByUserId result:', result);
+    return result;
   }
 
   async isUserBossOfPlace(userId: string, placeId: string): Promise<boolean> {
@@ -336,6 +394,19 @@ export class PlaceEmployeeRepository extends MongoRepository<
         employee: new Types.ObjectId(employeeId),
         location: new Types.ObjectId(locationId),
       })
+      .exec();
+  }
+
+  async updateStatus(
+    placeEmployeeId: string,
+    status: PlaceEmployeeStatus,
+  ): Promise<PlaceEmployeeDocument | null> {
+    return this.placeEmployeeModel
+      .findByIdAndUpdate(
+        placeEmployeeId,
+        { $set: { status } },
+        { new: true, runValidators: true },
+      )
       .exec();
   }
 }

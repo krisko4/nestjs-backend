@@ -280,11 +280,11 @@ export class PlaceEmployeeService {
     return placeEmployee;
   }
 
-  /**
-   * Pobierz miejsca użytkownika
-   */
   async getPlacesByUserId(userId: string) {
-    return this.placeEmployeeRepository.findByUserId(userId);
+    console.log(userId);
+    const res = await this.placeEmployeeRepository.findByUserId(userId);
+    console.log(res);
+    return res;
   }
 
   async isUserBossOfPlace(userId: string, placeId: string): Promise<boolean> {
@@ -380,5 +380,63 @@ export class PlaceEmployeeService {
         total,
       },
     };
+  }
+
+  async acceptInvitation(placeEmployeeId: string, userId: string) {
+    const placeEmployee =
+      await this.placeEmployeeRepository.findByIdWithPopulate(placeEmployeeId);
+
+    if (!placeEmployee) {
+      throw new NotFoundException('PLACE_EMPLOYEE_NOT_FOUND');
+    }
+
+    console.log('i co');
+    console.log(placeEmployee);
+    console.log(userId);
+
+    if (
+      !placeEmployee.employee.user ||
+      placeEmployee.employee.user._id.toString() !== userId.toString()
+    ) {
+      throw new ForbiddenException('NOT_ALLOWED');
+    }
+
+    console.log('12');
+
+    if (placeEmployee.status !== PlaceEmployeeStatus.WAITING_FOR_CONFIRMATION) {
+      throw new BadRequestException('INVITATION_NOT_PENDING');
+    }
+
+    console.log('ema');
+
+    return this.placeEmployeeRepository.updateStatus(
+      placeEmployeeId,
+      PlaceEmployeeStatus.ACTIVE,
+    );
+  }
+
+  async rejectInvitation(placeEmployeeId: string, userId: string) {
+    const placeEmployee =
+      await this.placeEmployeeRepository.findByIdWithPopulate(placeEmployeeId);
+
+    if (!placeEmployee) {
+      throw new NotFoundException('PLACE_EMPLOYEE_NOT_FOUND');
+    }
+
+    if (
+      !placeEmployee.employee.user ||
+      placeEmployee.employee.user._id.toString() !== userId
+    ) {
+      throw new ForbiddenException('NOT_ALLOWED');
+    }
+
+    if (placeEmployee.status !== PlaceEmployeeStatus.WAITING_FOR_CONFIRMATION) {
+      throw new BadRequestException('INVITATION_NOT_PENDING');
+    }
+
+    return this.placeEmployeeRepository.updateStatus(
+      placeEmployeeId,
+      PlaceEmployeeStatus.REJECTED,
+    );
   }
 }

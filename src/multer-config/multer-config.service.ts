@@ -10,7 +10,7 @@ export class MulterConfigService implements MulterOptionsFactory {
     return {
       dest: '/tmp/',
       limits: {
-        fileSize: 2000000,
+        fileSize: 5000000,
       },
       fileFilter: function (req, file, callback) {
         const mimetype = file.mimetype;

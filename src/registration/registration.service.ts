@@ -7,12 +7,14 @@ import { addMinutes } from 'date-fns';
 import mongoose, { ClientSession } from 'mongoose';
 import { InjectConnection } from '@nestjs/mongoose';
 import { ConfirmationTokenDocument } from './schemas/confirmation.token';
+import { EmployeeService } from 'src/employee/employee.service';
 
 @Injectable()
 export class RegistrationService {
   constructor(
     private readonly userService: UserService,
     private readonly confirmationTokenRepository: ConfirmationTokenRepository,
+    private readonly employeeService: EmployeeService,
     @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
   async registerUser(createUserDto: CreateUserDto) {
@@ -20,7 +22,15 @@ export class RegistrationService {
     let token: ConfirmationTokenDocument;
     await session.withTransaction(async () => {
       const user = await this.userService.create(createUserDto, session);
-      token = await this.createConfirmationToken(user._id, session);
+      const [createdToken] = await Promise.all([
+        this.createConfirmationToken(user._id, session),
+        this.employeeService.assignUserToEmployeeByEmail(
+          createUserDto.email,
+          user._id,
+          session,
+        ),
+      ]);
+      token = createdToken;
     });
     await session.endSession();
     return token;

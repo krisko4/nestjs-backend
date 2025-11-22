@@ -404,6 +404,19 @@ export class PlaceService {
       _id: { $in: placeIds },
     });
   }
+
+  async getPlacesByUserId(uid: string) {
+    const placeEmployees = await this.placeEmployeeService.getPlacesByUserId(
+      uid,
+    );
+    return placeEmployees.map((placeEmployee) => ({
+      place: placeEmployee.place,
+      employee: {
+        _id: placeEmployee._id,
+        status: placeEmployee.status,
+      },
+    }));
+  }
   async removePlace(id: string) {
     const session = await this.connection.startSession();
 

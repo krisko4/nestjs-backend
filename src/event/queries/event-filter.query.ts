@@ -15,4 +15,7 @@ export class EventFilterQuery extends PaginationQuery {
   @IsOptional()
   @IsEnum(EventStatus)
   status?: EventStatus;
+  @IsMongoId()
+  @IsOptional()
+  placeId?: string;
 }

@@ -142,13 +142,17 @@ export class EventRepository extends MongoRepository<
     return this.eventModel.find().lean();
   }
 
-  findByUserId(paginationQuery: PaginationQuery, uid: string, status?: EventStatus) {
+  findByUserId(paginationQuery: PaginationQuery, uid: string, status?: EventStatus, placeId?: string) {
     const filterQuery: any = {
       userId: uid,
     };
 
     if (status) {
       filterQuery.status = status;
+    }
+
+    if (placeId) {
+      filterQuery.place = new Types.ObjectId(placeId);
     }
 
     return this.findPaginated(paginationQuery, filterQuery);

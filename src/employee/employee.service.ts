@@ -71,17 +71,27 @@ export class EmployeeService {
     return this.userService.findByEmail(email);
   }
 
-  /**
-   * Znajdź pracowników po userId
-   */
   async findByUserId(userId: string) {
     return this.employeeRepository.findByUserId(userId);
   }
 
-  /**
-   * Znajdź pracownika po ID
-   */
   async findById(employeeId: string) {
     return this.employeeRepository.findById(employeeId);
+  }
+
+  async assignUserToEmployeeByEmail(
+    email: string,
+    userId: Types.ObjectId,
+    session?: ClientSession,
+  ) {
+    const employee = await this.employeeRepository.findByEmail(email);
+    if (employee && !employee.user) {
+      return this.employeeRepository.assignUser(
+        employee._id.toString(),
+        userId,
+        session,
+      );
+    }
+    return null;
   }
 }

@@ -4,6 +4,7 @@ import { PlaceEmployee, PlaceEmployeeSchema } from './schemas/place-employee.sch
 import { PlaceEmployeeService } from './place-employee.service';
 import { PlaceEmployeeRepository } from './place-employee.repository';
 import { PlaceEmployeeController } from './place-employee.controller';
+import { UserPlaceEmployeeController } from './place-employee.controller.user';
 import { EmployeeModule } from 'src/employee/employee.module';
 import { CodeModule } from 'src/code/code.module';
 
@@ -16,7 +17,7 @@ import { CodeModule } from 'src/code/code.module';
     forwardRef(() => CodeModule),
   ],
   providers: [PlaceEmployeeService, PlaceEmployeeRepository],
-  controllers: [PlaceEmployeeController],
+  controllers: [PlaceEmployeeController, UserPlaceEmployeeController],
   exports: [PlaceEmployeeService, PlaceEmployeeRepository],
 })
 export class PlaceEmployeeModule {}

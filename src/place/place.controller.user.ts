@@ -1,6 +1,5 @@
 import {
   Controller,
-  Delete,
   Get,
   Param,
   Post,
@@ -9,7 +8,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { PlaceService } from './place.service';
-import { PlaceEmployeeService } from 'src/place-employee/place-employee.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { SearchPlaceQuery } from './queries/search-place.query';
 import { FindLocationParams } from './params/find.location.params';
@@ -19,17 +17,17 @@ import { PlaceFilterQuery } from './queries/place.filter.query';
 
 @Controller('user/places')
 export class UserPlaceController {
-  constructor(
-    private readonly placeService: PlaceService,
-    private readonly placeEmployeeService: PlaceEmployeeService,
-  ) {}
+  constructor(private readonly placeService: PlaceService) {}
 
   @UseGuards(JwtAuthGuard)
   @Get()
   async findPlacesByUserId(@Req() req) {
     const { uid } = req.user;
-    const placeEmployees = await this.placeEmployeeService.getPlacesByUserId(uid);
-    return placeEmployees.map((placeEmployee) => placeEmployee.place);
+    const data = await this.placeService.getPlacesByUserId(uid);
+    return data.map((record) => ({
+      ...record,
+      place: plainToInstance(PlaceDto, record.place),
+    }));
   }
 
   @UseGuards(JwtAuthGuard)
@@ -51,7 +49,10 @@ export class UserPlaceController {
 
   @UseGuards(JwtAuthGuard)
   @Get(':id/locations/:locationId')
-  async findLocation(@Param() { locationId, id }: FindLocationParams, @Req() req) {
+  async findLocation(
+    @Param() { locationId, id }: FindLocationParams,
+    @Req() req,
+  ) {
     const { uid } = req.user;
     const place = await this.placeService.findLocation(id, locationId, uid);
     const placeDto = plainToInstance(PlaceDto, place);
@@ -60,7 +61,10 @@ export class UserPlaceController {
 
   @UseGuards(JwtAuthGuard)
   @Post('locations/:locationId/code')
-  async generateLocationCode(@Param('locationId') locationId: string, @Req() req) {
+  async generateLocationCode(
+    @Param('locationId') locationId: string,
+    @Req() req,
+  ) {
     const { uid } = req.user;
     return this.placeService.generateLocationCode(locationId, uid);
   }

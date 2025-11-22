@@ -413,13 +413,14 @@ export class EventService {
   }
 
   async findByQuery(userId: string, eventFilterQuery: EventFilterQuery) {
-    const { locationId, participatorId, start, limit, status } =
+    const { locationId, participatorId, start, limit, status, placeId } =
       eventFilterQuery;
     if (userId) {
       return this.eventRepository.findByUserId(
         { start, limit },
         userId,
         status,
+        placeId,
       );
     }
     if (participatorId) {

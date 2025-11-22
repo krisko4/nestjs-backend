@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { ClientSession, Model, Types } from 'mongoose';
 import { MongoRepository } from '../database/repository';
 import {
   CreateEmployeeSchema,
@@ -56,5 +56,19 @@ export class EmployeeRepository extends MongoRepository<
       .findById(employeeId)
       .populate('user')
       .exec() as unknown as Promise<EmployeePopulated | null>;
+  }
+
+  async assignUser(
+    employeeId: string,
+    userId: Types.ObjectId,
+    session?: ClientSession,
+  ): Promise<EmployeeDocument | null> {
+    return this.employeeModel
+      .findByIdAndUpdate(
+        employeeId,
+        { $set: { user: userId } },
+        { new: true, runValidators: true, session },
+      )
+      .exec();
   }
 }
