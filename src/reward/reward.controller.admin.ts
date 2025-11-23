@@ -19,10 +19,14 @@ import { RewardFilterQuery } from './queries/reward-filter.query';
 import { PaginationQuery } from './queries/pagination.query';
 import { plainToInstance } from 'class-transformer';
 import { Reward, RewardStatus } from './schemas/reward.schema';
+import { CodeService } from 'src/code/code.service';
 
 @Controller('admin/rewards')
 export class AdminRewardController {
-  constructor(private readonly rewardService: RewardService) {}
+  constructor(
+    private readonly rewardService: RewardService,
+    private readonly codeService: CodeService,
+  ) {}
 
   @UseGuards(JwtAuthGuard)
   @Post()
@@ -41,8 +45,14 @@ export class AdminRewardController {
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   async findById(@Param('id') id: string) {
-    const reward = await this.rewardService.findById(id);
-    return plainToInstance(Reward, reward.toObject());
+    const [reward, totalScans] = await Promise.all([
+      this.rewardService.findById(id),
+      this.codeService.countRewardUsage(id),
+    ]);
+    return {
+      ...plainToInstance(Reward, reward.toObject()),
+      totalScans,
+    };
   }
 
   @UseGuards(JwtAuthGuard)

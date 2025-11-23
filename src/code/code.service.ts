@@ -230,6 +230,10 @@ export class CodeService {
     return this.codeRepository.countUserRewardUsage(rewardId, userId);
   }
 
+  async countRewardUsage(rewardId: string): Promise<number> {
+    return this.codeRepository.countRewardUsage(rewardId);
+  }
+
   async findUsedCodesByUserId(
     userId: string,
     start: number = 0,

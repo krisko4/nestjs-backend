@@ -144,7 +144,12 @@ export function getPaginatedRewardData(
             $filter: {
               input: '$codes',
               as: 'code',
-              cond: { $ne: ['$$code.usedAt', null] },
+              cond: {
+                $and: [
+                  { $ne: ['$$code.usedAt', null] },
+                  { $ne: [{ $type: '$$code.usedAt' }, 'missing'] },
+                ],
+              },
             },
           },
         },

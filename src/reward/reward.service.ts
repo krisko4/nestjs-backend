@@ -132,27 +132,7 @@ export class RewardService {
       placeId,
     );
 
-    if (!result.data || result.data.length === 0) {
-      return result;
-    }
-
-    const rewardsWithUsageInfo = await Promise.all(
-      result.data.map(async (reward) => {
-        const usedCount = await this.codeService.countUserRewardUsage(
-          reward._id,
-          userId,
-        );
-        return {
-          ...reward,
-          usedCount,
-        };
-      }),
-    );
-
-    return {
-      ...result,
-      data: rewardsWithUsageInfo,
-    };
+    return result;
   }
 
   async activateReward(activateRewardDto: ActivateRewardDto, userId: string) {

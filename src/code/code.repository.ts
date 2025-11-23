@@ -923,6 +923,13 @@ export class CodeRepository extends MongoRepository<
     });
   }
 
+  async countRewardUsage(rewardId: string): Promise<number> {
+    return this.codeModel.countDocuments({
+      reward: toMongoObjectId(rewardId),
+      usedAt: { $exists: true },
+    });
+  }
+
   async findUsedCodesByUserId(
     userId: string,
     start: number = 0,
