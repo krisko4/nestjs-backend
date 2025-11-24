@@ -9,6 +9,7 @@ import { JwtAccessStrategy } from './jwt-access.strategy';
 import { JwtRefreshModule } from './jwt-refresh.module';
 import { JwtRefreshStrategy } from './jwt-refresh.strategy';
 import { LocalStrategy } from './local.strategy';
+import { GoogleStrategy } from './google.strategy';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { LocalStrategy } from './local.strategy';
     LocalStrategy,
     JwtAccessStrategy,
     JwtRefreshStrategy,
+    GoogleStrategy,
   ],
   controllers: [AuthController],
   exports: [AuthService],

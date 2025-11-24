@@ -80,8 +80,40 @@ export class UserService {
     return this.userRepository.findByEmail(email);
   }
 
+  findByGoogleId(googleId: string) {
+    return this.userRepository.findByGoogleId(googleId);
+  }
+
   async findById(id: string) {
     return this.userRepository.findById(id);
+  }
+
+  async findOrCreateGoogleUser(googleUser: {
+    googleId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+  }) {
+    let user = await this.findByGoogleId(googleUser.googleId);
+    if (user) {
+      return user;
+    }
+
+    user = await this.findByEmail(googleUser.email);
+    if (user) {
+      return this.userRepository.findByIdAndUpdate(user._id.toString(), {
+        googleId: googleUser.googleId,
+      });
+    }
+
+    return this.userRepository.create({
+      email: googleUser.email,
+      password: '',
+      isActive: true,
+      googleId: googleUser.googleId,
+      firstName: googleUser.firstName,
+      lastName: googleUser.lastName,
+    } as any);
   }
 
   async addFavoriteLocation(userId: string, locationId: string) {

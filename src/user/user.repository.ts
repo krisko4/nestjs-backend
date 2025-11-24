@@ -16,6 +16,10 @@ export class UserRepository extends MongoRepository<
     return this.findOne({ email: email });
   }
 
+  findByGoogleId(googleId: string) {
+    return this.findOne({ googleId });
+  }
+
   async setNotificationToken(id: string, token: string, language: string) {
     const { notificationTokens } = await this.findById(id);
     const tokens = notificationTokens.filter(

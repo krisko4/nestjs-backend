@@ -39,6 +39,8 @@ export class User {
   favoriteLocationIds: mongoose.Types.ObjectId[];
   @Prop({ default: 'en' })
   userLanguage: string;
+  @Prop()
+  googleId: string;
   @Exclude()
   __v: number;
 }

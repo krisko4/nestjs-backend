@@ -59,4 +59,14 @@ export class AuthService {
       refresh_token: refreshToken,
     };
   }
+
+  async googleLogin(googleUser: {
+    googleId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+  }) {
+    const user = await this.userService.findOrCreateGoogleUser(googleUser);
+    return this.login(user);
+  }
 }
