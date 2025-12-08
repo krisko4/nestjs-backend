@@ -6,6 +6,7 @@ import {
   Request,
   UseGuards,
   Req,
+  Body,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -59,7 +60,7 @@ export class AuthController {
   @UseGuards(GoogleAuthGuard)
   @Get('/google')
   async googleAuth() {
-    // Guard redirects to Google
+    // Guard redirects to Google OAuth
   }
 
   @UseGuards(GoogleAuthGuard)
@@ -73,7 +74,19 @@ export class AuthController {
     response.cookie('access_token', userData.access_token);
     response.cookie('refresh_token', userData.refresh_token);
 
-    const clientUrl = this.configService.get('CLIENT_URL');
+    const clientUrl = this.configService.get('CLIENT_URL_WEB');
     response.redirect(`${clientUrl}/auth/callback`);
+  }
+
+  @Post('/google/native')
+  async googleNativeLogin(
+    @Body() body: { idToken: string },
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const userData = await this.authService.verifyGoogleIdToken(body.idToken);
+    response.cookie('uid', userData.uid.toString());
+    response.cookie('access_token', userData.access_token);
+    response.cookie('refresh_token', userData.refresh_token);
+    return userData;
   }
 }

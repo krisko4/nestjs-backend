@@ -7,12 +7,12 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { CodeRepository } from './code.repository';
 import { UserCodeController } from './code.controller.user';
 import { CodeSseService } from './code-sse.service';
-import { PlaceEmployeeModule } from 'src/place-employee/place-employee.module';
+import { EmployeeModule } from 'src/employee/employee.module';
 
 @Module({
   imports: [
     forwardRef(() => PlaceModule),
-    forwardRef(() => PlaceEmployeeModule),
+    forwardRef(() => EmployeeModule),
     MongooseModule.forFeature([{ name: Code.name, schema: CodeSchema }]),
   ],
   controllers: [CodeController, UserCodeController],

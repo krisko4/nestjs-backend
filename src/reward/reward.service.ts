@@ -7,7 +7,6 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
-import { SubscriptionService } from 'src/subscription/subscription.service';
 import { CreateRewardDto } from './dto/create-reward.dto';
 import { UpdateRewardDto } from './dto/update-reward.dto';
 import { RewardFilterQuery } from './queries/reward-filter.query';
@@ -25,7 +24,7 @@ import { PaginationQuery } from './queries/pagination.query';
 import { ActivateRewardDto } from './dto/activate-reward.dto';
 import { SearchRewardQuery } from './queries/search-reward.query';
 import { UserService } from 'src/user/user.service';
-import { PlaceEmployeeService } from 'src/place-employee/place-employee.service';
+import { EmployeeService } from 'src/employee/employee.service';
 import { UserRewardsQuery } from './queries/user-rewards.query';
 
 @Injectable()
@@ -34,12 +33,11 @@ export class RewardService {
     private readonly rewardRepository: RewardRepository,
     private readonly schedulerRegistry: SchedulerRegistry,
     private readonly eventService: EventService,
-    private readonly subscriptionService: SubscriptionService,
     private readonly codeService: CodeService,
     private readonly notificationService: NotificationService,
     private readonly placeService: PlaceService,
     private readonly userService: UserService,
-    private readonly placeEmployeeService: PlaceEmployeeService,
+    private readonly employeeService: EmployeeService,
     @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
 
@@ -197,7 +195,7 @@ export class RewardService {
     }
 
     // Sprawdź czy użytkownik jest BOSS'em tego miejsca
-    const isUserBoss = await this.placeEmployeeService.isUserBossOfPlace(
+    const isUserBoss = await this.employeeService.isUserBossOfPlace(
       uid,
       reward.place._id.toString(),
     );
@@ -256,7 +254,7 @@ export class RewardService {
     // Sprawdź czy użytkownik jest BOSS'em przynajmniej jednej z tych lokalizacji
     const hasAccessToAnyLocation = await Promise.all(
       locationIds.map((locationId) =>
-        this.placeEmployeeService.isUserBossOfLocation(uid, locationId),
+        this.employeeService.isUserBossOfLocation(uid, locationId),
       ),
     );
 
@@ -403,7 +401,7 @@ export class RewardService {
     }
 
     // Sprawdź czy użytkownik jest właścicielem place'a (BOSS'em)
-    const isUserBoss = await this.placeEmployeeService.isUserBossOfPlace(
+    const isUserBoss = await this.employeeService.isUserBossOfPlace(
       userId,
       reward.place._id.toString(),
     );
@@ -422,7 +420,7 @@ export class RewardService {
     }
 
     // Sprawdź czy użytkownik jest BOSS'em miejsca
-    const isUserBoss = await this.placeEmployeeService.isUserBossOfPlace(
+    const isUserBoss = await this.employeeService.isUserBossOfPlace(
       uid,
       reward.place._id.toString(),
     );
@@ -459,7 +457,7 @@ export class RewardService {
       // Sprawdź czy użytkownik jest BOSS'em przynajmniej jednej z nowych lokalizacji
       const hasAccessToAnyLocation = await Promise.all(
         locationIds.map((locationId) =>
-          this.placeEmployeeService.isUserBossOfLocation(uid, locationId),
+          this.employeeService.isUserBossOfLocation(uid, locationId),
         ),
       );
 
@@ -497,7 +495,7 @@ export class RewardService {
     }
 
     // Sprawdź czy użytkownik jest BOSS'em miejsca
-    const isUserBoss = await this.placeEmployeeService.isUserBossOfPlace(
+    const isUserBoss = await this.employeeService.isUserBossOfPlace(
       uid,
       reward.place._id.toString(),
     );

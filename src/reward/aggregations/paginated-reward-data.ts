@@ -18,51 +18,46 @@ function buildBasePipeline(
 
   if (userId) {
     // Filtruj rewardy gdzie użytkownik jest employeem przynajmniej jednej z lokalizacji rewarda
-    // Struktura: User -> Employee -> PlaceEmployee -> Location
+    // Nowa struktura: User -> Employee -> places[] -> locations[]
     pipeline.push(
       {
         $lookup: {
-          from: 'placeemployees',
+          from: 'employees',
           let: { rewardLocationIds: '$locationIds' },
           pipeline: [
             {
               $match: {
-                $expr: {
-                  $in: ['$location', '$$rewardLocationIds'],
-                },
-              },
-            },
-            {
-              $lookup: {
-                from: 'employees',
-                localField: 'employee',
-                foreignField: '_id',
-                as: 'employeeData',
-              },
-            },
-            {
-              $unwind: '$employeeData',
-            },
-            {
-              $match: {
-                'employeeData.user':
+                user:
                   typeof userId === 'string'
                     ? new Types.ObjectId(userId)
                     : userId,
               },
             },
+            {
+              $unwind: '$places',
+            },
+            {
+              $unwind: '$places.locations',
+            },
+            {
+              $match: {
+                $expr: {
+                  $in: ['$places.locations.locationId', '$$rewardLocationIds'],
+                },
+              },
+            },
           ],
-          as: 'placeEmployee',
+          as: 'employeeData',
         },
       },
       {
         $match: {
-          placeEmployee: { $ne: [] },
+          employeeData: { $ne: [] },
         },
       },
       {
         $project: {
-          placeEmployee: 0,
+          employeeData: 0,
         },
       },
     );

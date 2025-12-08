@@ -22,7 +22,6 @@ import { NotificationService } from 'src/notification/notification.service';
 import { NotificationType } from 'src/notification/schemas/notification.schema';
 import { PaginationQuery } from 'src/place/queries/pagination.query';
 import { ParticipatorsFilterQuery } from './dto/participators-filter.query';
-import { SubscriptionService } from 'src/subscription/subscription.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { EventRepository } from './event.repository';
@@ -32,7 +31,7 @@ import { InjectConnection } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
-import { PlaceEmployeeService } from 'src/place-employee/place-employee.service';
+import { EmployeeService } from 'src/employee/employee.service';
 import { SearchEventQuery } from './queries/search-event.query';
 import { UserEventsQuery } from './queries/user-events.query';
 
@@ -44,9 +43,8 @@ export class EventService {
     private readonly userService: UserService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly schedulerRegistry: SchedulerRegistry,
-    private readonly subscriptionService: SubscriptionService,
     private readonly notificationService: NotificationService,
-    private readonly placeEmployeeService: PlaceEmployeeService,
+    private readonly employeeService: EmployeeService,
     @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
 
@@ -152,47 +150,6 @@ export class EventService {
     });
     await session.endSession();
     return event;
-  }
-
-  async sendRateRequestNotifications(eventId: string) {
-    const event = await this.eventRepository.findEventById(eventId);
-    if (!event) throw new InternalServerErrorException(`EVENT_NOT_FOUND`);
-
-    // Zbieramy subskrybentów ze wszystkich lokacji tego eventu
-    const allSubs = await Promise.all(
-      event.locationIds.map((locationId) =>
-        this.subscriptionService.findByLocationId(locationId),
-      ),
-    );
-
-    // Usuwamy duplikaty użytkowników
-    const uniqueReceivers = Array.from(
-      new Set(allSubs.flat().map((sub) => sub.user._id.toString())),
-    );
-    if (uniqueReceivers.length > 0) {
-      const createNotificationDto = {
-        title: `Hey, have you enjoyed the event: ${event.title}?🤠`,
-        body: `Let us know, we can't wait to hear your opinion!🤔`,
-        eventId: event._id.toString(),
-        receivers: uniqueReceivers,
-        type: NotificationType.RATING_REQUEST,
-      };
-      const notification = await this.notificationService.create(
-        createNotificationDto,
-      );
-      const { body, eventId } = createNotificationDto;
-      await this.notificationService.sendNotification(uniqueReceivers, {
-        data: {
-          _id: notification._id.toString(),
-          body,
-          eventId,
-        },
-        notification: {
-          title: createNotificationDto.title,
-          body,
-        },
-      });
-    }
   }
 
   async findByLocationId(locationId: string) {
@@ -303,53 +260,6 @@ export class EventService {
     return this.eventRepository.addParticipator(id, uid);
   }
 
-  async findStatistics(query: StatisticsFilterQuery) {
-    const { locationId, type } = query;
-    const events = await this.findByLocationId(locationId);
-    if (type === StatisticsType.NOTIFICATIONS) {
-      return this.notificationService.findNotificationStatistics(
-        events.map((e) => e._id),
-      );
-    }
-    if (type === StatisticsType.RATINGS) {
-      return events.map((event) => {
-        return {
-          eventName: event.title,
-          ones: event.participators.filter((p) => p.rate === 1).length,
-          twos: event.participators.filter((p) => p.rate === 2).length,
-          threes: event.participators.filter((p) => p.rate === 3).length,
-          fours: event.participators.filter((p) => p.rate === 4).length,
-          fives: event.participators.filter((p) => p.rate === 5).length,
-        };
-      });
-    }
-    for (const event of events) {
-      // Zbieramy subskrybentów ze wszystkich lokacji tego eventu
-      const allSubs = await Promise.all(
-        event.locationIds.map((locationId) =>
-          this.subscriptionService.findByLocationId(locationId),
-        ),
-      );
-      const flatSubs = allSubs.flat();
-
-      event.participators.forEach((participator) => {
-        participator['isSubscriber'] = flatSubs.some(({ user }) => {
-          return user._id.toString() === participator.user._id.toString();
-        });
-      });
-    }
-    return events.map((event) => {
-      return {
-        eventName: event.title,
-        participators: event.participators.length,
-        subscribers: event.participators.filter((p) => p.isSubscriber).length,
-        realParticipators: event.participators.filter(
-          (p) => p.didReallyParticipate,
-        ).length,
-      };
-    });
-  }
-
   async updateParticipator(
     id: string,
     participatorId: string,
@@ -390,11 +300,10 @@ export class EventService {
     event: Event,
   ) {
     // Sprawdź czy użytkownik jest pracownikiem tego miejsca
-    const placeEmployee =
-      await this.placeEmployeeService.findByPlaceIdAndUserId(
-        event.place._id.toString(),
-        uid,
-      );
+    const placeEmployee = await this.employeeService.findByPlaceIdAndUserId(
+      event.place._id.toString(),
+      uid,
+    );
     if (!placeEmployee) {
       throw new ForbiddenException('USER_IS_NOT_ORGANIZER');
     }
@@ -428,14 +337,6 @@ export class EventService {
     }
     if (locationId) {
       const events = await this.findByLocationId(locationId);
-      const subs = await this.subscriptionService.findByLocationId(locationId);
-      events.forEach((event) => {
-        event.participators.forEach((participator) => {
-          participator['isSubscriber'] = subs.some(({ user }) => {
-            return user._id.toString() === participator.user._id.toString();
-          });
-        });
-      });
       return events;
     }
     return this.eventRepository.findAll();
@@ -452,7 +353,7 @@ export class EventService {
     const event = await this.findById(id);
 
     // Sprawdź czy użytkownik jest BOSS'em tego miejsca
-    const isUserBoss = await this.placeEmployeeService.isUserBossOfPlace(
+    const isUserBoss = await this.employeeService.isUserBossOfPlace(
       uid,
       event.place._id.toString(),
     );
@@ -503,7 +404,7 @@ export class EventService {
     }
 
     // Sprawdź czy użytkownik jest BOSS'em miejsca
-    const isUserBoss = await this.placeEmployeeService.isUserBossOfPlace(
+    const isUserBoss = await this.employeeService.isUserBossOfPlace(
       uid,
       event.place._id.toString(),
     );
@@ -547,7 +448,7 @@ export class EventService {
     }
 
     // Sprawdź czy użytkownik jest BOSS'em miejsca
-    const isUserBoss = await this.placeEmployeeService.isUserBossOfPlace(
+    const isUserBoss = await this.employeeService.isUserBossOfPlace(
       uid,
       event.place._id.toString(),
     );

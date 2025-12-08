@@ -9,14 +9,13 @@ import { PlaceModule } from 'src/place/place.module';
 import { EventSchema } from './schemas/event.schema';
 import { MongooseModule } from '@nestjs/mongoose';
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
-import { SubscriptionModule } from 'src/subscription/subscription.module';
 import {
   Participator,
   ParticipatorSchema,
 } from './schemas/participator.schema';
 import { UserEventController } from './event.controller.user';
 import { AdminEventController } from './event.controller.admin';
-import { PlaceEmployeeModule } from 'src/place-employee/place-employee.module';
+import { EmployeeModule } from 'src/employee/employee.module';
 
 @Module({
   imports: [
@@ -28,11 +27,10 @@ import { PlaceEmployeeModule } from 'src/place-employee/place-employee.module';
       { name: Participator.name, schema: ParticipatorSchema },
     ]),
     PlaceModule,
-    PlaceEmployeeModule,
+    EmployeeModule,
     NotificationModule,
     UserModule,
     CloudinaryModule,
-    SubscriptionModule,
   ],
   controllers: [UserEventController, AdminEventController],
   providers: [EventService, EventRepository],

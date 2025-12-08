@@ -15,15 +15,15 @@ import { ClientSession } from 'mongoose';
 import { UseCodeDto } from './dto/use-code.dto';
 import { NotFoundError } from 'rxjs';
 import { CodeSseService } from './code-sse.service';
-import { PlaceEmployeeService } from 'src/place-employee/place-employee.service';
+import { EmployeeService } from 'src/employee/employee.service';
 
 @Injectable()
 export class CodeService {
   constructor(
     private readonly codeRepository: CodeRepository,
     private readonly codeSseService: CodeSseService,
-    @Inject(forwardRef(() => PlaceEmployeeService))
-    private readonly placeEmployeeService: PlaceEmployeeService,
+    @Inject(forwardRef(() => EmployeeService))
+    private readonly employeeService: EmployeeService,
     @Inject(forwardRef(() => PlaceService))
     private readonly placeService: PlaceService,
   ) {}
@@ -67,9 +67,11 @@ export class CodeService {
       throw new BadRequestException('INVALID_CODE_CONFIGURATION');
     }
 
-    const placeEmployee =
-      await this.placeEmployeeService.findByPlaceIdAndUserId(placeId, uid);
-    if (!placeEmployee) {
+    const employee = await this.employeeService.findByPlaceIdAndUserId(
+      placeId,
+      uid,
+    );
+    if (!employee) {
       throw new UnauthorizedException('ILLEGAL_OPERATION');
     }
 
@@ -105,42 +107,7 @@ export class CodeService {
     if (!isUserCodeReceiver) {
       throw new InternalServerErrorException('CODE_INVALID');
     }
-    if (
-      locationId &&
-      (!code.invitation ||
-        code.invitation.referral.locationId.toString() !==
-          locationId.toString())
-    ) {
-      throw new InternalServerErrorException('CODE_INVALID');
-    }
     return code;
-  }
-
-  async findReferralCodes(userId: string) {
-    const codes = await this.codeRepository.findReferralCodes(userId);
-    return codes.map((code) => {
-      return {
-        _id: code._id,
-        value: code.value,
-        description: code.invitation.referral.description,
-        date: code.invitation.createdAt,
-        placeLogo: 'something',
-      };
-    });
-    // return Promise.all(
-    //   codes.map(async (code) => {
-    //     const place = await this.placeService.findByLocationId(
-    //       code.invitation.referral.locationId,
-    //     );
-    //     return {
-    //       _id: code._id,
-    //       value: code.value,
-    //       description: code.invitation.referral.description,
-    //       date: code.invitation.createdAt,
-    //       placeLogo: `${process.env.CLOUDI_URL}/${place.logo}`,
-    //     };
-    //   }),
-    // );
   }
 
   async findRewardCodes(userId: string) {
@@ -163,8 +130,6 @@ export class CodeService {
 
   findByUserId(userId: string, type: CodeType) {
     switch (type) {
-      case CodeType.REFERRAL:
-        return this.findReferralCodes(userId);
       case CodeType.REWARD:
         return this.findRewardCodes(userId);
       default:
@@ -205,12 +170,6 @@ export class CodeService {
     );
   }
 
-  /**
-   * Pobiera historię skanów dla konkretnego rewarda
-   * @param rewardId - ID rewarda
-   * @param start - Offset (skip)
-   * @param limit - Liczba elementów na stronę
-   */
   async findScanHistoryByRewardId(
     rewardId: string,
     start: number = 0,

@@ -10,17 +10,17 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { PlaceEmployeeService } from './place-employee.service';
+import { EmployeeService } from './employee.service';
 import { CreatePlaceEmployeeDto } from './dto/create-place-employee.dto';
 import { UpdatePlaceEmployeeDto } from './dto/update-place-employee.dto';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
-import { EmployeeFilterQuery } from './dto/employee-filter.query';
+import { EmployeeFilterQuery } from './queries/employee-filter.query';
 import { PaginationQuery } from './queries/pagination.query';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard)
-export class PlaceEmployeeController {
-  constructor(private readonly placeEmployeeService: PlaceEmployeeService) {}
+export class AdminEmployeeController {
+  constructor(private readonly employeeService: EmployeeService) {}
 
   @Post('places/:placeId/employees')
   async addEmployee(
@@ -29,7 +29,7 @@ export class PlaceEmployeeController {
     @Req() req,
   ) {
     const { uid } = req.user;
-    return this.placeEmployeeService.addEmployeeToPlace(
+    return this.employeeService.addEmployeeToPlace(
       placeId,
       uid,
       createPlaceEmployeeDto,
@@ -43,67 +43,73 @@ export class PlaceEmployeeController {
     @Req() req: any,
   ) {
     const { uid } = req.user;
-    const { page = 1, limit = 10, locationIds } = filterQuery;
+    const { start = 0, limit = 10, locationIds } = filterQuery;
 
     if (placeId) {
-      return this.placeEmployeeService.getEmployeesByPlaceId(
+      return this.employeeService.getEmployeesByPlaceId(
         placeId,
         uid,
-        page,
+        start,
         limit,
         locationIds,
       );
     }
-    return this.placeEmployeeService.getAllEmployees(uid, page, limit);
+    return this.employeeService.getAllEmployees(uid, start, limit);
   }
 
-  @Get('places/employees/:placeEmployeeId')
+  @Get('employees/:employeeId')
   async getEmployeeDetails(
-    @Param('placeEmployeeId') placeEmployeeId: string,
+    @Param('employeeId') employeeId: string,
     @Req() req: any,
   ) {
     const { uid } = req.user;
-    return this.placeEmployeeService.getPlaceEmployeeById(placeEmployeeId, uid);
+    return this.employeeService.getEmployeeDetails(employeeId, uid);
   }
 
-  @Get('places/employees/:placeEmployeeId/scan-history')
+  @Get('places/:placeId/employees/:employeeId/scan-history')
   async getScanHistoryByEmployeeId(
-    @Param('placeEmployeeId') placeEmployeeId: string,
+    @Param('placeId') placeId: string,
+    @Param('employeeId') employeeId: string,
     @Query() query: PaginationQuery,
     @Req() req: any,
   ) {
     const { uid } = req.user;
     const { start = 0, limit = 10 } = query;
-    return this.placeEmployeeService.getScanHistoryByPlaceEmployeeId(
-      placeEmployeeId,
+    return this.employeeService.getScanHistoryByEmployeeId(
+      employeeId,
+      placeId,
       uid,
       start,
       limit,
     );
   }
 
-  @Patch('places/employees/:placeEmployeeId')
+  @Patch('places/:placeId/employees/:employeeId')
   async updateEmployee(
-    @Param('placeEmployeeId') placeEmployeeId: string,
+    @Param('placeId') placeId: string,
+    @Param('employeeId') employeeId: string,
     @Body() updatePlaceEmployeeDto: UpdatePlaceEmployeeDto,
     @Req() req,
   ) {
     const { uid } = req.user;
-    return this.placeEmployeeService.updatePlaceEmployee(
-      placeEmployeeId,
+    return this.employeeService.updatePlaceEmployee(
+      employeeId,
+      placeId,
       uid,
       updatePlaceEmployeeDto,
     );
   }
 
-  @Delete('places/employees/:placeEmployeeId')
+  @Delete('places/:placeId/employees/:employeeId')
   async removeEmployee(
-    @Param('placeEmployeeId') placeEmployeeId: string,
+    @Param('placeId') placeId: string,
+    @Param('employeeId') employeeId: string,
     @Req() req,
   ) {
     const { uid } = req.user;
-    return this.placeEmployeeService.removeEmployeeFromPlace(
-      placeEmployeeId,
+    return this.employeeService.removeEmployeeFromPlace(
+      employeeId,
+      placeId,
       uid,
     );
   }

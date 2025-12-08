@@ -5,21 +5,19 @@ import { AdminRewardController } from './reward.controller.admin';
 import { RewardRepository } from './reward.repository';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Reward, RewardSchema } from './schemas/reward.schema';
-import { SubscriptionModule } from '../subscription/subscription.module';
 import { CodeModule } from '../code/code.module';
 import { EventModule } from '../event/event.module';
 import { PlaceModule } from 'src/place/place.module';
 import { UserRewardController } from './reward.controller.user';
 import { UserModule } from 'src/user/user.module';
-import { PlaceEmployeeModule } from 'src/place-employee/place-employee.module';
+import { EmployeeModule } from 'src/employee/employee.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Reward.name, schema: RewardSchema }]),
     EventModule,
     PlaceModule,
-    PlaceEmployeeModule,
-    SubscriptionModule,
+    EmployeeModule,
     CodeModule,
     NotificationModule,
     UserModule,

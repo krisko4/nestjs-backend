@@ -72,19 +72,6 @@ export class CodeRepository extends MongoRepository<
     });
   }
 
-  async findReferralCodes(userId: string) {
-    const codes = await this.codeModel
-      .find({ user: new Types.ObjectId(userId) })
-      .populate({
-        path: 'invitation',
-        populate: {
-          path: 'referral',
-        },
-      });
-
-    return codes.filter((c) => c.invitation);
-  }
-
   async findRewardCodes(userId: string) {
     const codes = await this.codeModel
       .find({ user: new Types.ObjectId(userId) })
@@ -344,9 +331,9 @@ export class CodeRepository extends MongoRepository<
         },
       },
       {
-        // Lookup PlaceEmployee to get placeEmployeeId
+        // Lookup Employee to get employee info from embedded places array
         $lookup: {
-          from: 'placeemployees',
+          from: 'employees',
           let: {
             placeId: '$placeInfo._id',
             userId: '$usedBy',
@@ -355,41 +342,34 @@ export class CodeRepository extends MongoRepository<
             {
               $match: {
                 $expr: {
-                  $eq: ['$place', '$$placeId'],
+                  $eq: ['$user', '$$userId'],
                 },
               },
             },
             {
-              $lookup: {
-                from: 'employees',
-                localField: 'employee',
-                foreignField: '_id',
-                as: 'employeeData',
-              },
-            },
-            {
-              $unwind: '$employeeData',
+              $unwind: '$places',
             },
             {
               $match: {
                 $expr: {
-                  $eq: ['$employeeData.user', '$$userId'],
+                  $eq: ['$places.place', '$$placeId'],
                 },
               },
             },
             {
               $project: {
                 _id: 1,
+                name: '$places.name',
               },
             },
           ],
-          as: 'placeEmployeeData',
+          as: 'employeeData',
         },
       },
       {
         $addFields: {
           placeEmployee: {
-            $arrayElemAt: ['$placeEmployeeData', 0],
+            $arrayElemAt: ['$employeeData', 0],
           },
         },
       },
@@ -602,10 +582,10 @@ export class CodeRepository extends MongoRepository<
           },
         },
       },
-      // Lookup PlaceEmployee to get placeEmployeeId
+      // Lookup Employee to get employee info from embedded places array
       {
         $lookup: {
-          from: 'placeemployees',
+          from: 'employees',
           let: {
             placeId: '$finalPlace._id',
             userId: '$usedByData._id',
@@ -614,42 +594,34 @@ export class CodeRepository extends MongoRepository<
             {
               $match: {
                 $expr: {
-                  $eq: ['$place', '$$placeId'],
+                  $eq: ['$user', '$$userId'],
                 },
               },
             },
             {
-              $lookup: {
-                from: 'employees',
-                localField: 'employee',
-                foreignField: '_id',
-                as: 'employeeData',
-              },
-            },
-            {
-              $unwind: '$employeeData',
+              $unwind: '$places',
             },
             {
               $match: {
                 $expr: {
-                  $eq: ['$employeeData.user', '$$userId'],
+                  $eq: ['$places.place', '$$placeId'],
                 },
               },
             },
             {
               $project: {
                 _id: 1,
-                name: '$employeeData.name',
+                name: '$places.name',
               },
             },
           ],
-          as: 'placeEmployeeData',
+          as: 'employeeData',
         },
       },
       {
         $addFields: {
           placeEmployee: {
-            $arrayElemAt: ['$placeEmployeeData', 0],
+            $arrayElemAt: ['$employeeData', 0],
           },
         },
       },

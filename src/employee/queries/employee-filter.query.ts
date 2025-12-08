@@ -1,15 +1,8 @@
-import { IsArray, IsMongoId, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsMongoId, IsOptional } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+import { PaginationQuery } from './pagination.query';
 
-export class EmployeeFilterQuery {
-  @IsOptional()
-  @Type(() => Number)
-  page?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  limit?: number;
-
+export class EmployeeFilterQuery extends PaginationQuery {
   @IsOptional()
   @Transform(({ value }) => {
     if (typeof value === 'string') {

@@ -17,16 +17,13 @@ import { InjectConnection } from '@nestjs/mongoose';
 import { PlaceDocument } from './schemas/place.schema';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { UpdateStatusDto } from './dto/update-status.dto';
-import { SubscriptionService } from 'src/subscription/subscription.service';
-import { SubscriptionDocument } from 'src/subscription/schemas/subscription.schema';
 import { SearchPlaceQuery } from './queries/search-place.query';
 import { CodeService } from 'src/code/code.service';
-import { PlaceEmployeeService } from 'src/place-employee/place-employee.service';
+import { EmployeeService } from 'src/employee/employee.service';
 import {
   PlaceEmployeeRole,
   PlaceEmployeeStatus,
-} from 'src/place-employee/schemas/place-employee.schema';
-import { EmployeeService } from 'src/employee/employee.service';
+} from 'src/employee/schemas/place-assignment.schema';
 import { UpdatePlaceDto } from './dto/update-place.dto';
 
 @Injectable()
@@ -35,11 +32,9 @@ export class PlaceService {
     private readonly placeRepository: PlaceRepository,
     private readonly userService: UserService,
     private readonly cloudinaryService: CloudinaryService,
-    private readonly subscriptionService: SubscriptionService,
     @Inject(forwardRef(() => CodeService))
     private readonly codeService: CodeService,
-    @Inject(forwardRef(() => PlaceEmployeeService))
-    private readonly placeEmployeeService: PlaceEmployeeService,
+    @Inject(forwardRef(() => EmployeeService))
     private readonly employeeService: EmployeeService,
     @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
@@ -64,7 +59,7 @@ export class PlaceService {
     if (!place) throw new NotFoundException('Place not found');
 
     // Check if user is boss of this place
-    const isUserBoss = await this.placeEmployeeService.isUserBossOfPlace(
+    const isUserBoss = await this.employeeService.isUserBossOfPlace(
       uid,
       place._id.toString(),
     );
@@ -170,19 +165,32 @@ export class PlaceService {
           updateData.locations = newLocationsArray;
         }
 
-        // Create PlaceEmployee for new locations
+        // Update PlaceEmployee for new locations - add new locations to existing place assignment
         if (addedLocationIds.length > 0) {
-          const employees = await this.employeeService.findByUserId(uid);
-          if (employees && employees.length > 0) {
-            for (const newLocId of addedLocationIds) {
-              await this.placeEmployeeService.createPlaceEmployee(
-                {
-                  place: place._id,
-                  location: newLocId,
-                  employee: employees[0]._id,
+          const employee = await this.employeeService.findByPlaceIdAndUserId(
+            place._id.toString(),
+            uid,
+          );
+          if (employee) {
+            const placeAssignment = employee.places.find(
+              (p) => p.place.toString() === place._id.toString(),
+            );
+            if (placeAssignment) {
+              const newLocationAssignments = addedLocationIds.map(
+                (newLocId) => ({
+                  locationId: newLocId,
                   role: PlaceEmployeeRole.BOSS,
                   status: PlaceEmployeeStatus.ACTIVE,
-                },
+                }),
+              );
+              const updatedLocations = [
+                ...placeAssignment.locations,
+                ...newLocationAssignments,
+              ];
+              await this.employeeService.updatePlaceAssignment(
+                employee._id.toString(),
+                place._id.toString(),
+                { locations: updatedLocations },
                 session,
               );
             }
@@ -254,18 +262,20 @@ export class PlaceService {
         );
       }
 
-      for (const location of registeredPlace.locations) {
-        await this.placeEmployeeService.createPlaceEmployee(
-          {
-            place: registeredPlace._id,
-            location: toMongoObjectId(location._id),
-            employee: employee._id,
-            role: PlaceEmployeeRole.BOSS,
-            status: PlaceEmployeeStatus.ACTIVE,
-          },
-          session,
-        );
-      }
+      // Add place assignment with all locations
+      const locationAssignments = registeredPlace.locations.map((location) => ({
+        locationId: toMongoObjectId(location._id),
+        role: PlaceEmployeeRole.BOSS,
+        status: PlaceEmployeeStatus.ACTIVE,
+      }));
+
+      await this.employeeService.addPlaceAssignment(
+        employee._id.toString(),
+        registeredPlace._id,
+        locationAssignments,
+        undefined,
+        session,
+      );
     });
     await session.endSession();
     return registeredPlace;
@@ -297,18 +307,6 @@ export class PlaceService {
 
   findTopRated(placeFilterQuery: PlaceFilterQuery) {
     return this.placeRepository.findTopRated(placeFilterQuery);
-  }
-
-  async findSubscribed(placeFilterQuery: PlaceFilterQuery, uid: string) {
-    const user = await this.validateUser(uid);
-    const subscriptions = (await this.subscriptionService.find({
-      userId: user._id,
-    })) as SubscriptionDocument[];
-    const subscribedLocationIds = subscriptions.map((sub) => sub.locationId);
-    return this.placeRepository.findByLocationIds(
-      placeFilterQuery,
-      subscribedLocationIds,
-    );
   }
 
   findFavorite(placeFilterQuery: PlaceFilterQuery, favIds: string[]) {
@@ -387,14 +385,28 @@ export class PlaceService {
   }
 
   async findByUserId(uid: string) {
-    const placeEmployees = await this.placeEmployeeService.findByUserId(uid);
-    const bossPlaceEmployees = placeEmployees.filter(
-      (pe) => pe.role === PlaceEmployeeRole.BOSS,
-    );
+    const employees = await this.employeeService.findByUserId(uid);
 
-    const placeIds = bossPlaceEmployees
-      .map((pe) => pe.place?._id || pe.place)
-      .filter((place) => place); // Filter out null/undefined
+    const placeIdsSet = new Set<string>();
+    for (const employee of employees) {
+      for (const placeAssignment of employee.places) {
+        // Check if user is boss of at least one location
+        const isBoss = placeAssignment.locations.some(
+          (loc) =>
+            loc.role === PlaceEmployeeRole.BOSS &&
+            loc.status === PlaceEmployeeStatus.ACTIVE,
+        );
+        if (isBoss) {
+          const placeId =
+            typeof placeAssignment.place === 'object'
+              ? placeAssignment.place._id
+              : placeAssignment.place;
+          placeIdsSet.add(placeId.toString());
+        }
+      }
+    }
+
+    const placeIds = Array.from(placeIdsSet);
 
     if (placeIds.length === 0) {
       return [];
@@ -406,16 +418,24 @@ export class PlaceService {
   }
 
   async getPlacesByUserId(uid: string) {
-    const placeEmployees = await this.placeEmployeeService.getPlacesByUserId(
-      uid,
-    );
-    return placeEmployees.map((placeEmployee) => ({
-      place: placeEmployee.place,
-      employee: {
-        _id: placeEmployee._id,
-        status: placeEmployee.status,
-      },
-    }));
+    const employees = await this.employeeService.getPlacesByUserId(uid);
+
+    const result = [];
+    for (const employee of employees) {
+      for (const placeAssignment of employee.places) {
+        result.push({
+          place: placeAssignment.place,
+          employee: {
+            _id: employee._id,
+            placeAssignment: {
+              name: placeAssignment.name,
+              locations: placeAssignment.locations,
+            },
+          },
+        });
+      }
+    }
+    return result;
   }
   async removePlace(id: string) {
     const session = await this.connection.startSession();

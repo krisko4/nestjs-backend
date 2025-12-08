@@ -13,7 +13,6 @@ import { PlaceModule } from './place/place.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
-import { SubscriptionModule } from './subscription/subscription.module';
 import { EventModule } from './event/event.module';
 import { MulterConfigModule } from './multer-config/multer-config.module';
 import { NotificationModule } from './notification/notification.module';
@@ -21,12 +20,9 @@ import { RewardModule } from './reward/reward.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CodeModule } from './code/code.module';
 import { GeolocationModule } from './geolocation/geolocation.module';
-import { ReferralModule } from './referral/referral.module';
-import { InvitationModule } from './invitation/invitation.module';
 import { FirebaseModule } from './firebase/firebase.module';
 import { ClientModule } from './client/client.module';
 import { EmployeeModule } from './employee/employee.module';
-import { PlaceEmployeeModule } from './place-employee/place-employee.module';
 
 @Module({
   imports: [
@@ -46,19 +42,15 @@ import { PlaceEmployeeModule } from './place-employee/place-employee.module';
       rootPath: join(__dirname, '..', 'public'),
     }),
     CloudinaryModule,
-    SubscriptionModule,
     EventModule,
     MulterConfigModule,
     NotificationModule,
     RewardModule,
     CodeModule,
     GeolocationModule,
-    ReferralModule,
-    InvitationModule,
     FirebaseModule,
     ClientModule,
     EmployeeModule,
-    PlaceEmployeeModule,
   ],
 })
 export class AppModule {}

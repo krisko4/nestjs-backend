@@ -24,51 +24,46 @@ function buildBasePipeline(
 
   if (userId) {
     // Filtruj eventy gdzie użytkownik jest employeem przynajmniej jednej z lokalizacji eventu
-    // Struktura: User -> Employee -> PlaceEmployee -> Location
+    // Nowa struktura: User -> Employee -> places[] -> locations[]
     pipeline.push(
       {
         $lookup: {
-          from: 'placeemployees',
+          from: 'employees',
           let: { eventLocationIds: '$locationIds' },
           pipeline: [
             {
               $match: {
-                $expr: {
-                  $in: ['$location', '$$eventLocationIds'],
-                },
-              },
-            },
-            {
-              $lookup: {
-                from: 'employees',
-                localField: 'employee',
-                foreignField: '_id',
-                as: 'employeeData',
-              },
-            },
-            {
-              $unwind: '$employeeData',
-            },
-            {
-              $match: {
-                'employeeData.user':
+                user:
                   typeof userId === 'string'
                     ? new Types.ObjectId(userId)
                     : userId,
               },
             },
+            {
+              $unwind: '$places',
+            },
+            {
+              $unwind: '$places.locations',
+            },
+            {
+              $match: {
+                $expr: {
+                  $in: ['$places.locations.locationId', '$$eventLocationIds'],
+                },
+              },
+            },
           ],
-          as: 'placeEmployee',
+          as: 'employeeData',
         },
       },
       {
         $match: {
-          placeEmployee: { $ne: [] },
+          employeeData: { $ne: [] },
         },
       },
       {
         $project: {
-          placeEmployee: 0,
+          employeeData: 0,
         },
       },
     );

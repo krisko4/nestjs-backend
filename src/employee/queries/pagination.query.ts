@@ -1,11 +1,12 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsNumber, IsOptional, Max, Min } from 'class-validator';
+import { IsInt, Max, Min } from 'class-validator';
 
 export class PaginationQuery {
   @IsInt()
   @Type(() => Number)
   @Min(0)
   start: number;
+
   @IsInt()
   @Type(() => Number)
   @Min(0)
