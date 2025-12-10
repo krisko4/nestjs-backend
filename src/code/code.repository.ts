@@ -23,12 +23,11 @@ export class CodeRepository extends MongoRepository<
     value: string,
     session?: ClientSession,
   ) {
-    const { userId, rewardId, invitationId, locationId } = createCodeDto;
+    const { userId, rewardId, locationId } = createCodeDto;
     return this.create(
       {
         user: toMongoObjectId(userId),
         reward: rewardId ? toMongoObjectId(rewardId) : undefined,
-        invitation: invitationId ? toMongoObjectId(invitationId) : undefined,
         locationId: locationId ? toMongoObjectId(locationId) : undefined,
         value,
       },
@@ -45,20 +44,12 @@ export class CodeRepository extends MongoRepository<
   }
 
   findByValue(value: string) {
-    return this.codeModel
-      .findOne({ value })
-      .populate({
-        path: 'invitation',
-        populate: {
-          path: 'referral',
-        },
-      })
-      .populate({
-        path: 'reward',
-        populate: {
-          path: 'place',
-        },
-      });
+    return this.codeModel.findOne({ value }).populate({
+      path: 'reward',
+      populate: {
+        path: 'place',
+      },
+    });
   }
 
   useCode(value: string) {
@@ -96,23 +87,15 @@ export class CodeRepository extends MongoRepository<
   }
 
   async findByUserId(userId: string) {
-    return this.codeModel
-      .find({ user: new Types.ObjectId(userId) })
-      .populate({
-        path: 'reward',
+    return this.codeModel.find({ user: new Types.ObjectId(userId) }).populate({
+      path: 'reward',
+      populate: {
+        path: 'event',
         populate: {
-          path: 'event',
-          populate: {
-            path: 'place',
-          },
+          path: 'place',
         },
-      })
-      .populate({
-        path: 'invitation',
-        populate: {
-          path: 'referral',
-        },
-      });
+      },
+    });
   }
 
   async findByRewardIdAndDelete(rewardId: string, session?: ClientSession) {

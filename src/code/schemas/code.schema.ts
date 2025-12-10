@@ -10,7 +10,6 @@ export type CreateCodeSchema = {
   value: string;
   user: Types.ObjectId;
   reward?: Types.ObjectId;
-  invitation?: Types.ObjectId;
   locationId?: Types.ObjectId;
 };
 
