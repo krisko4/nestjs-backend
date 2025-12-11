@@ -12,7 +12,7 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { LocalAuthGuard } from './local-auth.guard';
 import { GoogleAuthGuard } from './google-auth.guard';
-import { Response } from 'express';
+import { CookieOptions, Response } from 'express';
 import { JwtRefreshGuard } from './jwt-refresh.guard';
 import { IRefresh } from './interfaces/refresh.interface';
 import { ConfigService } from '@nestjs/config';
@@ -27,9 +27,16 @@ export class AuthController {
   @Post('/login')
   async login(@Request() req, @Res({ passthrough: true }) response: Response) {
     const userData = await this.authService.login(req.user);
-    response.cookie('uid', userData.uid.toString());
-    response.cookie('access_token', userData.access_token);
-    response.cookie('refresh_token', userData.refresh_token);
+    const cookieDomain = this.configService.get('COOKIE_DOMAIN');
+    const nodeEnv = this.configService.get('NODE_ENV');
+    const cookieOptions: CookieOptions = {
+      sameSite: 'lax',
+      secure: true,
+      domain: nodeEnv === 'development' ? cookieDomain : undefined,
+    };
+    response.cookie('uid', userData.uid.toString(), cookieOptions);
+    response.cookie('access_token', userData.access_token, cookieOptions);
+    response.cookie('refresh_token', userData.refresh_token, cookieOptions);
     return userData;
   }
   @UseGuards(JwtAuthGuard)
@@ -70,9 +77,16 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const userData = await this.authService.googleLogin(req.user);
-    response.cookie('uid', userData.uid.toString());
-    response.cookie('access_token', userData.access_token);
-    response.cookie('refresh_token', userData.refresh_token);
+    const cookieDomain = this.configService.get('COOKIE_DOMAIN');
+    const nodeEnv = this.configService.get('NODE_ENV');
+    const cookieOptions: CookieOptions = {
+      sameSite: 'lax',
+      secure: true,
+      domain: nodeEnv === 'development' ? cookieDomain : undefined,
+    };
+    response.cookie('uid', userData.uid.toString(), cookieOptions);
+    response.cookie('access_token', userData.access_token, cookieOptions);
+    response.cookie('refresh_token', userData.refresh_token, cookieOptions);
 
     const clientUrl = this.configService.get('CLIENT_URL_WEB');
     response.redirect(`${clientUrl}/auth/callback`);
@@ -84,9 +98,16 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const userData = await this.authService.verifyGoogleIdToken(body.idToken);
-    response.cookie('uid', userData.uid.toString());
-    response.cookie('access_token', userData.access_token);
-    response.cookie('refresh_token', userData.refresh_token);
+    const cookieDomain = this.configService.get('COOKIE_DOMAIN');
+    const nodeEnv = this.configService.get('NODE_ENV');
+    const cookieOptions: CookieOptions = {
+      sameSite: 'lax',
+      secure: true,
+      domain: nodeEnv === 'development' ? cookieDomain : undefined,
+    };
+    response.cookie('uid', userData.uid.toString(), cookieOptions);
+    response.cookie('access_token', userData.access_token, cookieOptions);
+    response.cookie('refresh_token', userData.refresh_token, cookieOptions);
     return userData;
   }
 }
