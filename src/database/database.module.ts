@@ -10,7 +10,7 @@ import { DatabaseService } from './database.service';
         uri:
           configService.get<string>('NODE_ENV') === 'test'
             ? configService.get<string>('MONGO_TEST_CONNECTION_URI')
-            : configService.get<string>('MONGO_CONNECTION_URI'),
+            : configService.get<string>('MONGO_URL'),
       }),
       inject: [ConfigService],
     }),
