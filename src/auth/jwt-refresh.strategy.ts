@@ -5,6 +5,7 @@ import { Request } from 'express';
 import { RefreshTokenService } from 'src/refresh-token/refresh-token.service';
 import { AuthService } from './auth.service';
 import { IJWTPayload } from './interfaces/jwt-payload.interface';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class JwtRefreshStrategy extends PassportStrategy(
@@ -14,6 +15,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
   constructor(
     private readonly authService: AuthService,
     private readonly refreshTokenService: RefreshTokenService,
+    private readonly configService: ConfigService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
@@ -35,8 +37,18 @@ export class JwtRefreshStrategy extends PassportStrategy(
       payload.uid,
     );
     const userData = await this.authService.refresh(payload.uid);
-    request.res.cookie('access_token', userData.access_token);
-    request.res.cookie('refresh_token', userData.refresh_token);
+    const nodeEnv = this.configService.get('NODE_ENV');
+    const cookieDomain = this.configService.get('COOKIE_DOMAIN');
+    request.res.cookie('access_token', userData.access_token, {
+      sameSite: 'lax',
+      secure: true,
+      domain: nodeEnv === 'development' ? cookieDomain : undefined,
+    });
+    request.res.cookie('refresh_token', userData.refresh_token, {
+      sameSite: 'lax',
+      secure: true,
+      domain: nodeEnv === 'development' ? cookieDomain : undefined,
+    });
     return userData;
   }
 }
