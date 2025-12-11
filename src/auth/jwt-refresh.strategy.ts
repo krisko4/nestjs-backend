@@ -1,7 +1,7 @@
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
-import { Request } from 'express';
+import { CookieOptions, Request } from 'express';
 import { RefreshTokenService } from 'src/refresh-token/refresh-token.service';
 import { AuthService } from './auth.service';
 import { IJWTPayload } from './interfaces/jwt-payload.interface';
@@ -39,16 +39,13 @@ export class JwtRefreshStrategy extends PassportStrategy(
     const userData = await this.authService.refresh(payload.uid);
     const nodeEnv = this.configService.get('NODE_ENV');
     const cookieDomain = this.configService.get('COOKIE_DOMAIN');
-    request.res.cookie('access_token', userData.access_token, {
+    const cookieOptions: CookieOptions = {
       sameSite: 'lax',
-      secure: true,
+      secure: nodeEnv === 'development' ? false : true,
       domain: nodeEnv === 'development' ? cookieDomain : undefined,
-    });
-    request.res.cookie('refresh_token', userData.refresh_token, {
-      sameSite: 'lax',
-      secure: true,
-      domain: nodeEnv === 'development' ? cookieDomain : undefined,
-    });
+    };
+    request.res.cookie('access_token', userData.access_token, cookieOptions);
+    request.res.cookie('refresh_token', userData.refresh_token, cookieOptions);
     return userData;
   }
 }

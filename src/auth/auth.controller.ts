@@ -31,7 +31,7 @@ export class AuthController {
     const nodeEnv = this.configService.get('NODE_ENV');
     const cookieOptions: CookieOptions = {
       sameSite: 'lax',
-      secure: true,
+      secure: nodeEnv === 'development' ? false : true,
       domain: nodeEnv === 'development' ? cookieDomain : undefined,
     };
     response.cookie('uid', userData.uid.toString(), cookieOptions);
@@ -81,7 +81,7 @@ export class AuthController {
     const nodeEnv = this.configService.get('NODE_ENV');
     const cookieOptions: CookieOptions = {
       sameSite: 'lax',
-      secure: true,
+      secure: nodeEnv === 'development' ? false : true,
       domain: nodeEnv === 'development' ? cookieDomain : undefined,
     };
     response.cookie('uid', userData.uid.toString(), cookieOptions);
@@ -102,7 +102,7 @@ export class AuthController {
     const nodeEnv = this.configService.get('NODE_ENV');
     const cookieOptions: CookieOptions = {
       sameSite: 'lax',
-      secure: true,
+      secure: nodeEnv === 'development' ? false : true,
       domain: nodeEnv === 'development' ? cookieDomain : undefined,
     };
     response.cookie('uid', userData.uid.toString(), cookieOptions);
