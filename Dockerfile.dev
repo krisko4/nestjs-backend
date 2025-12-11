@@ -1,6 +1,9 @@
 # Development Dockerfile with hot reload
 
-FROM node:16-alpine
+FROM node:18-alpine
+
+# Update Alpine packages for security
+RUN apk upgrade --no-cache
 
 WORKDIR /app
 

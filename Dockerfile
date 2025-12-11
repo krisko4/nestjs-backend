@@ -1,7 +1,7 @@
 # Multi-stage build for optimal image size
 
 # Stage 1: Development dependencies and build
-FROM node:16-alpine AS builder
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
@@ -18,7 +18,10 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Production image
-FROM node:16-alpine AS production
+FROM node:18-alpine AS production
+
+# Update Alpine packages for security
+RUN apk upgrade --no-cache
 
 WORKDIR /app
 
