@@ -40,7 +40,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
     const nodeEnv = this.configService.get('NODE_ENV');
     const cookieOptions: CookieOptions = {
       httpOnly: true,
-      sameSite: 'none',
+      sameSite: 'strict',
       secure: nodeEnv === 'development' ? false : true,
     };
     request.res.cookie('access_token', userData.access_token, cookieOptions);

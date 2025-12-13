@@ -30,7 +30,7 @@ export class AuthController {
     const nodeEnv = this.configService.get('NODE_ENV');
     const cookieOptions: CookieOptions = {
       httpOnly: true,
-      sameSite: 'none',
+      sameSite: 'strict',
       secure: nodeEnv === 'development' ? false : true,
     };
     response.cookie('uid', userData.uid.toString(), cookieOptions);
@@ -76,13 +76,11 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const userData = await this.authService.googleLogin(req.user);
-    const cookieDomain = this.configService.get('COOKIE_DOMAIN');
     const nodeEnv = this.configService.get('NODE_ENV');
     const cookieOptions: CookieOptions = {
       httpOnly: true,
-      sameSite: 'none',
+      sameSite: 'strict',
       secure: nodeEnv === 'development' ? false : true,
-      domain: nodeEnv === 'development' ? undefined : cookieDomain,
     };
     response.cookie('uid', userData.uid.toString(), cookieOptions);
     response.cookie('access_token', userData.access_token, cookieOptions);
@@ -101,7 +99,7 @@ export class AuthController {
     const nodeEnv = this.configService.get('NODE_ENV');
     const cookieOptions: CookieOptions = {
       httpOnly: true,
-      sameSite: 'none',
+      sameSite: 'strict',
       secure: nodeEnv === 'development' ? false : true,
     };
     response.cookie('uid', userData.uid.toString(), cookieOptions);
