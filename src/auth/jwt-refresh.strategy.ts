@@ -40,7 +40,8 @@ export class JwtRefreshStrategy extends PassportStrategy(
     const nodeEnv = this.configService.get('NODE_ENV');
     const cookieDomain = this.configService.get('COOKIE_DOMAIN');
     const cookieOptions: CookieOptions = {
-      sameSite: 'lax',
+      httpOnly: true,
+      sameSite: 'none',
       secure: nodeEnv === 'development' ? false : true,
       domain: nodeEnv === 'development' ? undefined : cookieDomain,
     };
