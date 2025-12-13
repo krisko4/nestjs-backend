@@ -38,12 +38,10 @@ export class JwtRefreshStrategy extends PassportStrategy(
     );
     const userData = await this.authService.refresh(payload.uid);
     const nodeEnv = this.configService.get('NODE_ENV');
-    const cookieDomain = this.configService.get('COOKIE_DOMAIN');
     const cookieOptions: CookieOptions = {
       httpOnly: true,
       sameSite: 'none',
       secure: nodeEnv === 'development' ? false : true,
-      domain: nodeEnv === 'development' ? undefined : cookieDomain,
     };
     request.res.cookie('access_token', userData.access_token, cookieOptions);
     request.res.cookie('refresh_token', userData.refresh_token, cookieOptions);
