@@ -32,7 +32,7 @@ export class AuthController {
     const cookieOptions: CookieOptions = {
       sameSite: 'lax',
       secure: nodeEnv === 'development' ? false : true,
-      domain: nodeEnv === 'development' ? cookieDomain : undefined,
+      domain: nodeEnv === 'development' ? undefined : cookieDomain,
     };
     response.cookie('uid', userData.uid.toString(), cookieOptions);
     response.cookie('access_token', userData.access_token, cookieOptions);
@@ -82,7 +82,7 @@ export class AuthController {
     const cookieOptions: CookieOptions = {
       sameSite: 'lax',
       secure: nodeEnv === 'development' ? false : true,
-      domain: nodeEnv === 'development' ? cookieDomain : undefined,
+      domain: nodeEnv === 'development' ? undefined : cookieDomain,
     };
     response.cookie('uid', userData.uid.toString(), cookieOptions);
     response.cookie('access_token', userData.access_token, cookieOptions);
@@ -103,7 +103,7 @@ export class AuthController {
     const cookieOptions: CookieOptions = {
       sameSite: 'lax',
       secure: nodeEnv === 'development' ? false : true,
-      domain: nodeEnv === 'development' ? cookieDomain : undefined,
+      domain: nodeEnv === 'development' ? undefined : cookieDomain,
     };
     response.cookie('uid', userData.uid.toString(), cookieOptions);
     response.cookie('access_token', userData.access_token, cookieOptions);

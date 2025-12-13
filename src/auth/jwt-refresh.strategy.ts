@@ -42,7 +42,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
     const cookieOptions: CookieOptions = {
       sameSite: 'lax',
       secure: nodeEnv === 'development' ? false : true,
-      domain: nodeEnv === 'development' ? cookieDomain : undefined,
+      domain: nodeEnv === 'development' ? undefined : cookieDomain,
     };
     request.res.cookie('access_token', userData.access_token, cookieOptions);
     request.res.cookie('refresh_token', userData.refresh_token, cookieOptions);
