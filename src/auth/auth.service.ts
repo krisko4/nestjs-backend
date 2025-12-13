@@ -13,10 +13,15 @@ import { UserDocument } from 'src/user/schemas/user.schema';
 import { RefreshTokenService } from 'src/refresh-token/refresh-token.service';
 import { IJWTPayload } from './interfaces/jwt-payload.interface';
 import { OAuth2Client } from 'google-auth-library';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class AuthService {
   private googleClient: OAuth2Client;
+  private pendingAuthTokens: Map<
+    string,
+    { userData: any; expiresAt: number }
+  > = new Map();
 
   constructor(
     private readonly userService: UserService,
@@ -103,5 +108,36 @@ export class AuthService {
     } catch (error) {
       throw new UnauthorizedException('Invalid Google token');
     }
+  }
+
+  createPendingAuthToken(userData: any): string {
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minut ważności
+
+    this.pendingAuthTokens.set(token, { userData, expiresAt });
+
+    // Automatyczne czyszczenie po wygaśnięciu
+    setTimeout(() => {
+      this.pendingAuthTokens.delete(token);
+    }, 5 * 60 * 1000);
+
+    return token;
+  }
+
+  consumePendingAuthToken(token: string): any {
+    const pending = this.pendingAuthTokens.get(token);
+
+    if (!pending) {
+      throw new UnauthorizedException('Invalid or expired auth token');
+    }
+
+    if (Date.now() > pending.expiresAt) {
+      this.pendingAuthTokens.delete(token);
+      throw new UnauthorizedException('Auth token expired');
+    }
+
+    // Token jest jednorazowy - usuwamy po użyciu
+    this.pendingAuthTokens.delete(token);
+    return pending.userData;
   }
 }

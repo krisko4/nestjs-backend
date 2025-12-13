@@ -76,18 +76,33 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const userData = await this.authService.googleLogin(req.user);
+
+    // Tworzymy jednorazowy token zamiast ustawiania cookies
+    const authToken = this.authService.createPendingAuthToken(userData);
+
+    const clientUrl = this.configService.get('CLIENT_URL_WEB');
+    response.redirect(`${clientUrl}/auth/callback?token=${authToken}`);
+  }
+
+  @Post('/google/exchange')
+  async googleExchangeToken(
+    @Body() body: { token: string },
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    // Weryfikujemy i konsumujemy jednorazowy token
+    const userData = this.authService.consumePendingAuthToken(body.token);
     const nodeEnv = this.configService.get('NODE_ENV');
     const cookieOptions: CookieOptions = {
       httpOnly: true,
       sameSite: 'strict',
       secure: nodeEnv === 'development' ? false : true,
     };
+
     response.cookie('uid', userData.uid.toString(), cookieOptions);
     response.cookie('access_token', userData.access_token, cookieOptions);
     response.cookie('refresh_token', userData.refresh_token, cookieOptions);
 
-    const clientUrl = this.configService.get('CLIENT_URL_WEB');
-    response.redirect(`${clientUrl}/auth/callback`);
+    return userData;
   }
 
   @Post('/google/native')
