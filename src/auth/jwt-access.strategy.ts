@@ -4,13 +4,13 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { Request } from 'express';
 
 @Injectable()
-export class JwtAccessStrategy extends PassportStrategy(Strategy) {
+export class JwtAccessStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor() {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
         (request: Request) => {
-          const { access_token } = request.cookies;
-          return access_token;
+          return request?.cookies?.access_token || null;
         },
       ]),
       ignoreExpiration: false,

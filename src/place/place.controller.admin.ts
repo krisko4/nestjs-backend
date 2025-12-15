@@ -49,7 +49,7 @@ export class AdminPlaceController {
     @UploadedFiles()
     files: { logo?: Express.Multer.File[]; images?: Express.Multer.File[] },
   ) {
-    const { uid } = req.cookies;
+    const { uid } = req.user;
     return this.placeService.update(id, updatePlaceDto, uid, files.logo);
   }
 
@@ -86,7 +86,7 @@ export class AdminPlaceController {
   @UseGuards(JwtAuthGuard)
   @Get()
   async findByUserId(@Req() req) {
-    const { uid } = req.cookies;
+    const { uid } = req.user;
     const places = await this.placeService.findByUserId(uid);
     return places.map((place) => {
       const placeDto = plainToInstance(PlaceDto, place.toObject());
@@ -110,7 +110,7 @@ export class AdminPlaceController {
     @Req() req,
     @Param() { locationId, id }: FindLocationParams,
   ) {
-    const { uid } = req.cookies;
+    const { uid } = req.user;
     const place = await this.placeService.findLocation(id, locationId, uid);
     const placeDto = plainToInstance(PlaceDto, place);
     placeDto.isUserOwner = place.userId.toString() === uid.toString();

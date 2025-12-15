@@ -27,7 +27,7 @@ export class UserCodeController {
   @UseGuards(JwtAuthGuard)
   @Post('use')
   use(@Body() useCodeDto: UseCodeDto, @Req() req) {
-    const { uid } = req.cookies;
+    const { uid } = req.user;
     return this.codeService.use(useCodeDto, uid);
   }
 

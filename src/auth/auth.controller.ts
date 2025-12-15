@@ -38,6 +38,7 @@ export class AuthController {
     response.cookie('refresh_token', userData.refresh_token, cookieOptions);
     return userData;
   }
+
   @UseGuards(JwtAuthGuard)
   @Get()
   authenticate() {
@@ -111,15 +112,6 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const userData = await this.authService.verifyGoogleIdToken(body.idToken);
-    const nodeEnv = this.configService.get('NODE_ENV');
-    const cookieOptions: CookieOptions = {
-      httpOnly: true,
-      sameSite: 'strict',
-      secure: nodeEnv === 'development' ? false : true,
-    };
-    response.cookie('uid', userData.uid.toString(), cookieOptions);
-    response.cookie('access_token', userData.access_token, cookieOptions);
-    response.cookie('refresh_token', userData.refresh_token, cookieOptions);
     return userData;
   }
 }

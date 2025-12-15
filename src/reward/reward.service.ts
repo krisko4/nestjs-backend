@@ -339,12 +339,16 @@ export class RewardService {
   async search(searchQuery: SearchRewardQuery) {
     const { lat, lng, countryCode, start, limit } = searchQuery;
 
+    console.log(lat, lng);
+
     const nearbyLocationIds =
       await this.placeService.findLocationIdsWithinRadius(
         lat,
         lng,
         15000, // 15 km in metres
       );
+
+    console.log(nearbyLocationIds);
 
     if (nearbyLocationIds.length > 0) {
       return this.rewardRepository.findPaginatedByLocationIds(

@@ -17,8 +17,6 @@ function buildBasePipeline(
   const pipeline: any[] = [{ $match: matchConditions }];
 
   if (userId) {
-    // Filtruj rewardy gdzie użytkownik jest employeem przynajmniej jednej z lokalizacji rewarda
-    // Nowa struktura: User -> Employee -> places[] -> locations[]
     pipeline.push(
       {
         $lookup: {
@@ -75,7 +73,9 @@ function buildBasePipeline(
   if (locationIds && locationIds.length > 0) {
     pipeline.push({
       $match: {
-        locationIds: { $in: locationIds },
+        locationIds: {
+          $in: locationIds,
+        },
       },
     });
   } else if (countryCode) {
@@ -101,7 +101,6 @@ export function getPaginatedRewardData(
   start: number,
   limit: number,
   entityFilterQuery: FilterQuery<Model<RewardDocument>>,
-  locationFilter?: { lat?: number; lng?: number }, // Deprecated - nie używamy już
   countryCode?: string,
   locationIds?: Types.ObjectId[],
   filterByActiveStatus: boolean = false,
@@ -112,6 +111,8 @@ export function getPaginatedRewardData(
     locationIds,
     filterByActiveStatus,
   );
+
+  console.log(dataPipeline);
 
   dataPipeline.push(
     { $skip: start },

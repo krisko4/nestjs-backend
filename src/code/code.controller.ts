@@ -27,7 +27,7 @@ export class CodeController {
   @UseGuards(JwtAuthGuard)
   @Post('use')
   use(@Body() useCodeDto: UseCodeDto, @Req() req) {
-    const { uid } = req.cookies;
+    const { uid } = req.user;
     return this.codeService.use(useCodeDto, uid);
   }
 
@@ -45,9 +45,8 @@ export class CodeController {
   @Sse('listen/:codeValue')
   listenForCodeScan(
     @Param('codeValue') codeValue: string,
-    @Req() req,
   ): Observable<MessageEvent> {
-    console.log('code scanned');
+    console.log('masdm');
     return this.codeSseService.getCodeScannedStreamByCodeValue(codeValue);
   }
 }

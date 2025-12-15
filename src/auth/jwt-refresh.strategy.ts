@@ -19,6 +19,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
         (request: Request) => {
           const { refresh_token } = request.cookies;
           return refresh_token;
@@ -31,20 +32,34 @@ export class JwtRefreshStrategy extends PassportStrategy(
   }
 
   async validate(request: Request, payload: IJWTPayload) {
-    const refreshToken = request.cookies['refresh_token'];
+    const authHeader = request.headers.authorization;
+    const refreshToken =
+      authHeader && authHeader.startsWith('Bearer ')
+        ? authHeader.substring(7)
+        : request.cookies?.['refresh_token'];
+
     await this.refreshTokenService.validateRefreshToken(
       refreshToken,
       payload.uid,
     );
     const userData = await this.authService.refresh(payload.uid);
-    const nodeEnv = this.configService.get('NODE_ENV');
-    const cookieOptions: CookieOptions = {
-      httpOnly: true,
-      sameSite: 'strict',
-      secure: nodeEnv === 'development' ? false : true,
-    };
-    request.res.cookie('access_token', userData.access_token, cookieOptions);
-    request.res.cookie('refresh_token', userData.refresh_token, cookieOptions);
+
+    // Ustaw cookies tylko dla aplikacji webowej (gdy token był w cookies)
+    if (request.cookies?.['refresh_token']) {
+      const nodeEnv = this.configService.get('NODE_ENV');
+      const cookieOptions: CookieOptions = {
+        httpOnly: true,
+        sameSite: 'strict',
+        secure: nodeEnv === 'development' ? false : true,
+      };
+      request.res.cookie('access_token', userData.access_token, cookieOptions);
+      request.res.cookie(
+        'refresh_token',
+        userData.refresh_token,
+        cookieOptions,
+      );
+    }
+
     return userData;
   }
 }

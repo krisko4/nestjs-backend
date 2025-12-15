@@ -37,7 +37,6 @@ export class CodeSseService {
     return this.codeScannedSubject.pipe(
       filter((event) => event.codeValue === codeValue),
       map((event) => {
-        console.log(event);
         return {
           data: JSON.stringify({
             codeValue: event.codeValue,

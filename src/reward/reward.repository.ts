@@ -30,7 +30,12 @@ export class RewardRepository extends MongoRepository<
       event: new Types.ObjectId(eventId),
     });
   }
-  findByUserId(paginationQuery: PaginationQuery, uid: string, status?: RewardStatus, placeId?: string) {
+  findByUserId(
+    paginationQuery: PaginationQuery,
+    uid: string,
+    status?: RewardStatus,
+    placeId?: string,
+  ) {
     const filterQuery: any = {
       userId: uid,
     };
@@ -43,16 +48,16 @@ export class RewardRepository extends MongoRepository<
       filterQuery.place = new Types.ObjectId(placeId);
     }
 
-    return this.findPaginated(
-      paginationQuery,
-      filterQuery,
-      {
-        createdAt: -1,
-      },
-    );
+    return this.findPaginated(paginationQuery, filterQuery, {
+      createdAt: -1,
+    });
   }
 
-  findByPlaceId(paginationQuery: PaginationQuery, placeId: string, status?: RewardStatus) {
+  findByPlaceId(
+    paginationQuery: PaginationQuery,
+    placeId: string,
+    status?: RewardStatus,
+  ) {
     const filterQuery: any = {
       place: new Types.ObjectId(placeId),
     };
@@ -61,13 +66,9 @@ export class RewardRepository extends MongoRepository<
       filterQuery.status = status;
     }
 
-    return this.findPaginated(
-      paginationQuery,
-      filterQuery,
-      {
-        createdAt: -1,
-      },
-    );
+    return this.findPaginated(paginationQuery, filterQuery, {
+      createdAt: -1,
+    });
   }
   findByEventId(eventId: string) {
     return this.findOne({ event: new Types.ObjectId(eventId) });
@@ -113,10 +114,7 @@ export class RewardRepository extends MongoRepository<
     };
 
     // Dodaj selectedUserIds tylko gdy availableFor = SELECTED_USERS
-    if (
-      availableFor === RewardAvailableFor.SELECTED_USERS &&
-      selectedUserIds
-    ) {
+    if (availableFor === RewardAvailableFor.SELECTED_USERS && selectedUserIds) {
       reward.selectedUserIds = selectedUserIds.map(
         (id) => new Types.ObjectId(id),
       );
@@ -137,7 +135,6 @@ export class RewardRepository extends MongoRepository<
     paginationQuery: PaginationQuery,
     entityFilterQuery: FilterQuery<Model<RewardDocument>>,
     sortQuery?: FilterQuery<Model<RewardDocument>>,
-    locationFilter?: { lat?: number; lng?: number },
   ) {
     const { start, limit } = paginationQuery;
     let pipeline = this.rewardModel.aggregate();
@@ -147,7 +144,7 @@ export class RewardRepository extends MongoRepository<
     }
 
     const result = await pipeline.facet(
-      getPaginatedRewardData(start, limit, entityFilterQuery, locationFilter),
+      getPaginatedRewardData(start, limit, entityFilterQuery),
     );
 
     return result[0];
@@ -167,7 +164,7 @@ export class RewardRepository extends MongoRepository<
     let pipeline = this.rewardModel.aggregate();
 
     const result = await pipeline.facet(
-      getPaginatedRewardData(start, limit, {}, undefined, countryCode, undefined, true),
+      getPaginatedRewardData(start, limit, {}, countryCode, undefined, true),
     );
 
     return result[0];
@@ -182,16 +179,15 @@ export class RewardRepository extends MongoRepository<
     let pipeline = this.rewardModel.aggregate();
 
     const result = await pipeline.facet(
-      getPaginatedRewardData(start, limit, {}, undefined, undefined, objectIds, true),
+      getPaginatedRewardData(start, limit, {}, undefined, objectIds, true),
     );
+
+    console.log(result);
 
     return result[0];
   }
 
-  async updateReward(
-    id: string,
-    updateData: Partial<CreateRewardSchema>,
-  ) {
+  async updateReward(id: string, updateData: Partial<CreateRewardSchema>) {
     return this.rewardModel
       .findByIdAndUpdate(
         toMongoObjectId(id),

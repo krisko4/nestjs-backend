@@ -25,7 +25,7 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async findMe(@Req() req) {
-    const { uid } = req.cookies;
+    const { uid } = req.user;
     const user = await this.userService.findById(uid);
     return plainToInstance(User, user.toObject());
   }
@@ -45,7 +45,7 @@ export class UserController {
     @Body() updateNotificationTokenDto: UpdateNotificationTokenDto,
     @Req() req,
   ) {
-    const { uid } = req.cookies;
+    const { uid } = req.user;
     return this.userService.setNotificationToken(
       uid,
       updateNotificationTokenDto,
@@ -73,7 +73,7 @@ export class UserController {
     @Param('id') id: string,
     @Param('locationId') locationId: string,
   ) {
-    const { uid } = req.cookies;
+    const { uid } = req.user;
     return this.userService.checkIfUserIsSubscriber(id, locationId, uid);
   }
 

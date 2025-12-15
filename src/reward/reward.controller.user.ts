@@ -31,6 +31,7 @@ export class UserRewardController {
   @UseGuards(JwtAuthGuard)
   @Get('/search')
   search(@Query() searchQuery: SearchRewardQuery) {
+    console.log('searchin');
     return this.rewardService.search(searchQuery);
   }
 
