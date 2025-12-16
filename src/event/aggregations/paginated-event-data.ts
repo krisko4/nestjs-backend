@@ -107,7 +107,6 @@ export function getPaginatedEventData(
   start: number,
   limit: number,
   entityFilterQuery: FilterQuery<Model<EventDocument>>,
-  locationFilter?: { lat?: number; lng?: number }, // Deprecated - nie używamy już
   countryCode?: string,
   locationIds?: Types.ObjectId[],
   activeOnly?: boolean,

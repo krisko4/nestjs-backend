@@ -51,21 +51,13 @@ export class CodeService {
       throw new BadRequestException('CODE_ALREADY_USED');
     }
 
-    let placeId: string;
-
-    if (code.reward) {
-      placeId = code.reward.place._id.toString();
-    } else if (code.locationId) {
-      const place = await this.placeService.findByLocationId(
-        code.locationId.toString(),
-      );
-      if (!place) {
-        throw new NotFoundException('PLACE_NOT_FOUND');
-      }
-      placeId = place._id.toString();
-    } else {
-      throw new BadRequestException('INVALID_CODE_CONFIGURATION');
+    const place = await this.placeService.findByLocationId(
+      code.locationId.toString(),
+    );
+    if (!place) {
+      throw new NotFoundException('PLACE_NOT_FOUND');
     }
+    const placeId = place._id.toString();
 
     const employee = await this.employeeService.findByPlaceIdAndUserId(
       placeId,
@@ -203,7 +195,7 @@ export class CodeService {
 
   async findClientsByPlaceIds(
     placeIds: string[],
-    page: number = 1,
+    start: number = 0,
     limit: number = 10,
     placeId?: string,
     locationIds?: string[],
@@ -217,7 +209,7 @@ export class CodeService {
   ) {
     return this.codeRepository.findClientsByPlaceIds(
       placeIds,
-      page,
+      start,
       limit,
       placeId,
       locationIds,
@@ -234,13 +226,13 @@ export class CodeService {
   async findScanHistoryByClientAndPlaceIds(
     clientUserId: string,
     placeIds: string[],
-    page: number = 1,
+    start: number = 0,
     limit: number = 10,
   ) {
     return this.codeRepository.findScanHistoryByClientAndPlaceIds(
       clientUserId,
       placeIds,
-      page,
+      start,
       limit,
     );
   }

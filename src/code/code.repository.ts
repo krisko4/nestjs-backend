@@ -118,7 +118,7 @@ export class CodeRepository extends MongoRepository<
 
   async findClientsByPlaceIds(
     placeIds: string[],
-    page: number = 1,
+    start: number = 0,
     limit: number = 10,
     placeId?: string,
     locationIds?: string[],
@@ -131,7 +131,7 @@ export class CodeRepository extends MongoRepository<
     sortOrder: string = 'desc',
   ) {
     const placeObjectIds = placeIds.map((id) => new Types.ObjectId(id));
-    const skip = (page - 1) * limit;
+    const skip = start;
 
     const pipeline = [
       {
@@ -148,18 +148,65 @@ export class CodeRepository extends MongoRepository<
         },
       },
       {
-        $unwind: '$rewardData',
+        $unwind: {
+          path: '$rewardData',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      // Lookup place from locationId for codes without rewards
+      {
+        $lookup: {
+          from: 'places',
+          let: { locationId: '$locationId' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $in: ['$$locationId', '$locations._id'],
+                },
+              },
+            },
+          ],
+          as: 'placeFromLocation',
+        },
+      },
+      {
+        $unwind: {
+          path: '$placeFromLocation',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      // Determine which place to use (from reward or from locationId)
+      {
+        $addFields: {
+          finalPlaceId: {
+            $cond: {
+              if: { $ne: [{ $ifNull: ['$reward', null] }, null] },
+              then: '$rewardData.place',
+              else: '$placeFromLocation._id',
+            },
+          },
+        },
       },
       {
         $match: {
-          'rewardData.place': placeId
+          finalPlaceId: placeId
             ? new Types.ObjectId(placeId)
             : { $in: placeObjectIds },
           ...(locationIds &&
             locationIds.length > 0 && {
-              'rewardData.locationIds': {
-                $in: locationIds.map((id) => new Types.ObjectId(id)),
-              },
+              $or: [
+                {
+                  'rewardData.locationIds': {
+                    $in: locationIds.map((id) => new Types.ObjectId(id)),
+                  },
+                },
+                {
+                  locationId: {
+                    $in: locationIds.map((id) => new Types.ObjectId(id)),
+                  },
+                },
+              ],
             }),
         },
       },
@@ -167,7 +214,7 @@ export class CodeRepository extends MongoRepository<
         $group: {
           _id: {
             userId: '$user',
-            placeId: '$rewardData.place',
+            placeId: '$finalPlaceId',
           },
           scanCount: { $sum: 1 },
           lastScanDate: { $max: '$usedAt' },
@@ -396,11 +443,57 @@ export class CodeRepository extends MongoRepository<
           },
         },
       },
+      // Find location in placeInfo.locations based on locationId
+      {
+        $addFields: {
+          location: {
+            $cond: {
+              if: {
+                $and: [
+                  { $ne: ['$locationId', null] },
+                  { $ne: ['$placeInfo', null] },
+                  { $isArray: '$placeInfo.locations' },
+                ],
+              },
+              then: {
+                $let: {
+                  vars: {
+                    foundLocation: {
+                      $arrayElemAt: [
+                        {
+                          $filter: {
+                            input: '$placeInfo.locations',
+                            as: 'loc',
+                            cond: { $eq: ['$$loc._id', '$locationId'] },
+                          },
+                        },
+                        0,
+                      ],
+                    },
+                  },
+                  in: {
+                    $cond: {
+                      if: { $ne: ['$$foundLocation', null] },
+                      then: {
+                        _id: '$$foundLocation._id',
+                        address: '$$foundLocation.address',
+                      },
+                      else: null,
+                    },
+                  },
+                },
+              },
+              else: null,
+            },
+          },
+        },
+      },
       {
         $project: {
           _id: 1,
           value: 1,
           usedAt: 1,
+          location: 1,
           codeOwner: {
             _id: 1,
             firstName: 1,
@@ -468,13 +561,12 @@ export class CodeRepository extends MongoRepository<
   async findScanHistoryByClientAndPlaceIds(
     clientUserId: string,
     placeIds: string[],
-    page: number = 1,
+    start: number = 0,
     limit: number = 10,
   ) {
     const placeObjectIds = placeIds.map((id) => new Types.ObjectId(id));
-    const skip = (page - 1) * limit;
+    const skip = start;
 
-    // Agregacja MongoDB dla bardziej efektywnego pobierania danych
     const pipeline: any[] = [
       {
         $match: {
@@ -485,7 +577,6 @@ export class CodeRepository extends MongoRepository<
       {
         $sort: { usedAt: -1 },
       },
-      // Populate reward
       {
         $lookup: {
           from: 'rewards',
@@ -500,7 +591,6 @@ export class CodeRepository extends MongoRepository<
           preserveNullAndEmptyArrays: true,
         },
       },
-      // Populate place from reward
       {
         $lookup: {
           from: 'places',
@@ -515,7 +605,6 @@ export class CodeRepository extends MongoRepository<
           preserveNullAndEmptyArrays: true,
         },
       },
-      // Populate place from locationId (jeśli reward nie istnieje)
       {
         $lookup: {
           from: 'places',
@@ -538,7 +627,6 @@ export class CodeRepository extends MongoRepository<
           preserveNullAndEmptyArrays: true,
         },
       },
-      // Populate usedBy
       {
         $lookup: {
           from: 'users',
@@ -558,7 +646,7 @@ export class CodeRepository extends MongoRepository<
         $addFields: {
           finalPlace: {
             $cond: {
-              if: { $ne: ['$placeFromReward', null] },
+              if: { $ne: [{ $ifNull: ['$placeFromReward', null] }, null] },
               then: '$placeFromReward',
               else: '$placeFromLocation',
             },
@@ -782,7 +870,7 @@ export class CodeRepository extends MongoRepository<
         $addFields: {
           finalPlace: {
             $cond: {
-              if: { $ne: ['$placeFromReward', null] },
+              if: { $ne: [{ $ifNull: ['$placeFromReward', null] }, null] },
               then: '$placeFromReward',
               else: '$placeFromLocation',
             },

@@ -10,7 +10,7 @@ export type CreateCodeSchema = {
   value: string;
   user: Types.ObjectId;
   reward?: Types.ObjectId;
-  locationId?: Types.ObjectId;
+  locationId: Types.ObjectId;
 };
 
 @Schema()
@@ -21,8 +21,8 @@ export class Code {
   user: User;
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Reward.name })
   reward?: Reward;
-  @Prop({ type: mongoose.Schema.Types.ObjectId })
-  locationId?: Types.ObjectId;
+  @Prop({ type: mongoose.Schema.Types.ObjectId, required: true })
+  locationId: Types.ObjectId;
   @Prop({ default: Date.now })
   createdAt: Date;
   @Prop()

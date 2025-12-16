@@ -1,11 +1,17 @@
 import { Model, FilterQuery, Types } from 'mongoose';
-import { RewardDocument, RewardStatus } from '../schemas/reward.schema';
+import {
+  RewardAvailableFor,
+  RewardDocument,
+  RewardStatus,
+} from '../schemas/reward.schema';
 
 function buildBasePipeline(
   entityFilterQuery: FilterQuery<Model<RewardDocument>>,
   countryCode?: string,
   locationIds?: Types.ObjectId[],
   filterByActiveStatus: boolean = false,
+  searchUserId?: string,
+  favoriteLocationIds?: string[],
 ) {
   const { userId, ...rest } = entityFilterQuery;
   const matchConditions: any = { ...rest };
@@ -94,6 +100,61 @@ function buildBasePipeline(
     });
   }
 
+  if (searchUserId && favoriteLocationIds) {
+    const favoriteLocationObjectIds = favoriteLocationIds.map(
+      (id) => new Types.ObjectId(id),
+    );
+    const searchUserObjectId = new Types.ObjectId(searchUserId);
+
+    pipeline.push({
+      $match: {
+        $or: [
+          { availableFor: RewardAvailableFor.ALL },
+          {
+            availableFor: RewardAvailableFor.SUBSCRIBERS,
+            locationIds: { $in: favoriteLocationObjectIds },
+          },
+          {
+            availableFor: RewardAvailableFor.SELECTED_USERS,
+            selectedUserIds: searchUserObjectId,
+          },
+        ],
+      },
+    });
+
+    pipeline.push({
+      $addFields: {
+        availableForPriority: {
+          $switch: {
+            branches: [
+              {
+                case: {
+                  $eq: ['$availableFor', RewardAvailableFor.SELECTED_USERS],
+                },
+                then: 1,
+              },
+              {
+                case: {
+                  $eq: ['$availableFor', RewardAvailableFor.SUBSCRIBERS],
+                },
+                then: 2,
+              },
+              {
+                case: { $eq: ['$availableFor', RewardAvailableFor.ALL] },
+                then: 3,
+              },
+            ],
+            default: 4,
+          },
+        },
+      },
+    });
+
+    pipeline.push({
+      $sort: { availableForPriority: 1 },
+    });
+  }
+
   return pipeline;
 }
 
@@ -104,15 +165,17 @@ export function getPaginatedRewardData(
   countryCode?: string,
   locationIds?: Types.ObjectId[],
   filterByActiveStatus: boolean = false,
+  searchUserId?: string,
+  favoriteLocationIds?: string[],
 ) {
   const dataPipeline = buildBasePipeline(
     entityFilterQuery,
     countryCode,
     locationIds,
     filterByActiveStatus,
+    searchUserId,
+    favoriteLocationIds,
   );
-
-  console.log(dataPipeline);
 
   dataPipeline.push(
     { $skip: start },
@@ -150,6 +213,9 @@ export function getPaginatedRewardData(
           },
         },
       },
+    },
+    {
+      $unset: 'availableForPriority', // Remove helper field
     },
     {
       $project: {
@@ -190,6 +256,8 @@ export function getPaginatedRewardData(
     countryCode,
     locationIds,
     filterByActiveStatus,
+    searchUserId,
+    favoriteLocationIds,
   );
 
   metadataPipeline.push(

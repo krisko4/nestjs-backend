@@ -23,7 +23,7 @@ export class ClientService {
 
   async getClientsByUserId(
     userId: string,
-    page: number = 1,
+    start: number = 0,
     limit: number = 10,
     placeId?: string,
     locationIds?: string[],
@@ -35,14 +35,13 @@ export class ClientService {
     sortBy: string = 'lastScanDate',
     sortOrder: string = 'desc',
   ): Promise<PaginatedResponse<ClientResponseDto>> {
-    // Pobierz wszystkie place'y użytkownika
     const places = await this.placeService.findByUserId(userId);
 
     if (!places || places.length === 0) {
       return {
         data: [],
         metadata: {
-          start: page,
+          start,
           limit,
           total: 0,
           totalPages: 0,
@@ -52,19 +51,16 @@ export class ClientService {
       };
     }
 
-    // Wyciągnij ID place'ów
     const placeIds = places.map((place) => place._id.toString());
 
-    // Stwórz mapę placeId -> placeName dla szybkiego dostępu
     const placeMap = new Map(
       places.map((place) => [place._id.toString(), place.name]),
     );
 
-    // Pobierz klientów z agregacji MongoDB (z paginacją i filtrami)
     const { data: clientsData, total } =
       await this.codeService.findClientsByPlaceIds(
         placeIds,
-        page,
+        start,
         limit,
         placeId,
         locationIds,
@@ -77,7 +73,6 @@ export class ClientService {
         sortOrder,
       );
 
-    // Mapuj dane z agregacji na DTO
     const mappedData = clientsData.map((clientData) => ({
       userId: clientData._id.toString(),
       firstName: clientData.userData?.firstName,
@@ -95,16 +90,17 @@ export class ClientService {
     }));
 
     const totalPages = Math.ceil(total / limit);
+    const currentPage = Math.floor(start / limit) + 1;
 
     return {
       data: mappedData,
       metadata: {
-        start: page,
+        start,
         limit,
         total,
         totalPages,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1,
+        hasNextPage: currentPage < totalPages,
+        hasPreviousPage: start > 0,
       },
     };
   }
@@ -112,7 +108,7 @@ export class ClientService {
   async getScanHistoryByClientId(
     userId: string,
     clientId: string,
-    page: number = 1,
+    start: number = 0,
     limit: number = 10,
   ): Promise<ScanHistoryPaginatedResponse<ScanHistoryItemDto>> {
     const places = await this.placeService.findByUserId(userId);
@@ -129,7 +125,7 @@ export class ClientService {
       await this.codeService.findScanHistoryByClientAndPlaceIds(
         clientId,
         placeIds,
-        page,
+        start,
         limit,
       );
 
@@ -137,6 +133,8 @@ export class ClientService {
       _id: clientId,
       email: client?.email,
     };
+
+    console.log(scannedCodes);
 
     const scans: ScanHistoryItemDto[] = scannedCodes.map((code) => ({
       codeId: code._id.toString(),
@@ -177,7 +175,7 @@ export class ClientService {
       client: clientInfo,
       data: scans,
       metadata: {
-        start: page,
+        start,
         limit,
         total,
       },

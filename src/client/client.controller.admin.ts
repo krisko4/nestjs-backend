@@ -13,7 +13,7 @@ export class AdminClientController {
   async getClients(@Query() query: ClientFilterQuery, @Req() req) {
     const userId = req.user.uid;
     const {
-      page = 1,
+      start = 0,
       limit = 10,
       placeId,
       locationIds,
@@ -25,9 +25,12 @@ export class AdminClientController {
       sortBy = 'lastScanDate',
       sortOrder = 'desc',
     } = query;
+    console.log(query);
+
+    console.log(start);
     return this.clientService.getClientsByUserId(
       userId,
-      page,
+      start,
       limit,
       placeId,
       locationIds,
@@ -49,11 +52,11 @@ export class AdminClientController {
     @Req() req,
   ) {
     const userId = req.user.uid;
-    const { page = 1, limit = 10 } = pagination;
+    const { start = 0, limit = 10 } = pagination;
     return this.clientService.getScanHistoryByClientId(
       userId,
       clientId,
-      page,
+      start,
       limit,
     );
   }

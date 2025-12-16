@@ -367,11 +367,7 @@ export class EventService {
     const { lat, lng, countryCode, start, limit, activeOnly } = searchQuery;
 
     const nearbyLocationIds =
-      await this.placeService.findLocationIdsWithinRadius(
-        lat,
-        lng,
-        15000, // 15 km in metres
-      );
+      await this.placeService.findLocationIdsWithinRadius(lat, lng, 30000);
 
     if (nearbyLocationIds.length > 0) {
       return this.eventRepository.findPaginatedByLocationIds(

@@ -73,7 +73,6 @@ export class RewardService {
 
     const code = await this.codeService.findByRewardIdAndUserId(id, userId);
 
-    // Znajdź wszystkie lokalizacje powiązane z rewardem
     const locations = reward.place.locations.filter((loc) =>
       reward.locationIds.some(
         (locationId) => locationId.toString() === loc._id.toString(),
@@ -99,6 +98,7 @@ export class RewardService {
     return {
       _id: reward._id,
       name: reward.name,
+      availableFor: reward.availableFor,
       description: reward.description,
       createdAt: reward.createdAt,
       usedAt: code ? code.usedAt : null,
@@ -134,7 +134,7 @@ export class RewardService {
   }
 
   async activateReward(activateRewardDto: ActivateRewardDto, userId: string) {
-    const { rewardId } = activateRewardDto;
+    const { rewardId, locationId } = activateRewardDto;
     const reward = await this.findById(rewardId);
     if (!reward) {
       throw new NotFoundException('INVALID_REWARD_ID');
@@ -182,6 +182,7 @@ export class RewardService {
     const code = await this.codeService.create({
       userId,
       rewardId,
+      locationId,
     });
     return {
       code: code.value,
@@ -223,23 +224,9 @@ export class RewardService {
       selectedUserIds,
       usageLimit,
     } = createRewardDto;
-    const duplicateEvent = await this.findByEventId(eventId);
-    if (duplicateEvent) {
-      throw new InternalServerErrorException(
-        `REWARD_DRAWING_ALREADY_SPECIFIED`,
-      );
-    }
-    if (eventId) {
-      const event = await this.eventService.findById(eventId);
-      if (isBefore(new Date(event.endDate), new Date())) {
-        throw new InternalServerErrorException(`EVENT_HAS_ENDED`);
-      }
-    }
 
-    // Sprawdź czy wszystkie lokalizacje należą do tego samego place
     const place = await this.placeService.findByLocationId(locationIds[0]);
 
-    // Zweryfikuj czy wszystkie locationIds należą do tego samego place
     for (const locationId of locationIds) {
       const locationPlace = await this.placeService.findByLocationId(
         locationId,
@@ -251,15 +238,15 @@ export class RewardService {
       }
     }
 
-    // Sprawdź czy użytkownik jest BOSS'em przynajmniej jednej z tych lokalizacji
-    const hasAccessToAnyLocation = await Promise.all(
-      locationIds.map((locationId) =>
-        this.employeeService.isUserBossOfLocation(uid, locationId),
-      ),
-    );
-
-    if (!hasAccessToAnyLocation.some((hasAccess) => hasAccess)) {
-      throw new InternalServerErrorException(`ILLEGAL_OPERATION`);
+    // Sprawdź czy użytkownik jest BOSS'em wszystkich lokalizacji
+    for (const locationId of locationIds) {
+      const isBoss = await this.employeeService.isUserBossOfLocation(
+        uid,
+        locationId,
+      );
+      if (!isBoss) {
+        throw new UnauthorizedException(`ILLEGAL_OPERATION`);
+      }
     }
 
     const session = await this.connection.startSession();
@@ -281,7 +268,6 @@ export class RewardService {
 
     await session.endSession();
 
-    // Wyślij notyfikacje dla wszystkich lokalizacji
     this.sendRewardNotificationsAsync(
       locationIds,
       place.name,
@@ -336,30 +322,30 @@ export class RewardService {
     }
   }
 
-  async search(searchQuery: SearchRewardQuery) {
+  async search(searchQuery: SearchRewardQuery, userId: string) {
     const { lat, lng, countryCode, start, limit } = searchQuery;
 
-    console.log(lat, lng);
-
     const nearbyLocationIds =
-      await this.placeService.findLocationIdsWithinRadius(
-        lat,
-        lng,
-        15000, // 15 km in metres
-      );
+      await this.placeService.findLocationIdsWithinRadius(lat, lng, 30000);
 
-    console.log(nearbyLocationIds);
+    const favoriteLocationIds = await this.userService.getFavoriteLocationIds(
+      userId,
+    );
 
     if (nearbyLocationIds.length > 0) {
       return this.rewardRepository.findPaginatedByLocationIds(
         { start, limit },
         nearbyLocationIds,
+        userId,
+        favoriteLocationIds,
       );
     }
 
     return this.rewardRepository.findPaginatedByCountryCode(
       { start, limit },
       countryCode,
+      userId,
+      favoriteLocationIds,
     );
   }
 
@@ -385,20 +371,12 @@ export class RewardService {
     });
   }
 
-  /**
-   * Pobiera historię skanów dla konkretnego rewarda (dla admina)
-   * @param rewardId - ID rewarda
-   * @param userId - ID użytkownika (właściciela place'a)
-   * @param start - Offset (skip)
-   * @param limit - Liczba elementów na stronę
-   */
   async getRewardScanHistory(
     rewardId: string,
     userId: string,
     start: number = 0,
     limit: number = 10,
   ) {
-    // Sprawdź czy reward istnieje i czy użytkownik ma do niego dostęp
     const reward = await this.findById(rewardId);
     if (!reward) {
       throw new NotFoundException('INVALID_REWARD_ID');

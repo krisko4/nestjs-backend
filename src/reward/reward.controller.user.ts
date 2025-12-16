@@ -16,6 +16,7 @@ import { PaginationQuery } from './queries/pagination.query';
 import { plainToInstance } from 'class-transformer';
 import { Reward } from './schemas/reward.schema';
 import { SearchRewardQuery } from './queries/search-reward.query';
+import { ActivateRewardDto } from './dto/activate-reward.dto';
 
 @Controller('user/rewards')
 export class UserRewardController {
@@ -30,21 +31,16 @@ export class UserRewardController {
 
   @UseGuards(JwtAuthGuard)
   @Get('/search')
-  search(@Query() searchQuery: SearchRewardQuery) {
-    console.log('searchin');
-    return this.rewardService.search(searchQuery);
+  search(@Query() searchQuery: SearchRewardQuery, @Req() req) {
+    const { uid } = req.user;
+    return this.rewardService.search(searchQuery, uid);
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post(':id/activate')
-  activateReward(@Param('id') id: string, @Req() req) {
+  @Post('activate')
+  activateReward(@Body() activateRewardDto: ActivateRewardDto, @Req() req) {
     const { uid } = req.user;
-    return this.rewardService.activateReward(
-      {
-        rewardId: id,
-      },
-      uid,
-    );
+    return this.rewardService.activateReward(activateRewardDto, uid);
   }
 
   @UseGuards(JwtAuthGuard)

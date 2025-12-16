@@ -5,8 +5,8 @@ export class PaginationQuery {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(1)
-  page?: number = 1;
+  @Min(0)
+  start?: number = 0;
 
   @IsOptional()
   @Type(() => Number)

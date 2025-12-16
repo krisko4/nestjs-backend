@@ -2,7 +2,11 @@ import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, Types, ClientSession } from 'mongoose';
 import { Injectable } from '@nestjs/common';
 import { MongoRepository } from '../database/repository';
-import { CreateEventSchema, EventDocument, EventStatus } from './schemas/event.schema';
+import {
+  CreateEventSchema,
+  EventDocument,
+  EventStatus,
+} from './schemas/event.schema';
 import { CreateEventDto } from './dto/create-event.dto';
 import { PaginationQuery } from 'src/place/queries/pagination.query';
 import { ParticipatorsFilterQuery } from './dto/participators-filter.query';
@@ -142,7 +146,12 @@ export class EventRepository extends MongoRepository<
     return this.eventModel.find().lean();
   }
 
-  findByUserId(paginationQuery: PaginationQuery, uid: string, status?: EventStatus, placeId?: string) {
+  findByUserId(
+    paginationQuery: PaginationQuery,
+    uid: string,
+    status?: EventStatus,
+    placeId?: string,
+  ) {
     const filterQuery: any = {
       userId: uid,
     };
@@ -182,10 +191,7 @@ export class EventRepository extends MongoRepository<
     });
   }
 
-  async updateEvent(
-    id: string,
-    updateData: Partial<CreateEventSchema>,
-  ) {
+  async updateEvent(id: string, updateData: Partial<CreateEventSchema>) {
     return this.eventModel
       .findByIdAndUpdate(
         toMongoObjectId(id),
@@ -207,7 +213,14 @@ export class EventRepository extends MongoRepository<
     let pipeline = this.eventModel.aggregate();
 
     const result = await pipeline.facet(
-      getPaginatedEventData(start, limit, {}, undefined, countryCode, undefined, activeOnly),
+      getPaginatedEventData(
+        start,
+        limit,
+        {},
+        countryCode,
+        undefined,
+        activeOnly,
+      ),
     );
 
     return result[0];
@@ -223,7 +236,7 @@ export class EventRepository extends MongoRepository<
     let pipeline = this.eventModel.aggregate();
 
     const result = await pipeline.facet(
-      getPaginatedEventData(start, limit, {}, undefined, undefined, objectIds, activeOnly),
+      getPaginatedEventData(start, limit, {}, undefined, objectIds, activeOnly),
     );
 
     return result[0];
@@ -316,7 +329,7 @@ export class EventRepository extends MongoRepository<
     eventId: string,
     filterQuery: ParticipatorsFilterQuery,
   ) {
-    const page = filterQuery.page || 1;
+    const page = filterQuery.start || 1;
     const limit = filterQuery.limit || 10;
     const start = (page - 1) * limit;
     const { email } = filterQuery;
@@ -341,12 +354,17 @@ export class EventRepository extends MongoRepository<
     if (email) {
       filteredParticipators = filteredParticipators.filter((participator) => {
         const userEmail = participator.user?.email;
-        return userEmail && userEmail.toLowerCase().includes(email.toLowerCase());
+        return (
+          userEmail && userEmail.toLowerCase().includes(email.toLowerCase())
+        );
       });
     }
 
     const total = filteredParticipators.length;
-    const paginatedParticipators = filteredParticipators.slice(start, start + limit);
+    const paginatedParticipators = filteredParticipators.slice(
+      start,
+      start + limit,
+    );
 
     return {
       data: paginatedParticipators,

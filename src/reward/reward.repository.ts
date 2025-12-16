@@ -113,14 +113,12 @@ export class RewardRepository extends MongoRepository<
       usageLimit: usageLimit ?? null,
     };
 
-    // Dodaj selectedUserIds tylko gdy availableFor = SELECTED_USERS
     if (availableFor === RewardAvailableFor.SELECTED_USERS && selectedUserIds) {
       reward.selectedUserIds = selectedUserIds.map(
         (id) => new Types.ObjectId(id),
       );
     }
 
-    // if (!scheduledFor) reward['date'] = new Date();
     return this.create(reward, session);
   }
 
@@ -159,12 +157,23 @@ export class RewardRepository extends MongoRepository<
   async findPaginatedByCountryCode(
     paginationQuery: PaginationQuery,
     countryCode: string,
+    searchUserId?: string,
+    favoriteLocationIds?: string[],
   ) {
     const { start, limit } = paginationQuery;
     let pipeline = this.rewardModel.aggregate();
 
     const result = await pipeline.facet(
-      getPaginatedRewardData(start, limit, {}, countryCode, undefined, true),
+      getPaginatedRewardData(
+        start,
+        limit,
+        {},
+        countryCode,
+        undefined,
+        true,
+        searchUserId,
+        favoriteLocationIds,
+      ),
     );
 
     return result[0];
@@ -173,16 +182,25 @@ export class RewardRepository extends MongoRepository<
   async findPaginatedByLocationIds(
     paginationQuery: PaginationQuery,
     locationIds: string[],
+    searchUserId?: string,
+    favoriteLocationIds?: string[],
   ) {
     const { start, limit } = paginationQuery;
     const objectIds = locationIds.map((id) => new Types.ObjectId(id));
     let pipeline = this.rewardModel.aggregate();
 
     const result = await pipeline.facet(
-      getPaginatedRewardData(start, limit, {}, undefined, objectIds, true),
+      getPaginatedRewardData(
+        start,
+        limit,
+        {},
+        undefined,
+        objectIds,
+        true,
+        searchUserId,
+        favoriteLocationIds,
+      ),
     );
-
-    console.log(result);
 
     return result[0];
   }
