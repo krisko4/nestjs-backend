@@ -149,6 +149,14 @@ export class EventService {
       // }
     });
     await session.endSession();
+
+    this.sendEventNotificationsAsync(
+      locationIds,
+      primaryPlace.name,
+      title,
+      event._id.toString(),
+    );
+
     return event;
   }
 
@@ -399,7 +407,6 @@ export class EventService {
       throw new NotFoundException('INVALID_EVENT_ID');
     }
 
-    // Sprawdź czy użytkownik jest BOSS'em miejsca
     const isUserBoss = await this.employeeService.isUserBossOfPlace(
       uid,
       event.place._id.toString(),
@@ -408,7 +415,6 @@ export class EventService {
       throw new UnauthorizedException('ILLEGAL_OPERATION');
     }
 
-    // Aktualizuj status
     const updatedEvent = await this.eventRepository.updateEvent(id, {
       status,
     });
@@ -443,7 +449,6 @@ export class EventService {
       throw new NotFoundException('Event not found');
     }
 
-    // Sprawdź czy użytkownik jest BOSS'em miejsca
     const isUserBoss = await this.employeeService.isUserBossOfPlace(
       uid,
       event.place._id.toString(),
@@ -452,7 +457,6 @@ export class EventService {
       throw new UnauthorizedException('ILLEGAL_OPERATION');
     }
 
-    // Walidacja dat
     const { startDate, endDate, locationIds, shouldUpdateImg } = updateEventDto;
     if (
       startDate &&
@@ -465,9 +469,8 @@ export class EventService {
     }
 
     const updateData: any = { ...updateEventDto };
-    delete updateData.shouldUpdateImg; // Nie zapisujemy tego pola w bazie
+    delete updateData.shouldUpdateImg;
 
-    // Jeśli są nowe locationIds, weryfikujemy czy istnieją
     if (locationIds && locationIds.length > 0) {
       const places = await Promise.all(
         locationIds.map((locationId) =>
@@ -484,17 +487,13 @@ export class EventService {
         );
       }
 
-      // Aktualizujemy place na pierwszy z nowych locationIds
       updateData.place = places[0]._id;
     }
 
-    // Obsługa nowego obrazka - tylko jeśli shouldUpdateImg jest true
     let oldImageId: string | undefined;
     if (shouldUpdateImg && img) {
-      // Zapisz stary imageId do usunięcia
       oldImageId = event.img?.replace(`${process.env.CLOUDI_URL}/`, '');
 
-      // Upload nowego obrazka
       const newImageId = await this.cloudinaryService.uploadImage(
         img,
         'events',
@@ -502,19 +501,59 @@ export class EventService {
       updateData.img = newImageId;
     }
 
-    // Aktualizuj event
     const updatedEvent = await this.eventRepository.updateEvent(id, updateData);
 
-    // Usuń stary obrazek z Cloudinary jeśli był nowy upload
     if (oldImageId && shouldUpdateImg && img) {
       try {
         await this.cloudinaryService.destroyImage(oldImageId);
       } catch (error) {
-        // Logujemy błąd, ale nie przerywamy operacji
         console.error('Failed to delete old image from Cloudinary:', error);
       }
     }
 
     return updatedEvent;
+  }
+
+  private async sendEventNotificationsAsync(
+    locationIds: string[],
+    placeName: string,
+    eventName: string,
+    eventId: string,
+  ): Promise<void> {
+    try {
+      const uniqueUserIds = new Set<string>();
+
+      for (const locationId of locationIds) {
+        const usersWithFavoriteLocation =
+          await this.userService.findUsersByFavoriteLocation(locationId);
+
+        usersWithFavoriteLocation.forEach((user) => {
+          uniqueUserIds.add(user._id.toString());
+        });
+      }
+
+      if (uniqueUserIds.size > 0) {
+        const receiverIds = Array.from(uniqueUserIds);
+
+        await this.notificationService.createAndSendPersonalizedNotifications(
+          NotificationType.NEW_EVENT,
+          receiverIds,
+          {
+            placeName: placeName,
+            eventName: eventName,
+          },
+          {
+            eventId: eventId,
+            locationIds: locationIds.join(','),
+          },
+          {
+            locationId: locationIds[0],
+            eventId,
+          },
+        );
+      }
+    } catch (error) {
+      console.error('Error sending event notifications:', error);
+    }
   }
 }

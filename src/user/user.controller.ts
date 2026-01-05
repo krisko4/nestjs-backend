@@ -40,6 +40,7 @@ export class UserController {
     return this.userService.findById(id);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch('me/notification-tokens')
   setNotificationToken(
     @Body() updateNotificationTokenDto: UpdateNotificationTokenDto,

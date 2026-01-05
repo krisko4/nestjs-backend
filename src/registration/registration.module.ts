@@ -9,6 +9,7 @@ import { ConfirmationTokenRepository } from './confirmation.token.repository';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UserModule } from 'src/user/user.module';
 import { EmployeeModule } from 'src/employee/employee.module';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { EmployeeModule } from 'src/employee/employee.module';
     ]),
     UserModule,
     EmployeeModule,
+    AuthModule,
   ],
   controllers: [RegistrationController],
   providers: [RegistrationService, ConfirmationTokenRepository],

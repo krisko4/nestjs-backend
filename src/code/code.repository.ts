@@ -978,48 +978,49 @@ export class CodeRepository extends MongoRepository<
     start: number = 0,
     limit: number = 10,
   ) {
-    const result = await this.codeModel.aggregate([
+    const skip = start;
+
+    const pipeline: any[] = [
+      // Match codes that belong to the user and have been scanned
       {
         $match: {
-          user: new Types.ObjectId(userId),
+          user: toMongoObjectId(userId),
           usedAt: { $exists: true, $ne: null },
         },
       },
       {
         $sort: { usedAt: -1 },
       },
-      {
-        $facet: {
-          data: [{ $skip: start }, { $limit: limit }],
-          metadata: [{ $count: 'total' }],
-        },
-      },
-      {
-        $unwind: { path: '$data', preserveNullAndEmptyArrays: true },
-      },
+      // Lookup reward
       {
         $lookup: {
           from: 'rewards',
-          localField: 'data.reward',
+          localField: 'reward',
           foreignField: '_id',
           as: 'rewardData',
         },
       },
       {
+        $addFields: {
+          rewardData: {
+            $cond: {
+              if: { $gt: [{ $size: '$rewardData' }, 0] },
+              then: { $arrayElemAt: ['$rewardData', 0] },
+              else: null,
+            },
+          },
+        },
+      },
+      // Lookup place based on locationId (always present)
+      {
         $lookup: {
           from: 'places',
-          let: {
-            rewardPlaceId: { $arrayElemAt: ['$rewardData.place', 0] },
-            locationId: '$data.locationId',
-          },
+          let: { locationId: '$locationId' },
           pipeline: [
             {
               $match: {
                 $expr: {
-                  $or: [
-                    { $eq: ['$_id', '$$rewardPlaceId'] },
-                    { $in: ['$$locationId', '$locations._id'] },
-                  ],
+                  $in: ['$$locationId', '$locations._id'],
                 },
               },
             },
@@ -1028,121 +1029,90 @@ export class CodeRepository extends MongoRepository<
         },
       },
       {
-        $group: {
-          _id: null,
-          data: {
-            $push: {
-              _id: '$data._id',
-              value: '$data.value',
-              createdAt: '$data.createdAt',
-              usedAt: '$data.usedAt',
-              reward: {
-                $cond: {
-                  if: { $gt: [{ $size: '$rewardData' }, 0] },
-                  then: { name: { $arrayElemAt: ['$rewardData.name', 0] } },
-                  else: null,
-                },
-              },
-              location: {
-                $switch: {
-                  branches: [
-                    {
-                      case: { $eq: ['$data.locationId', null] },
-                      then: null,
-                    },
-                    {
-                      case: { $eq: [{ $size: '$rewardData' }, 0] },
-                      then: {
-                        $let: {
-                          vars: {
-                            place: { $arrayElemAt: ['$placeData', 0] },
-                          },
-                          in: {
-                            $let: {
-                              vars: {
-                                foundLoc: {
-                                  $arrayElemAt: [
-                                    {
-                                      $filter: {
-                                        input: {
-                                          $ifNull: ['$$place.locations', []],
-                                        },
-                                        as: 'loc',
-                                        cond: {
-                                          $eq: [
-                                            '$$loc._id',
-                                            '$data.locationId',
-                                          ],
-                                        },
-                                      },
-                                    },
-                                    0,
-                                  ],
-                                },
-                              },
-                              in: {
-                                $cond: {
-                                  if: { $ne: ['$$foundLoc', null] },
-                                  then: { address: '$$foundLoc.address' },
-                                  else: null,
-                                },
-                              },
-                            },
-                          },
-                        },
-                      },
-                    },
-                  ],
-                  default: null,
-                },
-              },
-              place: {
-                $let: {
-                  vars: {
-                    placeData: { $arrayElemAt: ['$placeData', 0] },
-                  },
-                  in: {
-                    $cond: {
-                      if: { $ne: ['$$placeData', null] },
-                      then: {
-                        logo: {
-                          $concat: [
-                            process.env.CLOUDI_URL || '',
-                            '/',
-                            '$$placeData.logo',
-                          ],
-                        },
-                        name: '$$placeData.name',
-                      },
-                      else: null,
-                    },
-                  },
-                },
-              },
-            },
-          },
-          metadata: { $first: '$metadata' },
+        $unwind: {
+          path: '$placeData',
+          preserveNullAndEmptyArrays: true,
         },
       },
+      // Find location in placeData.locations based on locationId
+      {
+        $addFields: {
+          locationData: {
+            $arrayElemAt: [
+              {
+                $filter: {
+                  input: { $ifNull: ['$placeData.locations', []] },
+                  as: 'loc',
+                  cond: { $eq: ['$$loc._id', '$locationId'] },
+                },
+              },
+              0,
+            ],
+          },
+        },
+      },
+      // Project final structure
       {
         $project: {
-          _id: 0,
-          data: 1,
-          metadata: {
+          _id: 1,
+          value: 1,
+          createdAt: 1,
+          usedAt: 1,
+          reward: {
             $cond: {
-              if: { $gt: [{ $size: '$metadata' }, 0] },
+              if: { $ne: ['$rewardData', null] },
               then: {
-                total: { $arrayElemAt: ['$metadata.total', 0] },
-                start: start,
-                limit: limit,
+                name: '$rewardData.name',
               },
-              else: { total: 0, start: start, limit: limit },
+              else: null,
             },
           },
+          location: {
+            $cond: {
+              if: { $ne: ['$locationData', null] },
+              then: {
+                address: '$locationData.address',
+              },
+              else: null,
+            },
+          },
+          place: {
+            $cond: {
+              if: { $ne: ['$placeData', null] },
+              then: {
+                name: '$placeData.name',
+                logo: {
+                  $concat: [
+                    process.env.CLOUDI_URL || '',
+                    '/',
+                    '$placeData.logo',
+                  ],
+                },
+              },
+              else: null,
+            },
+          },
+        },
+      },
+    ];
+
+    const result = await this.codeModel.aggregate([
+      ...pipeline,
+      {
+        $facet: {
+          data: [{ $skip: skip }, { $limit: limit }],
+          metadata: [{ $count: 'total' }],
         },
       },
     ]);
 
-    return result[0] || { data: [], metadata: { total: 0, start, limit } };
+    return {
+      data: result[0]?.data || [],
+      metadata: {
+        total: result[0]?.metadata[0]?.total || 0,
+        start,
+        limit,
+      },
+    };
   }
 }

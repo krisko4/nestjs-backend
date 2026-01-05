@@ -8,6 +8,7 @@ import mongoose, { ClientSession } from 'mongoose';
 import { InjectConnection } from '@nestjs/mongoose';
 import { ConfirmationTokenDocument } from './schemas/confirmation.token';
 import { EmployeeService } from 'src/employee/employee.service';
+import { AuthService } from 'src/auth/auth.service';
 
 @Injectable()
 export class RegistrationService {
@@ -15,25 +16,25 @@ export class RegistrationService {
     private readonly userService: UserService,
     private readonly confirmationTokenRepository: ConfirmationTokenRepository,
     private readonly employeeService: EmployeeService,
+    private readonly authService: AuthService,
     @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
   async registerUser(createUserDto: CreateUserDto) {
     const session = await this.connection.startSession();
-    let token: ConfirmationTokenDocument;
+    let userId: string;
     await session.withTransaction(async () => {
       const user = await this.userService.create(createUserDto, session);
-      const [createdToken] = await Promise.all([
-        this.createConfirmationToken(user._id, session),
-        this.employeeService.assignUserToEmployeeByEmail(
-          createUserDto.email,
-          user._id,
-          session,
-        ),
-      ]);
-      token = createdToken;
+      userId = user._id;
+      await this.employeeService.assignUserToEmployeeByEmail(
+        createUserDto.email,
+        user._id,
+        session,
+      );
     });
     await session.endSession();
-    return token;
+
+    const user = await this.userService.findById(userId);
+    return this.authService.login(user);
   }
   async createConfirmationToken(userId: string, session: ClientSession) {
     const createdAt = new Date();

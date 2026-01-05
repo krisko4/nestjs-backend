@@ -285,7 +285,6 @@ export class RewardService {
     rewardId: string,
   ): Promise<void> {
     try {
-      // Zbierz użytkowników ze wszystkich lokalizacji (bez duplikatów)
       const uniqueUserIds = new Set<string>();
 
       for (const locationId of locationIds) {
@@ -312,7 +311,7 @@ export class RewardService {
             locationIds: locationIds.join(','),
           },
           {
-            locationId: locationIds[0], // Użyj pierwszego locationId jako głównego
+            locationId: locationIds[0],
             rewardId,
           },
         );
@@ -328,6 +327,8 @@ export class RewardService {
     const nearbyLocationIds =
       await this.placeService.findLocationIdsWithinRadius(lat, lng, 30000);
 
+    console.log(nearbyLocationIds);
+
     const favoriteLocationIds = await this.userService.getFavoriteLocationIds(
       userId,
     );
@@ -340,6 +341,8 @@ export class RewardService {
         favoriteLocationIds,
       );
     }
+
+    console.log('searchin by country code');
 
     return this.rewardRepository.findPaginatedByCountryCode(
       { start, limit },

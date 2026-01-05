@@ -44,12 +44,12 @@ export const notificationMessages: NotificationMessages = {
   },
   [NotificationType.NEW_EVENT]: {
     en: {
-      title: 'New event nearby!',
-      body: "Check out what's happening in your area",
+      title: 'New event from {{placeName}}!',
+      body: '{{eventName}}',
     },
     pl: {
-      title: 'Nowe wydarzenie w pobliżu!',
-      body: 'Zobacz co dzieje się w Twojej okolicy',
+      title: 'Nowe wydarzenie od {{placeName}}!',
+      body: '{{eventName}}',
     },
   },
   [NotificationType.NEW_REFERRAL]: {

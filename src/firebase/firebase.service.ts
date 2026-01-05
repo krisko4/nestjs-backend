@@ -27,9 +27,6 @@ export class FirebaseService {
     return Expo.isExpoPushToken(token);
   }
 
-  /**
-   * Wysyła powiadomienia używając Expo Push Notifications
-   */
   private async sendToExpo(
     tokens: string[],
     payload: MessagingPayload,
@@ -67,9 +64,6 @@ export class FirebaseService {
     return { successCount, failureCount };
   }
 
-  /**
-   * Wysyła powiadomienia używając Firebase Cloud Messaging
-   */
   private async sendToFCM(
     tokens: string[],
     payload: MessagingPayload,
@@ -113,16 +107,11 @@ export class FirebaseService {
     return { successCount, failureCount };
   }
 
-  /**
-   * Wysyła powiadomienia do wielu urządzeń
-   * Automatycznie rozpoznaje typ tokenu (Expo lub FCM) i używa odpowiedniego API
-   */
   async sendToDevice(tokens: string[], payload: MessagingPayload) {
     if (!tokens || tokens.length === 0) {
       return { successCount: 0, failureCount: 0, responses: [] };
     }
 
-    // Rozdziel tokeny na Expo i FCM
     const expoTokens = tokens.filter((token) => this.isExpoToken(token));
     const fcmTokens = tokens.filter((token) => !this.isExpoToken(token));
 

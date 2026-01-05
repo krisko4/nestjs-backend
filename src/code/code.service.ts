@@ -190,7 +190,13 @@ export class CodeService {
     start: number = 0,
     limit: number = 10,
   ) {
-    return this.codeRepository.findUsedCodesByUserId(userId, start, limit);
+    const codes = await this.codeRepository.findUsedCodesByUserId(
+      userId,
+      start,
+      limit,
+    );
+    console.log(codes);
+    return codes;
   }
 
   async findClientsByPlaceIds(
