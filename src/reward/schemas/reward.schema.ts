@@ -52,6 +52,7 @@ export class Reward {
   locationIds: string[];
   @Prop({ required: true, enum: Object.values(RewardAvailableFor) })
   availableFor: RewardAvailableFor;
+  @Transform((params) => params.obj.selectedUserIds?.map((id: mongoose.Types.ObjectId) => id.toString()) || [])
   @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] })
   selectedUserIds?: mongoose.Types.ObjectId[];
   @Prop({ type: Number, default: null })
