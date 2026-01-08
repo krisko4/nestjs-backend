@@ -378,4 +378,11 @@ export class EventRepository extends MongoRepository<
       },
     };
   }
+
+  async countByPlaceIds(placeIds: string[], status: EventStatus): Promise<number> {
+    return this.eventModel.countDocuments({
+      place: { $in: placeIds.map((id) => new Types.ObjectId(id)) },
+      status,
+    });
+  }
 }

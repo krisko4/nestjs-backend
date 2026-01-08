@@ -23,6 +23,7 @@ import { GeolocationModule } from './geolocation/geolocation.module';
 import { FirebaseModule } from './firebase/firebase.module';
 import { ClientModule } from './client/client.module';
 import { EmployeeModule } from './employee/employee.module';
+import { StatisticsModule } from './statistics/statistics.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { EmployeeModule } from './employee/employee.module';
     FirebaseModule,
     ClientModule,
     EmployeeModule,
+    StatisticsModule,
   ],
 })
 export class AppModule {}

@@ -556,4 +556,8 @@ export class EventService {
       console.error('Error sending event notifications:', error);
     }
   }
+
+  async countActiveByPlaceIds(placeIds: string[]): Promise<number> {
+    return this.eventRepository.countByPlaceIds(placeIds, EventStatus.ACTIVE);
+  }
 }

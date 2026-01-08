@@ -24,5 +24,6 @@ import { EmployeeModule } from 'src/employee/employee.module';
   ],
   controllers: [AdminRewardController, UserRewardController],
   providers: [RewardService, RewardRepository],
+  exports: [RewardService],
 })
 export class RewardModule {}

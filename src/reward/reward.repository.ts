@@ -216,4 +216,11 @@ export class RewardRepository extends MongoRepository<
       .lean()
       .exec();
   }
+
+  async countByPlaceIds(placeIds: string[], status: RewardStatus): Promise<number> {
+    return this.rewardModel.countDocuments({
+      place: { $in: placeIds.map((id) => new Types.ObjectId(id)) },
+      status,
+    });
+  }
 }

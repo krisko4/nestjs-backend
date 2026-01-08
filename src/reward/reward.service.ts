@@ -495,4 +495,8 @@ export class RewardService {
 
     return updatedReward;
   }
+
+  async countActiveByPlaceIds(placeIds: string[]): Promise<number> {
+    return this.rewardRepository.countByPlaceIds(placeIds, RewardStatus.ACTIVE);
+  }
 }
