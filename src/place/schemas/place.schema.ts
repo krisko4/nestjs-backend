@@ -16,6 +16,9 @@ export type CreatePlaceSchema = {
   description?: string;
   images?: string[];
   logo?: string;
+  website?: string;
+  instagram?: string;
+  facebook?: string;
   locations: CreateLocationSchema[];
 };
 
@@ -37,6 +40,12 @@ export class Place {
   images: string[];
   @Prop()
   description: string;
+  @Prop()
+  website: string;
+  @Prop()
+  instagram: string;
+  @Prop()
+  facebook: string;
   @Prop({ default: Date.now })
   createdAt: Date;
   @ValidateNested({ each: true })

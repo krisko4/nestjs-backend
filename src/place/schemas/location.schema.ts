@@ -23,15 +23,7 @@ export class Location {
   @Prop()
   countryCode: string;
   @Prop()
-  facebook: string;
-  @Prop()
-  instagram: string;
-  @Prop()
   phone: string;
-  @Prop()
-  email: string;
-  @Prop()
-  website: string;
   @Prop({ default: false })
   alwaysOpen: boolean;
   @Prop({ default: 'open', enum: ['open', 'closed'] })
@@ -40,8 +32,6 @@ export class Location {
   openingHours: OpeningHours;
   @Prop({ default: true })
   isActive: boolean;
-  @Prop({ default: 0 })
-  visitCount: number;
   @Prop({ type: AverageNoteSchema })
   averageNote: AverageNote;
 }

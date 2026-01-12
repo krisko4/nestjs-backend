@@ -33,22 +33,6 @@ export class UpdateLocationDto {
   @IsOptional()
   phone?: string;
 
-  @IsString()
-  @IsOptional()
-  email?: string;
-
-  @IsString()
-  @IsOptional()
-  website?: string;
-
-  @IsString()
-  @IsOptional()
-  facebook?: string;
-
-  @IsString()
-  @IsOptional()
-  instagram?: string;
-
   @IsOptional()
   lat?: number;
 
@@ -67,6 +51,18 @@ export class UpdatePlaceDto {
   @MinLength(1)
   @IsOptional()
   description?: string;
+
+  @IsString()
+  @IsOptional()
+  website?: string;
+
+  @IsString()
+  @IsOptional()
+  instagram?: string;
+
+  @IsString()
+  @IsOptional()
+  facebook?: string;
 
   @IsArray()
   @IsOptional()

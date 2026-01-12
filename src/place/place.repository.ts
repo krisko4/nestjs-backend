@@ -53,16 +53,16 @@ export class PlaceRepository extends MongoRepository<
         'locations.$.lat': location.lat,
         'locations.$.lng': location.lng,
         'locations.$.phone': location.phone,
-        'locations.$.email': location.email,
-        'locations.$.website': location.website,
-        'locations.$.facebook': location.facebook,
-        'locations.$.instagram': location.instagram,
       },
       session,
     );
   }
 
-  addLocation(placeId: string, location: UpdateLocationDto, session?: ClientSession) {
+  addLocation(
+    placeId: string,
+    location: UpdateLocationDto,
+    session?: ClientSession,
+  ) {
     const newLocation = {
       _id: new Types.ObjectId(),
       address: location.address,
@@ -71,10 +71,6 @@ export class PlaceRepository extends MongoRepository<
       lat: location.lat,
       lng: location.lng,
       phone: location.phone,
-      email: location.email,
-      website: location.website,
-      facebook: location.facebook,
-      instagram: location.instagram,
       isActive: true,
       status: 'closed',
       visitCount: 0,

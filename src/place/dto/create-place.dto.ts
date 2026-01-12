@@ -10,6 +10,15 @@ export class CreatePlaceDto {
   @MinLength(1)
   @IsOptional()
   description: string;
+  @IsString()
+  @IsOptional()
+  website?: string;
+  @IsString()
+  @IsOptional()
+  instagram?: string;
+  @IsString()
+  @IsOptional()
+  facebook?: string;
   @Transform(({ value }) => JSON.parse(value))
   locations: CreateLocationDto[];
 }
