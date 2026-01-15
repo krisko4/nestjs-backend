@@ -119,8 +119,8 @@ export class AdminPlaceController {
 
   @Get(':id')
   async findById(@Param('id') id: string) {
-    const place = await this.placeService.findById(id);
-    return plainToInstance(PlaceDto, place.toObject());
+    const place = await this.placeService.findByIdWithStats(id);
+    return plainToInstance(PlaceDto, place);
   }
 
   @UseGuards(JwtAuthGuard)

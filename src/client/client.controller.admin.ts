@@ -25,9 +25,7 @@ export class AdminClientController {
       sortBy = 'lastScanDate',
       sortOrder = 'desc',
     } = query;
-    console.log(query);
 
-    console.log(start);
     return this.clientService.getClientsByUserId(
       userId,
       start,

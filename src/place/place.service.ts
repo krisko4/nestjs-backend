@@ -276,6 +276,14 @@ export class PlaceService {
     return this.placeRepository.findById(id);
   }
 
+  async findByIdWithStats(id: string) {
+    const place = await this.placeRepository.findByIdWithStats(id);
+    if (!place) {
+      throw new NotFoundException('Place not found');
+    }
+    return place;
+  }
+
   findAll() {
     return this.placeRepository.find();
   }

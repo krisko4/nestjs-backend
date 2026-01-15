@@ -340,4 +340,11 @@ export class EmployeeRepository extends MongoRepository<
 
     return { data, total };
   }
+
+  async countByPlaceId(placeId: string): Promise<number> {
+    return this.employeeModel.countDocuments({
+      'places.place': new Types.ObjectId(placeId),
+      'places.locations.status': PlaceEmployeeStatus.ACTIVE,
+    });
+  }
 }

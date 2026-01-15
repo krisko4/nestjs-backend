@@ -530,4 +530,8 @@ export class EmployeeService {
       },
     };
   }
+
+  async countByPlaceId(placeId: string): Promise<number> {
+    return this.employeeRepository.countByPlaceId(placeId);
+  }
 }

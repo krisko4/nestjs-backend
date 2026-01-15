@@ -395,4 +395,93 @@ export class PlaceRepository extends MongoRepository<
 
     return result[0];
   }
+
+  async findByIdWithStats(id: string) {
+    const result = await this.placeModel.aggregate([
+      { $match: { _id: new Types.ObjectId(id) } },
+      {
+        $lookup: {
+          from: 'rewards',
+          let: { placeId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ['$place', '$$placeId'] },
+                status: 'active',
+              },
+            },
+            { $count: 'count' },
+          ],
+          as: 'rewardsStats',
+        },
+      },
+      {
+        $lookup: {
+          from: 'events',
+          let: { placeId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ['$place', '$$placeId'] },
+                status: 'active',
+              },
+            },
+            { $count: 'count' },
+          ],
+          as: 'eventsStats',
+        },
+      },
+      {
+        $lookup: {
+          from: 'employees',
+          let: { placeId: '$_id' },
+          pipeline: [
+            { $unwind: '$places' },
+            {
+              $match: {
+                $expr: { $eq: ['$places.place', '$$placeId'] },
+              },
+            },
+            { $unwind: '$places.locations' },
+            {
+              $match: {
+                'places.locations.status': 'ACTIVE',
+              },
+            },
+            {
+              $group: {
+                _id: '$_id',
+              },
+            },
+            { $count: 'count' },
+          ],
+          as: 'employeesStats',
+        },
+      },
+      {
+        $addFields: {
+          stats: {
+            rewardsCount: {
+              $ifNull: [{ $arrayElemAt: ['$rewardsStats.count', 0] }, 0],
+            },
+            eventsCount: {
+              $ifNull: [{ $arrayElemAt: ['$eventsStats.count', 0] }, 0],
+            },
+            employeesCount: {
+              $ifNull: [{ $arrayElemAt: ['$employeesStats.count', 0] }, 0],
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          rewardsStats: 0,
+          eventsStats: 0,
+          employeesStats: 0,
+        },
+      },
+    ]);
+
+    return result[0] || null;
+  }
 }
