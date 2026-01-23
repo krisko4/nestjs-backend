@@ -23,7 +23,6 @@ export class UserPlaceController {
   @Get()
   async findPlacesByUserId(@Req() req) {
     const { uid } = req.user;
-    console.log(uid);
     const data = await this.placeService.getPlacesByUserId(uid);
     return data.map((record) => ({
       ...record,

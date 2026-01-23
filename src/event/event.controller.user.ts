@@ -43,7 +43,6 @@ export class UserEventController {
   @Get('/search')
   async search(@Query() searchEventQuery: SearchEventQuery) {
     const events = await this.eventService.search(searchEventQuery);
-    console.log(events);
     return events;
   }
 

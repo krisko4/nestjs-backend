@@ -10,6 +10,10 @@ export enum RewardAvailableFor {
   ALL = 'ALL',
   SUBSCRIBERS = 'SUBSCRIBERS',
   SELECTED_USERS = 'SELECTED_USERS',
+  TOP_ACTIVE_USERS = 'TOP_ACTIVE_USERS',
+  LEAST_ACTIVE_USERS = 'LEAST_ACTIVE_USERS',
+  CLIENTS = 'CLIENTS',
+  INACTIVE = 'INACTIVE',
 }
 
 export enum RewardStatus {
@@ -25,8 +29,10 @@ export type CreateRewardSchema = {
   event: string;
   place: string;
   selectedUserIds?: string[];
+  userLimit?: number;
   usageLimit?: number | null;
   status?: RewardStatus;
+  lastScanDate?: string;
 };
 
 @Schema()
@@ -55,10 +61,14 @@ export class Reward {
   @Transform((params) => params.obj.selectedUserIds?.map((id: mongoose.Types.ObjectId) => id.toString()) || [])
   @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] })
   selectedUserIds?: mongoose.Types.ObjectId[];
+  @Prop({ type: Number })
+  userLimit?: number;
   @Prop({ type: Number, default: null })
   usageLimit?: number | null;
   @Prop({ required: true, enum: Object.values(RewardStatus), default: RewardStatus.ACTIVE })
   status: RewardStatus;
+  @Prop({ type: String })
+  lastScanDate?: string;
   @Prop({ default: Date.now })
   createdAt: Date;
 }

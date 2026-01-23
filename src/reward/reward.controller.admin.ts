@@ -49,7 +49,6 @@ export class AdminRewardController {
       this.rewardService.findById(id),
       this.codeService.countRewardUsage(id),
     ]);
-    console.log(reward);
     return {
       ...plainToInstance(Reward, reward.toObject()),
       totalScans,

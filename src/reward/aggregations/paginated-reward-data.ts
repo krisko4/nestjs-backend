@@ -244,6 +244,8 @@ export function getPaginatedRewardData(
         endDate: 1,
         participators: 1,
         usageLimit: 1,
+        userLimit: 1,
+        lastScanDate: 1,
         title: 1,
         content: 1,
         img: 1,

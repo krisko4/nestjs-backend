@@ -259,8 +259,16 @@ export class CodeRepository extends MongoRepository<
           }),
           ...((lastScanDateFrom || lastScanDateTo) && {
             lastScanDate: {
-              ...(lastScanDateFrom && { $gte: new Date(lastScanDateFrom) }),
-              ...(lastScanDateTo && { $lte: new Date(lastScanDateTo) }),
+              ...(lastScanDateFrom && {
+                $gte: new Date(
+                  new Date(lastScanDateFrom).setHours(0, 0, 0, 0),
+                ),
+              }),
+              ...(lastScanDateTo && {
+                $lte: new Date(
+                  new Date(lastScanDateTo).setHours(23, 59, 59, 999),
+                ),
+              }),
             },
           }),
         },
@@ -1114,5 +1122,277 @@ export class CodeRepository extends MongoRepository<
         limit,
       },
     };
+  }
+
+  async findActiveUsersByPlace(
+    placeId: string,
+    locationIds: string[],
+    limit: number,
+    sortOrder: 'asc' | 'desc' = 'desc',
+  ): Promise<Array<{ _id: string; scanCount: number }>> {
+    const locationObjectIds = locationIds.map((id) => new Types.ObjectId(id));
+
+    const result = await this.codeModel.aggregate([
+      {
+        $lookup: {
+          from: 'rewards',
+          localField: 'reward',
+          foreignField: '_id',
+          as: 'rewardData',
+        },
+      },
+      {
+        $unwind: {
+          path: '$rewardData',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: 'places',
+          let: { locationId: '$locationId' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $in: ['$$locationId', '$locations._id'],
+                },
+              },
+            },
+          ],
+          as: 'placeFromLocation',
+        },
+      },
+      {
+        $unwind: {
+          path: '$placeFromLocation',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          finalPlaceId: {
+            $cond: {
+              if: { $ne: [{ $ifNull: ['$reward', null] }, null] },
+              then: '$rewardData.place',
+              else: '$placeFromLocation._id',
+            },
+          },
+        },
+      },
+      {
+        $match: {
+          finalPlaceId: new Types.ObjectId(placeId),
+          locationId: { $in: locationObjectIds },
+          usedAt: { $exists: true, $ne: null },
+        },
+      },
+      {
+        $group: {
+          _id: '$user',
+          scanCount: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { scanCount: sortOrder === 'desc' ? -1 : 1 },
+      },
+      {
+        $limit: limit,
+      },
+      {
+        $project: {
+          _id: { $toString: '$_id' },
+          scanCount: 1,
+        },
+      },
+    ]);
+
+    return result;
+  }
+
+  async findTopActiveUsersByPlace(
+    placeId: string,
+    locationIds: string[],
+    limit: number,
+  ): Promise<Array<{ _id: string; scanCount: number }>> {
+    return this.findActiveUsersByPlace(placeId, locationIds, limit, 'desc');
+  }
+
+  async findLeastActiveUsersByPlace(
+    placeId: string,
+    locationIds: string[],
+    limit: number,
+  ): Promise<Array<{ _id: string; scanCount: number }>> {
+    return this.findActiveUsersByPlace(placeId, locationIds, limit, 'asc');
+  }
+
+  async findAllClientsByPlace(
+    placeId: string,
+    locationIds: string[],
+  ): Promise<string[]> {
+    const locationObjectIds = locationIds.map((id) => new Types.ObjectId(id));
+
+    const result = await this.codeModel.aggregate([
+      {
+        $lookup: {
+          from: 'rewards',
+          localField: 'reward',
+          foreignField: '_id',
+          as: 'rewardData',
+        },
+      },
+      {
+        $unwind: {
+          path: '$rewardData',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: 'places',
+          let: { locationId: '$locationId' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $in: ['$$locationId', '$locations._id'],
+                },
+              },
+            },
+          ],
+          as: 'placeFromLocation',
+        },
+      },
+      {
+        $unwind: {
+          path: '$placeFromLocation',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          finalPlaceId: {
+            $cond: {
+              if: { $ne: [{ $ifNull: ['$reward', null] }, null] },
+              then: '$rewardData.place',
+              else: '$placeFromLocation._id',
+            },
+          },
+        },
+      },
+      {
+        $match: {
+          finalPlaceId: new Types.ObjectId(placeId),
+          locationId: { $in: locationObjectIds },
+          usedAt: { $exists: true, $ne: null },
+        },
+      },
+      {
+        $group: {
+          _id: '$user',
+        },
+      },
+      {
+        $project: {
+          _id: { $toString: '$_id' },
+        },
+      },
+    ]);
+
+    return result.map((r) => r._id);
+  }
+
+  async findInactiveClientsByPlace(
+    placeId: string,
+    locationIds: string[],
+    lastScanDate: string,
+  ): Promise<string[]> {
+    const locationObjectIds = locationIds.map((id) => new Types.ObjectId(id));
+    const lastScanDateObj = new Date(lastScanDate);
+
+    // Find all clients who have scanned at the place
+    const allClients = await this.findAllClientsByPlace(placeId, locationIds);
+
+    if (allClients.length === 0) {
+      return [];
+    }
+
+    const allClientObjectIds = allClients.map((id) => new Types.ObjectId(id));
+
+    const activeClients = await this.codeModel.aggregate([
+      {
+        $lookup: {
+          from: 'rewards',
+          localField: 'reward',
+          foreignField: '_id',
+          as: 'rewardData',
+        },
+      },
+      {
+        $unwind: {
+          path: '$rewardData',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: 'places',
+          let: { locationId: '$locationId' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $in: ['$$locationId', '$locations._id'],
+                },
+              },
+            },
+          ],
+          as: 'placeFromLocation',
+        },
+      },
+      {
+        $unwind: {
+          path: '$placeFromLocation',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          finalPlaceId: {
+            $cond: {
+              if: { $ne: [{ $ifNull: ['$reward', null] }, null] },
+              then: '$rewardData.place',
+              else: '$placeFromLocation._id',
+            },
+          },
+        },
+      },
+      {
+        $match: {
+          finalPlaceId: new Types.ObjectId(placeId),
+          locationId: { $in: locationObjectIds },
+          usedAt: { $exists: true, $ne: null, $gte: lastScanDateObj },
+          user: { $in: allClientObjectIds },
+        },
+      },
+      {
+        $group: {
+          _id: '$user',
+        },
+      },
+      {
+        $project: {
+          _id: { $toString: '$_id' },
+        },
+      },
+    ]);
+
+    const activeClientIds = new Set(activeClients.map((c) => c._id));
+
+    const inactiveClients = allClients.filter(
+      (clientId) => !activeClientIds.has(clientId),
+    );
+
+    return inactiveClients;
   }
 }

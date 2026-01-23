@@ -46,7 +46,6 @@ export class CodeController {
   listenForCodeScan(
     @Param('codeValue') codeValue: string,
   ): Observable<MessageEvent> {
-    console.log('masdm');
     return this.codeSseService.getCodeScannedStreamByCodeValue(codeValue);
   }
 }

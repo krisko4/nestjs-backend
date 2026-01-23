@@ -92,6 +92,8 @@ export class RewardRepository extends MongoRepository<
     placeId,
     selectedUserIds,
     usageLimit,
+    userLimit,
+    lastScanDate,
   }: {
     name: string;
     description: string;
@@ -101,7 +103,9 @@ export class RewardRepository extends MongoRepository<
     locationIds: string[];
     placeId: string;
     selectedUserIds?: string[];
+    userLimit?: number | null;
     usageLimit?: number | null;
+    lastScanDate?: string;
   }) {
     const reward: any = {
       name,
@@ -111,9 +115,11 @@ export class RewardRepository extends MongoRepository<
       place: placeId,
       locationIds: locationIds.map((id) => new Types.ObjectId(id)),
       usageLimit: usageLimit ?? null,
+      userLimit: userLimit ?? null,
+      lastScanDate: lastScanDate ?? undefined,
     };
 
-    if (availableFor === RewardAvailableFor.SELECTED_USERS && selectedUserIds) {
+    if (selectedUserIds) {
       reward.selectedUserIds = selectedUserIds.map(
         (id) => new Types.ObjectId(id),
       );
@@ -217,7 +223,10 @@ export class RewardRepository extends MongoRepository<
       .exec();
   }
 
-  async countByPlaceIds(placeIds: string[], status: RewardStatus): Promise<number> {
+  async countByPlaceIds(
+    placeIds: string[],
+    status: RewardStatus,
+  ): Promise<number> {
     return this.rewardModel.countDocuments({
       place: { $in: placeIds.map((id) => new Types.ObjectId(id)) },
       status,

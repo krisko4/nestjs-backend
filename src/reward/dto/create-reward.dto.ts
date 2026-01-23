@@ -7,6 +7,8 @@ import {
   IsString,
   Min,
   ValidateIf,
+  Matches,
+  IsDateString,
 } from 'class-validator';
 import { RewardAvailableFor } from '../schemas/reward.schema';
 
@@ -33,8 +35,21 @@ export class CreateRewardDto {
   @IsMongoId({ each: true })
   selectedUserIds?: string[];
 
+  @ValidateIf(
+    (o) =>
+      o.availableFor === RewardAvailableFor.TOP_ACTIVE_USERS ||
+      o.availableFor === RewardAvailableFor.LEAST_ACTIVE_USERS,
+  )
+  @IsNumber()
+  @Min(1)
+  userLimit?: number;
+
   @IsOptional()
   @IsNumber()
   @Min(1)
   usageLimit?: number | null;
+
+  @ValidateIf((o) => o.availableFor === RewardAvailableFor.INACTIVE)
+  @IsDateString()
+  lastScanDate?: string;
 }

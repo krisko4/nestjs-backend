@@ -134,8 +134,6 @@ export class ClientService {
       email: client?.email,
     };
 
-    console.log(scannedCodes);
-
     const scans: ScanHistoryItemDto[] = scannedCodes.map((code) => ({
       codeId: code._id.toString(),
       scannedAt: code.usedAt,

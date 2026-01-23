@@ -15,7 +15,11 @@ import mongoose from 'mongoose';
 import { InjectConnection } from '@nestjs/mongoose';
 import { CodeService } from 'src/code/code.service';
 import { EventService } from 'src/event/event.service';
-import { RewardDocument, RewardStatus } from './schemas/reward.schema';
+import {
+  RewardAvailableFor,
+  RewardDocument,
+  RewardStatus,
+} from './schemas/reward.schema';
 import { NotificationService } from 'src/notification/notification.service';
 import { NotificationType } from 'src/notification/schemas/notification.schema';
 import { isBefore } from 'date-fns';
@@ -221,8 +225,9 @@ export class RewardService {
       name,
       locationIds,
       availableFor,
-      selectedUserIds,
+      userLimit,
       usageLimit,
+      lastScanDate,
     } = createRewardDto;
 
     const place = await this.placeService.findByLocationId(locationIds[0]);
@@ -238,7 +243,6 @@ export class RewardService {
       }
     }
 
-    // Sprawdź czy użytkownik jest BOSS'em wszystkich lokalizacji
     for (const locationId of locationIds) {
       const isBoss = await this.employeeService.isUserBossOfLocation(
         uid,
@@ -247,6 +251,41 @@ export class RewardService {
       if (!isBoss) {
         throw new UnauthorizedException(`ILLEGAL_OPERATION`);
       }
+    }
+
+    let selectedUserIds = createRewardDto.selectedUserIds;
+
+    if (
+      availableFor === RewardAvailableFor.TOP_ACTIVE_USERS &&
+      userLimit &&
+      userLimit > 0
+    ) {
+      selectedUserIds = await this.getTopActiveUsers(
+        place._id.toString(),
+        locationIds,
+        userLimit,
+      );
+    } else if (
+      availableFor === RewardAvailableFor.LEAST_ACTIVE_USERS &&
+      userLimit &&
+      userLimit > 0
+    ) {
+      selectedUserIds = await this.getLeastActiveUsers(
+        place._id.toString(),
+        locationIds,
+        userLimit,
+      );
+    } else if (availableFor === RewardAvailableFor.CLIENTS) {
+      selectedUserIds = await this.getAllClients(
+        place._id.toString(),
+        locationIds,
+      );
+    } else if (availableFor === RewardAvailableFor.INACTIVE && lastScanDate) {
+      selectedUserIds = await this.getInactiveClients(
+        place._id.toString(),
+        locationIds,
+        lastScanDate,
+      );
     }
 
     const session = await this.connection.startSession();
@@ -262,7 +301,9 @@ export class RewardService {
         placeId: place._id,
         locationIds,
         selectedUserIds,
+        userLimit,
         usageLimit,
+        lastScanDate,
       });
     });
 
@@ -327,8 +368,6 @@ export class RewardService {
     const nearbyLocationIds =
       await this.placeService.findLocationIdsWithinRadius(lat, lng, 30000);
 
-    console.log(nearbyLocationIds);
-
     const favoriteLocationIds = await this.userService.getFavoriteLocationIds(
       userId,
     );
@@ -341,8 +380,6 @@ export class RewardService {
         favoriteLocationIds,
       );
     }
-
-    console.log('searchin by country code');
 
     return this.rewardRepository.findPaginatedByCountryCode(
       { start, limit },
@@ -413,7 +450,8 @@ export class RewardService {
       throw new UnauthorizedException('ILLEGAL_OPERATION');
     }
 
-    const { locationIds, eventId, selectedUserIds } = updateRewardDto;
+    const { locationIds, eventId, availableFor, userLimit, lastScanDate } =
+      updateRewardDto;
     const updateData: any = { ...updateRewardDto };
 
     // Jeśli są nowe locationIds, weryfikujemy czy należą do tego samego place
@@ -459,9 +497,63 @@ export class RewardService {
       }
     }
 
-    // Przekształć selectedUserIds jeśli istnieją
-    if (selectedUserIds && selectedUserIds.length > 0) {
-      updateData.selectedUserIds = selectedUserIds;
+    // Automatyczne przypisanie użytkowników na podstawie aktywności przy zmianie availableFor lub userLimit
+    const finalAvailableFor = availableFor || reward.availableFor;
+    const finalUserLimit = userLimit || reward.userLimit;
+    const finalLocationIds =
+      locationIds || reward.locationIds.map((id) => id.toString());
+
+    if (
+      (availableFor === RewardAvailableFor.TOP_ACTIVE_USERS ||
+        (availableFor === undefined &&
+          reward.availableFor === RewardAvailableFor.TOP_ACTIVE_USERS)) &&
+      finalUserLimit &&
+      finalUserLimit > 0
+    ) {
+      updateData.selectedUserIds = await this.getTopActiveUsers(
+        reward.place._id.toString(),
+        finalLocationIds,
+        finalUserLimit,
+      );
+    } else if (
+      (availableFor === RewardAvailableFor.LEAST_ACTIVE_USERS ||
+        (availableFor === undefined &&
+          reward.availableFor === RewardAvailableFor.LEAST_ACTIVE_USERS)) &&
+      finalUserLimit &&
+      finalUserLimit > 0
+    ) {
+      updateData.selectedUserIds = await this.getLeastActiveUsers(
+        reward.place._id.toString(),
+        finalLocationIds,
+        finalUserLimit,
+      );
+    } else if (
+      availableFor === RewardAvailableFor.CLIENTS ||
+      (availableFor === undefined &&
+        reward.availableFor === RewardAvailableFor.CLIENTS)
+    ) {
+      updateData.selectedUserIds = await this.getAllClients(
+        reward.place._id.toString(),
+        finalLocationIds,
+      );
+    } else if (
+      (availableFor === RewardAvailableFor.INACTIVE ||
+        (availableFor === undefined &&
+          reward.availableFor === RewardAvailableFor.INACTIVE)) &&
+      (lastScanDate || reward.lastScanDate)
+    ) {
+      const finalLastScanDate = lastScanDate || reward.lastScanDate;
+      updateData.selectedUserIds = await this.getInactiveClients(
+        reward.place._id.toString(),
+        finalLocationIds,
+        finalLastScanDate,
+      );
+    } else if (
+      updateRewardDto.selectedUserIds &&
+      updateRewardDto.selectedUserIds.length > 0
+    ) {
+      // Przekształć selectedUserIds jeśli istnieją i nie są automatycznie generowane
+      updateData.selectedUserIds = updateRewardDto.selectedUserIds;
     }
 
     // Aktualizuj reward
@@ -498,5 +590,48 @@ export class RewardService {
 
   async countActiveByPlaceIds(placeIds: string[]): Promise<number> {
     return this.rewardRepository.countByPlaceIds(placeIds, RewardStatus.ACTIVE);
+  }
+
+  private async getTopActiveUsers(
+    placeId: string,
+    locationIds: string[],
+    limit: number,
+  ): Promise<string[]> {
+    return this.codeService.findTopActiveUsersByPlace(
+      placeId,
+      locationIds,
+      limit,
+    );
+  }
+
+  private async getLeastActiveUsers(
+    placeId: string,
+    locationIds: string[],
+    limit: number,
+  ): Promise<string[]> {
+    return this.codeService.findLeastActiveUsersByPlace(
+      placeId,
+      locationIds,
+      limit,
+    );
+  }
+
+  private async getAllClients(
+    placeId: string,
+    locationIds: string[],
+  ): Promise<string[]> {
+    return this.codeService.findAllClientsByPlace(placeId, locationIds);
+  }
+
+  private async getInactiveClients(
+    placeId: string,
+    locationIds: string[],
+    lastScanDate: string,
+  ): Promise<string[]> {
+    return this.codeService.findInactiveClientsByPlace(
+      placeId,
+      locationIds,
+      lastScanDate,
+    );
   }
 }

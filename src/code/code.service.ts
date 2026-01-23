@@ -195,7 +195,6 @@ export class CodeService {
       start,
       limit,
     );
-    console.log(codes);
     return codes;
   }
 
@@ -252,6 +251,51 @@ export class CodeService {
       scannedByUserId,
       page,
       limit,
+    );
+  }
+
+  async findTopActiveUsersByPlace(
+    placeId: string,
+    locationIds: string[],
+    limit: number,
+  ): Promise<string[]> {
+    const result = await this.codeRepository.findTopActiveUsersByPlace(
+      placeId,
+      locationIds,
+      limit,
+    );
+    return result.map((user) => user._id);
+  }
+
+  async findLeastActiveUsersByPlace(
+    placeId: string,
+    locationIds: string[],
+    limit: number,
+  ): Promise<string[]> {
+    const result = await this.codeRepository.findLeastActiveUsersByPlace(
+      placeId,
+      locationIds,
+      limit,
+    );
+    return result.map((user) => user._id);
+  }
+
+  async findAllClientsByPlace(
+    placeId: string,
+    locationIds: string[],
+  ): Promise<string[]> {
+    return this.codeRepository.findAllClientsByPlace(placeId, locationIds);
+  }
+
+  async findInactiveClientsByPlace(
+    placeId: string,
+    locationIds: string[],
+    lastScanDate: string,
+  ): Promise<string[]> {
+    return this.codeRepository.findInactiveClientsByPlace(
+      placeId,
+      locationIds,
+      lastScanDate,
     );
   }
 }
