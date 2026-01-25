@@ -111,8 +111,11 @@ function buildBasePipeline(
         $or: [
           { availableFor: RewardAvailableFor.ALL },
           {
-            availableFor: RewardAvailableFor.SUBSCRIBERS,
+            availableFor: RewardAvailableFor.CURRENT_SUBSCRIBERS,
             locationIds: { $in: favoriteLocationObjectIds },
+          },
+          {
+            availableFor: RewardAvailableFor.ALL_SUBSCRIBERS,
           },
           {
             availableFor: RewardAvailableFor.SELECTED_USERS,
@@ -135,16 +138,25 @@ function buildBasePipeline(
               },
               {
                 case: {
-                  $eq: ['$availableFor', RewardAvailableFor.SUBSCRIBERS],
+                  $eq: [
+                    '$availableFor',
+                    RewardAvailableFor.CURRENT_SUBSCRIBERS,
+                  ],
                 },
                 then: 2,
               },
               {
-                case: { $eq: ['$availableFor', RewardAvailableFor.ALL] },
+                case: {
+                  $eq: ['$availableFor', RewardAvailableFor.ALL_SUBSCRIBERS],
+                },
                 then: 3,
               },
+              {
+                case: { $eq: ['$availableFor', RewardAvailableFor.ALL] },
+                then: 4,
+              },
             ],
-            default: 4,
+            default: 5,
           },
         },
       },
@@ -204,10 +216,7 @@ export function getPaginatedRewardData(
               input: '$codes',
               as: 'code',
               cond: {
-                $and: [
-                  { $ne: ['$$code.usedAt', null] },
-                  { $ne: [{ $type: '$$code.usedAt' }, 'missing'] },
-                ],
+                $and: [{ $ne: ['$$code.usedAt', null] }],
               },
             },
           },

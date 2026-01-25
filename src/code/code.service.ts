@@ -29,7 +29,7 @@ export class CodeService {
   ) {}
   async create(createCodeDto: CreateCodeDto, session?: ClientSession) {
     let isDuplicate = true;
-    let value = Math.random().toString(36).substring(2, 7);
+    let value = Math.random().toString(36).substring(2, 7).toUpperCase();
     while (isDuplicate) {
       const duplicateCode = await this.findByValue(value);
       if (duplicateCode) {

@@ -8,11 +8,13 @@ export type RewardDocument = Reward & Document;
 
 export enum RewardAvailableFor {
   ALL = 'ALL',
-  SUBSCRIBERS = 'SUBSCRIBERS',
+  CURRENT_SUBSCRIBERS = 'CURRENT_SUBSCRIBERS',
+  ALL_SUBSCRIBERS = 'ALL_SUBSCRIBERS',
   SELECTED_USERS = 'SELECTED_USERS',
   TOP_ACTIVE_USERS = 'TOP_ACTIVE_USERS',
   LEAST_ACTIVE_USERS = 'LEAST_ACTIVE_USERS',
-  CLIENTS = 'CLIENTS',
+  CURRENT_CLIENTS = 'CURRENT_CLIENTS',
+  ALL_CLIENTS = 'ALL_CLIENTS',
   INACTIVE = 'INACTIVE',
 }
 
@@ -54,18 +56,32 @@ export class Reward {
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Place.name })
   place: Place;
   @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId }] })
-  @Transform((params) => params.obj.locationIds?.map((id: mongoose.Types.ObjectId) => id.toString()) || [])
+  @Transform(
+    (params) =>
+      params.obj.locationIds?.map((id: mongoose.Types.ObjectId) =>
+        id.toString(),
+      ) || [],
+  )
   locationIds: string[];
   @Prop({ required: true, enum: Object.values(RewardAvailableFor) })
   availableFor: RewardAvailableFor;
-  @Transform((params) => params.obj.selectedUserIds?.map((id: mongoose.Types.ObjectId) => id.toString()) || [])
+  @Transform(
+    (params) =>
+      params.obj.selectedUserIds?.map((id: mongoose.Types.ObjectId) =>
+        id.toString(),
+      ) || [],
+  )
   @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] })
   selectedUserIds?: mongoose.Types.ObjectId[];
   @Prop({ type: Number })
   userLimit?: number;
   @Prop({ type: Number, default: null })
   usageLimit?: number | null;
-  @Prop({ required: true, enum: Object.values(RewardStatus), default: RewardStatus.ACTIVE })
+  @Prop({
+    required: true,
+    enum: Object.values(RewardStatus),
+    default: RewardStatus.ACTIVE,
+  })
   status: RewardStatus;
   @Prop({ type: String })
   lastScanDate?: string;

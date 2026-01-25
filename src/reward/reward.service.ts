@@ -275,11 +275,13 @@ export class RewardService {
         locationIds,
         userLimit,
       );
-    } else if (availableFor === RewardAvailableFor.CLIENTS) {
+    } else if (availableFor === RewardAvailableFor.CURRENT_CLIENTS) {
       selectedUserIds = await this.getAllClients(
         place._id.toString(),
         locationIds,
       );
+    } else if (availableFor === RewardAvailableFor.CURRENT_SUBSCRIBERS) {
+      selectedUserIds = await this.getAllSubscribers(locationIds);
     } else if (availableFor === RewardAvailableFor.INACTIVE && lastScanDate) {
       selectedUserIds = await this.getInactiveClients(
         place._id.toString(),
@@ -528,12 +530,20 @@ export class RewardService {
         finalUserLimit,
       );
     } else if (
-      availableFor === RewardAvailableFor.CLIENTS ||
+      availableFor === RewardAvailableFor.CURRENT_CLIENTS ||
       (availableFor === undefined &&
-        reward.availableFor === RewardAvailableFor.CLIENTS)
+        reward.availableFor === RewardAvailableFor.CURRENT_CLIENTS)
     ) {
       updateData.selectedUserIds = await this.getAllClients(
         reward.place._id.toString(),
+        finalLocationIds,
+      );
+    } else if (
+      availableFor === RewardAvailableFor.CURRENT_SUBSCRIBERS ||
+      (availableFor === undefined &&
+        reward.availableFor === RewardAvailableFor.CURRENT_SUBSCRIBERS)
+    ) {
+      updateData.selectedUserIds = await this.getAllSubscribers(
         finalLocationIds,
       );
     } else if (
@@ -633,5 +643,20 @@ export class RewardService {
       locationIds,
       lastScanDate,
     );
+  }
+
+  private async getAllSubscribers(locationIds: string[]): Promise<string[]> {
+    const uniqueUserIds = new Set<string>();
+
+    for (const locationId of locationIds) {
+      const usersWithFavoriteLocation =
+        await this.userService.findUsersByFavoriteLocation(locationId);
+
+      usersWithFavoriteLocation.forEach((user) => {
+        uniqueUserIds.add(user._id.toString());
+      });
+    }
+
+    return Array.from(uniqueUserIds);
   }
 }
