@@ -374,12 +374,15 @@ export class RewardService {
       userId,
     );
 
+    const clientPlaceIds = await this.codeService.getPlacesByClientId(userId);
+
     if (nearbyLocationIds.length > 0) {
       return this.rewardRepository.findPaginatedByLocationIds(
         { start, limit },
         nearbyLocationIds,
         userId,
         favoriteLocationIds,
+        clientPlaceIds,
       );
     }
 
@@ -388,6 +391,7 @@ export class RewardService {
       countryCode,
       userId,
       favoriteLocationIds,
+      clientPlaceIds,
     );
   }
 

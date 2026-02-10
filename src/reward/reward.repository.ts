@@ -165,6 +165,7 @@ export class RewardRepository extends MongoRepository<
     countryCode: string,
     searchUserId?: string,
     favoriteLocationIds?: string[],
+    clientPlaceIds?: string[],
   ) {
     const { start, limit } = paginationQuery;
     let pipeline = this.rewardModel.aggregate();
@@ -179,6 +180,7 @@ export class RewardRepository extends MongoRepository<
         true,
         searchUserId,
         favoriteLocationIds,
+        clientPlaceIds,
       ),
     );
 
@@ -190,6 +192,7 @@ export class RewardRepository extends MongoRepository<
     locationIds: string[],
     searchUserId?: string,
     favoriteLocationIds?: string[],
+    clientPlaceIds?: string[],
   ) {
     const { start, limit } = paginationQuery;
     const objectIds = locationIds.map((id) => new Types.ObjectId(id));
@@ -205,6 +208,7 @@ export class RewardRepository extends MongoRepository<
         true,
         searchUserId,
         favoriteLocationIds,
+        clientPlaceIds,
       ),
     );
 

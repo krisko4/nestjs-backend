@@ -26,7 +26,7 @@ export class UserPlaceController {
     const data = await this.placeService.getPlacesByUserId(uid);
     return data.map((record) => ({
       ...record,
-      place: plainToInstance(PlaceDto, record.place),
+      place: plainToInstance(PlaceDto, record.place.toObject()),
     }));
   }
 

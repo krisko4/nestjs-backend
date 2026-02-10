@@ -298,4 +298,8 @@ export class CodeService {
       lastScanDate,
     );
   }
+
+  async getPlacesByClientId(clientId: string): Promise<string[]> {
+    return this.codeRepository.getPlacesByClientId(clientId);
+  }
 }

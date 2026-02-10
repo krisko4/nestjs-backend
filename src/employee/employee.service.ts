@@ -138,7 +138,7 @@ export class EmployeeService {
       ({ locationId, role }) => ({
         locationId: new Types.ObjectId(locationId),
         role,
-        status: PlaceEmployeeStatus.ACTIVE,
+        status: PlaceEmployeeStatus.WAITING_FOR_CONFIRMATION,
       }),
     );
 
@@ -334,7 +334,7 @@ export class EmployeeService {
     };
   }
 
-  async getPlacesByUserId(userId: string) {
+  async getEmployeesByUserId(userId: string) {
     const employees = await this.employeeRepository.findByUserId(userId);
     return employees;
   }
@@ -357,7 +357,7 @@ export class EmployeeService {
   async acceptInvitation(
     employeeId: string,
     placeId: string,
-    locationId: string,
+    locationIds: string[],
     userId: string,
   ) {
     const employee = await this.employeeRepository.findByIdWithPopulate(
@@ -380,24 +380,30 @@ export class EmployeeService {
       throw new NotFoundException('PLACE_ASSIGNMENT_NOT_FOUND');
     }
 
-    const locationAssignment = placeAssignment.locations.find(
-      (loc) => loc.locationId.toString() === locationId,
-    );
+    // Verify all locations exist and are in WAITING_FOR_CONFIRMATION status
+    for (const locationId of locationIds) {
+      const locationAssignment = placeAssignment.locations.find(
+        (loc) => loc.locationId.toString() === locationId,
+      );
 
-    if (!locationAssignment) {
-      throw new NotFoundException('LOCATION_ASSIGNMENT_NOT_FOUND');
+      if (!locationAssignment) {
+        throw new NotFoundException(
+          `LOCATION_ASSIGNMENT_NOT_FOUND: ${locationId}`,
+        );
+      }
+
+      if (
+        locationAssignment.status !==
+        PlaceEmployeeStatus.WAITING_FOR_CONFIRMATION
+      ) {
+        throw new BadRequestException(`INVITATION_NOT_PENDING: ${locationId}`);
+      }
     }
 
-    if (
-      locationAssignment.status !== PlaceEmployeeStatus.WAITING_FOR_CONFIRMATION
-    ) {
-      throw new BadRequestException('INVITATION_NOT_PENDING');
-    }
-
-    return this.employeeRepository.updateLocationStatus(
+    return this.employeeRepository.updateMultipleLocationStatuses(
       employeeId,
       placeId,
-      locationId,
+      locationIds,
       PlaceEmployeeStatus.ACTIVE,
     );
   }
@@ -405,7 +411,7 @@ export class EmployeeService {
   async rejectInvitation(
     employeeId: string,
     placeId: string,
-    locationId: string,
+    locationIds: string[],
     userId: string,
   ) {
     const employee = await this.employeeRepository.findByIdWithPopulate(
@@ -428,24 +434,30 @@ export class EmployeeService {
       throw new NotFoundException('PLACE_ASSIGNMENT_NOT_FOUND');
     }
 
-    const locationAssignment = placeAssignment.locations.find(
-      (loc) => loc.locationId.toString() === locationId,
-    );
+    // Verify all locations exist and are in WAITING_FOR_CONFIRMATION status
+    for (const locationId of locationIds) {
+      const locationAssignment = placeAssignment.locations.find(
+        (loc) => loc.locationId.toString() === locationId,
+      );
 
-    if (!locationAssignment) {
-      throw new NotFoundException('LOCATION_ASSIGNMENT_NOT_FOUND');
+      if (!locationAssignment) {
+        throw new NotFoundException(
+          `LOCATION_ASSIGNMENT_NOT_FOUND: ${locationId}`,
+        );
+      }
+
+      if (
+        locationAssignment.status !==
+        PlaceEmployeeStatus.WAITING_FOR_CONFIRMATION
+      ) {
+        throw new BadRequestException(`INVITATION_NOT_PENDING: ${locationId}`);
+      }
     }
 
-    if (
-      locationAssignment.status !== PlaceEmployeeStatus.WAITING_FOR_CONFIRMATION
-    ) {
-      throw new BadRequestException('INVITATION_NOT_PENDING');
-    }
-
-    return this.employeeRepository.updateLocationStatus(
+    return this.employeeRepository.updateMultipleLocationStatuses(
       employeeId,
       placeId,
-      locationId,
+      locationIds,
       PlaceEmployeeStatus.REJECTED,
     );
   }

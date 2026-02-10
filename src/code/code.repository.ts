@@ -1395,4 +1395,74 @@ export class CodeRepository extends MongoRepository<
 
     return inactiveClients;
   }
+
+  async getPlacesByClientId(clientId: string): Promise<string[]> {
+    const result = await this.codeModel.aggregate([
+      {
+        $match: {
+          user: new Types.ObjectId(clientId),
+          usedAt: { $exists: true, $ne: null },
+        },
+      },
+      {
+        $lookup: {
+          from: 'rewards',
+          localField: 'reward',
+          foreignField: '_id',
+          as: 'rewardData',
+        },
+      },
+      {
+        $unwind: {
+          path: '$rewardData',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: 'places',
+          let: { locationId: '$locationId' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $in: ['$$locationId', '$locations._id'],
+                },
+              },
+            },
+          ],
+          as: 'placeFromLocation',
+        },
+      },
+      {
+        $unwind: {
+          path: '$placeFromLocation',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          finalPlaceId: {
+            $cond: {
+              if: { $ne: [{ $ifNull: ['$reward', null] }, null] },
+              then: '$rewardData.place',
+              else: '$placeFromLocation._id',
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$finalPlaceId',
+        },
+      },
+      {
+        $project: {
+          _id: { $toString: '$_id' },
+        },
+      },
+    ]);
+
+    return result.map((r) => r._id);
+  }
 }

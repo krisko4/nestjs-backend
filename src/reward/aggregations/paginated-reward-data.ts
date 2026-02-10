@@ -12,6 +12,7 @@ function buildBasePipeline(
   filterByActiveStatus: boolean = false,
   searchUserId?: string,
   favoriteLocationIds?: string[],
+  clientPlaceIds?: string[],
 ) {
   const { userId, ...rest } = entityFilterQuery;
   const matchConditions: any = { ...rest };
@@ -68,6 +69,12 @@ function buildBasePipeline(
   }
 
   pipeline.push({
+    $addFields: {
+      placeId: '$place',
+    },
+  });
+
+  pipeline.push({
     $lookup: {
       from: 'places',
       localField: 'place',
@@ -105,23 +112,40 @@ function buildBasePipeline(
       (id) => new Types.ObjectId(id),
     );
     const searchUserObjectId = new Types.ObjectId(searchUserId);
+    const clientPlaceObjectIds = clientPlaceIds
+      ? clientPlaceIds.map((id) => new Types.ObjectId(id))
+      : [];
+
+    const orConditions: any[] = [
+      { availableFor: RewardAvailableFor.ALL },
+      {
+        availableFor: RewardAvailableFor.CURRENT_SUBSCRIBERS,
+        selectedUserIds: searchUserObjectId,
+      },
+      {
+        availableFor: RewardAvailableFor.ALL_SUBSCRIBERS,
+        locationIds: { $in: favoriteLocationObjectIds },
+      },
+      {
+        availableFor: RewardAvailableFor.SELECTED_USERS,
+        selectedUserIds: searchUserObjectId,
+      },
+      {
+        availableFor: RewardAvailableFor.CURRENT_CLIENTS,
+        selectedUserIds: searchUserObjectId,
+      },
+    ];
+
+    if (clientPlaceObjectIds.length > 0) {
+      orConditions.push({
+        availableFor: RewardAvailableFor.ALL_CLIENTS,
+        placeId: { $in: clientPlaceObjectIds },
+      });
+    }
 
     pipeline.push({
       $match: {
-        $or: [
-          { availableFor: RewardAvailableFor.ALL },
-          {
-            availableFor: RewardAvailableFor.CURRENT_SUBSCRIBERS,
-            locationIds: { $in: favoriteLocationObjectIds },
-          },
-          {
-            availableFor: RewardAvailableFor.ALL_SUBSCRIBERS,
-          },
-          {
-            availableFor: RewardAvailableFor.SELECTED_USERS,
-            selectedUserIds: searchUserObjectId,
-          },
-        ],
+        $or: orConditions,
       },
     });
 
@@ -138,25 +162,37 @@ function buildBasePipeline(
               },
               {
                 case: {
-                  $eq: [
-                    '$availableFor',
-                    RewardAvailableFor.CURRENT_SUBSCRIBERS,
-                  ],
+                  $eq: ['$availableFor', RewardAvailableFor.CURRENT_CLIENTS],
                 },
                 then: 2,
               },
               {
                 case: {
-                  $eq: ['$availableFor', RewardAvailableFor.ALL_SUBSCRIBERS],
+                  $eq: ['$availableFor', RewardAvailableFor.ALL_CLIENTS],
                 },
                 then: 3,
               },
               {
-                case: { $eq: ['$availableFor', RewardAvailableFor.ALL] },
+                case: {
+                  $eq: [
+                    '$availableFor',
+                    RewardAvailableFor.CURRENT_SUBSCRIBERS,
+                  ],
+                },
                 then: 4,
               },
+              {
+                case: {
+                  $eq: ['$availableFor', RewardAvailableFor.ALL_SUBSCRIBERS],
+                },
+                then: 5,
+              },
+              {
+                case: { $eq: ['$availableFor', RewardAvailableFor.ALL] },
+                then: 6,
+              },
             ],
-            default: 5,
+            default: 6,
           },
         },
       },
@@ -179,6 +215,7 @@ export function getPaginatedRewardData(
   filterByActiveStatus: boolean = false,
   searchUserId?: string,
   favoriteLocationIds?: string[],
+  clientPlaceIds?: string[],
 ) {
   const dataPipeline = buildBasePipeline(
     entityFilterQuery,
@@ -187,6 +224,7 @@ export function getPaginatedRewardData(
     filterByActiveStatus,
     searchUserId,
     favoriteLocationIds,
+    clientPlaceIds,
   );
 
   dataPipeline.push(
@@ -269,6 +307,7 @@ export function getPaginatedRewardData(
     filterByActiveStatus,
     searchUserId,
     favoriteLocationIds,
+    clientPlaceIds,
   );
 
   metadataPipeline.push(

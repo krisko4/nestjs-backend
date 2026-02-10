@@ -417,7 +417,7 @@ export class PlaceService {
   }
 
   async getPlacesByUserId(uid: string) {
-    const employees = await this.employeeService.getPlacesByUserId(uid);
+    const employees = await this.employeeService.getEmployeesByUserId(uid);
 
     const result = [];
     for (const employee of employees) {

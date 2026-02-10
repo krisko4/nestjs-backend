@@ -30,7 +30,7 @@ export class EmployeeRepository extends MongoRepository<
   async findByUserId(userId: string): Promise<EmployeeDocument[]> {
     return this.employeeModel
       .find({ user: new Types.ObjectId(userId) })
-      .populate('user')
+      .populate('places.place')
       .exec();
   }
 
@@ -296,6 +296,41 @@ export class EmployeeRepository extends MongoRepository<
           arrayFilters: [
             { 'place.place': new Types.ObjectId(placeId) },
             { 'loc.location': new Types.ObjectId(locationId) },
+          ],
+          new: true,
+          runValidators: true,
+          session,
+        },
+      )
+      .exec();
+  }
+
+  async updateMultipleLocationStatuses(
+    employeeId: string,
+    placeId: string,
+    locationIds: string[],
+    status: PlaceEmployeeStatus,
+    session?: ClientSession,
+  ): Promise<EmployeeDocument | null> {
+    return this.employeeModel
+      .findOneAndUpdate(
+        {
+          _id: employeeId,
+          'places.place': new Types.ObjectId(placeId),
+        },
+        {
+          $set: {
+            'places.$[place].locations.$[loc].status': status,
+          },
+        },
+        {
+          arrayFilters: [
+            { 'place.place': new Types.ObjectId(placeId) },
+            {
+              'loc.locationId': {
+                $in: locationIds.map((id) => new Types.ObjectId(id))
+              }
+            },
           ],
           new: true,
           runValidators: true,

@@ -3,13 +3,9 @@ import { CodeService } from 'src/code/code.service';
 import { PlaceService } from 'src/place/place.service';
 import { UserService } from 'src/user/user.service';
 import { ClientResponseDto } from './dto/client-response.dto';
-import {
-  ScanHistoryItemDto,
-  ScanHistoryResponseDto,
-} from './dto/scan-history-response.dto';
+import { ScanHistoryItemDto } from './dto/scan-history-response.dto';
 import {
   PaginatedResponse,
-  SimplePaginatedResponse,
   ScanHistoryPaginatedResponse,
 } from './dto/pagination.query';
 
