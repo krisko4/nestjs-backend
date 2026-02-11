@@ -70,7 +70,7 @@ export class RewardService {
   }
 
   async findByIdForUser(id: string, userId: string) {
-    const reward = await this.rewardRepository.findById(id);
+    const reward = (await this.rewardRepository.findById(id)).toObject();
     if (!reward) {
       throw new NotFoundException('INVALID_REWARD_ID');
     }
@@ -108,11 +108,12 @@ export class RewardService {
       usedAt: code ? code.usedAt : null,
       usageLimit: reward.usageLimit,
       usedCount,
+      locations: locationsWithFavoriteStatus,
       place: {
         _id: reward.place._id,
         name: reward.place.name,
         logo: reward.place.logo,
-        locations: locationsWithFavoriteStatus,
+        locations: reward.place.locations,
       },
     };
   }

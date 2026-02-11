@@ -311,14 +311,15 @@ export class EmployeeService {
     const userPlaceIds = new Set(
       userEmployees.flatMap((e) =>
         e.places
-          .filter((p) =>
-            p.locations.some((loc) => loc.role === PlaceEmployeeRole.BOSS),
-          )
-          .map((p) => p.place.toString()),
+          .filter((p) => {
+            return p.locations.some(
+              (loc) => loc.role === PlaceEmployeeRole.BOSS,
+            );
+          })
+          .map((p) => p.place._id.toString()),
       ),
     );
 
-    // Filter employee's places to only show places where user is BOSS
     const filteredPlaces = employee.places.filter((p) =>
       userPlaceIds.has(p.place._id.toString()),
     );
