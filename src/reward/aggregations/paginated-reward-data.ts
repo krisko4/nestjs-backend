@@ -254,7 +254,7 @@ export function getPaginatedRewardData(
               input: '$codes',
               as: 'code',
               cond: {
-                $and: [{ $ne: ['$$code.usedAt', null] }],
+                $gt: ['$$code.usedAt', null],
               },
             },
           },
