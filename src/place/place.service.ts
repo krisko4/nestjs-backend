@@ -468,12 +468,22 @@ export class PlaceService {
         favoriteLocationIds,
       );
     }
+    return {
+      metadata: [
+        {
+          total: 0,
+          start,
+          limit,
+        },
+      ],
+      data: [],
+    };
 
-    return this.placeRepository.findPaginatedByCountryCode(
-      { start, limit },
-      countryCode,
-      favoriteLocationIds,
-    );
+    // return this.placeRepository.findPaginatedByCountryCode(
+    //   { start, limit },
+    //   countryCode,
+    //   favoriteLocationIds,
+    // );
   }
 
   async addFavoriteLocation(userId: string, locationId: string) {

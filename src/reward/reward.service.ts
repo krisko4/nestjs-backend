@@ -387,13 +387,24 @@ export class RewardService {
       );
     }
 
-    return this.rewardRepository.findPaginatedByCountryCode(
-      { start, limit },
-      countryCode,
-      userId,
-      favoriteLocationIds,
-      clientPlaceIds,
-    );
+    return {
+      metadata: [
+        {
+          total: 0,
+          start,
+          limit,
+        },
+      ],
+      data: [],
+    };
+
+    // return this.rewardRepository.findPaginatedByCountryCode(
+    //   { start, limit },
+    //   countryCode,
+    //   userId,
+    //   favoriteLocationIds,
+    //   clientPlaceIds,
+    // );
   }
 
   async findStatistics(query: StatisticsFilterQuery) {

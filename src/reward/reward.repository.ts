@@ -184,6 +184,8 @@ export class RewardRepository extends MongoRepository<
       ),
     );
 
+    console.log(result);
+
     return result[0];
   }
 

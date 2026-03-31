@@ -385,11 +385,22 @@ export class EventService {
       );
     }
 
-    return this.eventRepository.findPaginatedByCountryCode(
-      { start, limit },
-      countryCode,
-      activeOnly,
-    );
+    return {
+      metadata: [
+        {
+          total: 0,
+          start,
+          limit,
+        },
+      ],
+      data: [],
+    };
+
+    // return this.eventRepository.findPaginatedByCountryCode(
+    //   { start, limit },
+    //   countryCode,
+    //   activeOnly,
+    // );
   }
 
   async findUserEvents(userEventsQuery: UserEventsQuery, userId: string) {
