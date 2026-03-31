@@ -92,7 +92,7 @@ export class RewardService {
     );
 
     const locationsWithFavoriteStatus = locations.map((location) => ({
-      _id: location._id,
+      _id: location._id.toString(),
       address: location.address,
       isFavorite: favoriteLocationIds.includes(location._id.toString()),
     }));
@@ -178,7 +178,18 @@ export class RewardService {
       userId,
     );
 
+    console.log(locationId);
+
     if (existingCode && !existingCode.usedAt) {
+      if (
+        locationId &&
+        existingCode.locationId?.toString() !== locationId.toString()
+      ) {
+        await this.codeService.updateLocationId(
+          existingCode._id.toString(),
+          locationId,
+        );
+      }
       return {
         code: existingCode.value,
       };

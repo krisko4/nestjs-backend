@@ -42,6 +42,7 @@ export class CodeService {
   }
 
   async use(useCodeDto: UseCodeDto, uid: string) {
+    console.log(useCodeDto);
     const { value } = useCodeDto;
     const code = await this.findByValue(value);
     if (!code) {
@@ -51,9 +52,11 @@ export class CodeService {
       throw new BadRequestException('CODE_ALREADY_USED');
     }
 
+    console.log(code);
     const place = await this.placeService.findByLocationId(
       code.locationId.toString(),
     );
+    console.log(place);
     if (!place) {
       throw new NotFoundException('PLACE_NOT_FOUND');
     }
@@ -81,6 +84,10 @@ export class CodeService {
 
   useById(id: string, usedBy: string) {
     return this.codeRepository.useCodeById(id, usedBy);
+  }
+
+  updateLocationId(id: string, locationId: string) {
+    return this.codeRepository.updateLocationId(id, locationId);
   }
 
   async findByValue(value: string) {

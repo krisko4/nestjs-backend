@@ -24,6 +24,7 @@ export class CodeRepository extends MongoRepository<
     session?: ClientSession,
   ) {
     const { userId, rewardId, locationId } = createCodeDto;
+    console.log(locationId);
     return this.create(
       {
         user: toMongoObjectId(userId),
@@ -60,6 +61,12 @@ export class CodeRepository extends MongoRepository<
     return this.findByIdAndUpdate(id, {
       usedAt: new Date(),
       usedBy: toMongoObjectId(usedBy),
+    });
+  }
+
+  updateLocationId(id: string, locationId: string) {
+    return this.findByIdAndUpdate(id, {
+      locationId: toMongoObjectId(locationId),
     });
   }
 
@@ -260,9 +267,7 @@ export class CodeRepository extends MongoRepository<
           ...((lastScanDateFrom || lastScanDateTo) && {
             lastScanDate: {
               ...(lastScanDateFrom && {
-                $gte: new Date(
-                  new Date(lastScanDateFrom).setHours(0, 0, 0, 0),
-                ),
+                $gte: new Date(new Date(lastScanDateFrom).setHours(0, 0, 0, 0)),
               }),
               ...(lastScanDateTo && {
                 $lte: new Date(
