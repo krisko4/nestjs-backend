@@ -328,6 +328,8 @@ export class RewardService {
       place.name,
       name,
       reward._id.toString(),
+      availableFor,
+      selectedUserIds,
     );
 
     return reward;
@@ -338,21 +340,32 @@ export class RewardService {
     placeName: string,
     rewardName: string,
     rewardId: string,
+    availableFor: RewardAvailableFor,
+    selectedUserIds?: string[],
   ): Promise<void> {
     try {
-      const uniqueUserIds = new Set<string>();
+      let receiverIds: string[];
 
-      for (const locationId of locationIds) {
-        const usersWithFavoriteLocation =
-          await this.userService.findUsersByFavoriteLocation(locationId);
+      const hasSelectedUsers =
+        selectedUserIds && selectedUserIds.length > 0;
 
-        usersWithFavoriteLocation.forEach((user) => {
-          uniqueUserIds.add(user._id.toString());
-        });
+      if (hasSelectedUsers) {
+        receiverIds = selectedUserIds;
+      } else if (availableFor === RewardAvailableFor.ALL) {
+        const uniqueUserIds = new Set<string>();
+        for (const locationId of locationIds) {
+          const usersWithFavoriteLocation =
+            await this.userService.findUsersByFavoriteLocation(locationId);
+          usersWithFavoriteLocation.forEach((user) => {
+            uniqueUserIds.add(user._id.toString());
+          });
+        }
+        receiverIds = Array.from(uniqueUserIds);
+      } else {
+        return;
       }
 
-      if (uniqueUserIds.size > 0) {
-        const receiverIds = Array.from(uniqueUserIds);
+      if (receiverIds.length > 0) {
 
         await this.notificationService.createAndSendPersonalizedNotifications(
           NotificationType.REWARD,
