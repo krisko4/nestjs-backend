@@ -32,6 +32,8 @@ import mongoose from 'mongoose';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
 import { EmployeeService } from 'src/employee/employee.service';
+import { PointsService } from 'src/points/points.service';
+import { PointsTransactionType } from 'src/points/schemas/points-transaction.schema';
 import { SearchEventQuery } from './queries/search-event.query';
 import { UserEventsQuery } from './queries/user-events.query';
 
@@ -45,6 +47,7 @@ export class EventService {
     private readonly schedulerRegistry: SchedulerRegistry,
     private readonly notificationService: NotificationService,
     private readonly employeeService: EmployeeService,
+    private readonly pointsService: PointsService,
     @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
 
@@ -322,7 +325,22 @@ export class EventService {
     ) {
       throw new ForbiddenException('INVALID PARTICIPATOR_ID');
     }
-    return this.eventRepository.markParticipationIRL(event._id, participatorId);
+    const result = await this.eventRepository.markParticipationIRL(event._id, participatorId);
+
+    // Nalicz punkty jeśli wydarzenie ma zdefiniowane punkty
+    if (event.points && event.points > 0) {
+      this.pointsService
+        .addPoints(
+          participatorId,
+          event.place._id.toString(),
+          event.points,
+          PointsTransactionType.EVENT_PARTICIPATION,
+          event._id.toString(),
+        )
+        .catch((err) => console.error('Error awarding event points:', err));
+    }
+
+    return result;
   }
 
   async removeParticipator(id: string, uid: string) {

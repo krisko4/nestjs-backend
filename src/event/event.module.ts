@@ -16,6 +16,7 @@ import {
 import { UserEventController } from './event.controller.user';
 import { AdminEventController } from './event.controller.admin';
 import { EmployeeModule } from 'src/employee/employee.module';
+import { PointsModule } from 'src/points/points.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { EmployeeModule } from 'src/employee/employee.module';
     NotificationModule,
     UserModule,
     CloudinaryModule,
+    PointsModule,
   ],
   controllers: [UserEventController, AdminEventController],
   providers: [EventService, EventRepository],

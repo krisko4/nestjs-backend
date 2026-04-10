@@ -16,6 +16,8 @@ import { UseCodeDto } from './dto/use-code.dto';
 import { NotFoundError } from 'rxjs';
 import { CodeSseService } from './code-sse.service';
 import { EmployeeService } from 'src/employee/employee.service';
+import { PointsService } from 'src/points/points.service';
+import { PointsTransactionType } from 'src/points/schemas/points-transaction.schema';
 
 @Injectable()
 export class CodeService {
@@ -26,6 +28,7 @@ export class CodeService {
     private readonly employeeService: EmployeeService,
     @Inject(forwardRef(() => PlaceService))
     private readonly placeService: PlaceService,
+    private readonly pointsService: PointsService,
   ) {}
   async create(createCodeDto: CreateCodeDto, session?: ClientSession) {
     let isDuplicate = true;
@@ -71,6 +74,20 @@ export class CodeService {
     }
 
     const result = await this.codeRepository.useCodeById(code._id, uid);
+
+    // Nalicz punkty jeśli kupon ma zdefiniowane punkty
+    if (code.reward && (code.reward as any).points > 0) {
+      const reward = code.reward as any;
+      this.pointsService
+        .addPoints(
+          code.user.toString(),
+          placeId,
+          reward.points,
+          PointsTransactionType.COUPON_SCAN,
+          reward._id.toString(),
+        )
+        .catch((err) => console.error('Error awarding points:', err));
+    }
 
     this.codeSseService.emitCodeScanned({
       codeValue: value,

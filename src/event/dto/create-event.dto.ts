@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsArray, IsMongoId, MaxLength } from 'class-validator';
+import { IsArray, IsMongoId, IsNumber, IsOptional, MaxLength, Min } from 'class-validator';
 
 export class CreateEventDto {
   @MaxLength(100)
@@ -11,4 +11,10 @@ export class CreateEventDto {
   @IsArray()
   @IsMongoId({ each: true })
   locationIds: string[];
+
+  @IsOptional()
+  @Transform(({ value }) => (value !== undefined ? Number(value) : undefined))
+  @IsNumber()
+  @Min(1)
+  points?: number;
 }

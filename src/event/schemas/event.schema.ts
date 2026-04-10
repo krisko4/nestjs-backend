@@ -23,6 +23,7 @@ export type CreateEventSchema = {
   place: string;
   locationIds: string[];
   status?: EventStatus;
+  points?: number;
 };
 
 @Schema()
@@ -68,6 +69,8 @@ export class Event {
     }));
   })
   participators: Participator[];
+  @Prop({ type: Number })
+  points?: number;
   @Prop({ required: true, enum: Object.values(EventStatus), default: EventStatus.ACTIVE })
   status: EventStatus;
 }

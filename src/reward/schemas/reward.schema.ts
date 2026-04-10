@@ -35,6 +35,8 @@ export type CreateRewardSchema = {
   usageLimit?: number | null;
   status?: RewardStatus;
   lastScanDate?: string;
+  points?: number;
+  pointsCost?: number;
 };
 
 @Schema()
@@ -85,6 +87,10 @@ export class Reward {
   status: RewardStatus;
   @Prop({ type: String })
   lastScanDate?: string;
+  @Prop({ type: Number })
+  points?: number;
+  @Prop({ type: Number })
+  pointsCost?: number;
   @Prop({ default: Date.now })
   createdAt: Date;
 }

@@ -296,6 +296,8 @@ export function getPaginatedRewardData(
         title: 1,
         content: 1,
         img: 1,
+        points: 1,
+        pointsCost: 1,
       },
     },
   );

@@ -24,6 +24,7 @@ import {
   PlaceEmployeeRole,
   PlaceEmployeeStatus,
 } from 'src/employee/schemas/place-assignment.schema';
+import { PointsService } from 'src/points/points.service';
 import { UpdatePlaceDto } from './dto/update-place.dto';
 
 @Injectable()
@@ -36,6 +37,7 @@ export class PlaceService {
     private readonly codeService: CodeService,
     @Inject(forwardRef(() => EmployeeService))
     private readonly employeeService: EmployeeService,
+    private readonly pointsService: PointsService,
     @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
 
@@ -317,11 +319,14 @@ export class PlaceService {
     const favoriteLocationIds = await this.userService.getFavoriteLocationIds(
       userId,
     );
-    return this.placeRepository.findLocation(
-      id,
-      locationId,
-      favoriteLocationIds,
-    );
+    const [place, userPoints] = await Promise.all([
+      this.placeRepository.findLocation(id, locationId, favoriteLocationIds),
+      this.pointsService.getUserPointsAtPlace(userId, id),
+    ]);
+    return {
+      ...place,
+      userPoints,
+    };
   }
 
   findOpeningHours(locationId: string) {

@@ -52,4 +52,14 @@ export class CreateRewardDto {
   @ValidateIf((o) => o.availableFor === RewardAvailableFor.INACTIVE)
   @IsDateString()
   lastScanDate?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  points?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  pointsCost?: number;
 }

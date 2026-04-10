@@ -11,6 +11,7 @@ import { PlaceModule } from 'src/place/place.module';
 import { UserRewardController } from './reward.controller.user';
 import { UserModule } from 'src/user/user.module';
 import { EmployeeModule } from 'src/employee/employee.module';
+import { PointsModule } from 'src/points/points.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { EmployeeModule } from 'src/employee/employee.module';
     CodeModule,
     NotificationModule,
     UserModule,
+    PointsModule,
   ],
   controllers: [AdminRewardController, UserRewardController],
   providers: [RewardService, RewardRepository],

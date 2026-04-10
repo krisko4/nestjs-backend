@@ -24,6 +24,7 @@ import { FirebaseModule } from './firebase/firebase.module';
 import { ClientModule } from './client/client.module';
 import { EmployeeModule } from './employee/employee.module';
 import { StatisticsModule } from './statistics/statistics.module';
+import { PointsModule } from './points/points.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { StatisticsModule } from './statistics/statistics.module';
     ClientModule,
     EmployeeModule,
     StatisticsModule,
+    PointsModule,
   ],
 })
 export class AppModule {}

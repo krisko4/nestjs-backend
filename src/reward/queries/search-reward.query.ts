@@ -1,5 +1,15 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsNotEmpty, IsNumber, IsString, Max, Min } from 'class-validator';
+import {
+  IsInt,
+  IsMongoId,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  ValidateIf,
+} from 'class-validator';
 
 export class SearchRewardQuery {
   @IsInt()
@@ -11,15 +21,23 @@ export class SearchRewardQuery {
   @Min(0)
   @Max(50)
   limit: number;
+
+  @IsOptional()
+  @IsMongoId()
+  locationId?: string;
+
+  @ValidateIf((o) => !o.locationId)
   @IsNumber()
   @Type(() => Number)
   @IsNotEmpty()
-  lat: number;
+  lat?: number;
+  @ValidateIf((o) => !o.locationId)
   @IsNumber()
   @Type(() => Number)
   @IsNotEmpty()
-  lng: number;
+  lng?: number;
+  @ValidateIf((o) => !o.locationId)
   @IsString()
   @IsNotEmpty()
-  countryCode: string;
+  countryCode?: string;
 }

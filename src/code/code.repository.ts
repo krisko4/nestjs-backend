@@ -24,7 +24,6 @@ export class CodeRepository extends MongoRepository<
     session?: ClientSession,
   ) {
     const { userId, rewardId, locationId } = createCodeDto;
-    console.log(locationId);
     return this.create(
       {
         user: toMongoObjectId(userId),

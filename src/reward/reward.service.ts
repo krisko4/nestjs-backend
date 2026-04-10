@@ -30,6 +30,8 @@ import { SearchRewardQuery } from './queries/search-reward.query';
 import { UserService } from 'src/user/user.service';
 import { EmployeeService } from 'src/employee/employee.service';
 import { UserRewardsQuery } from './queries/user-rewards.query';
+import { PointsService } from 'src/points/points.service';
+import { PointsTransactionType } from 'src/points/schemas/points-transaction.schema';
 
 @Injectable()
 export class RewardService {
@@ -42,6 +44,7 @@ export class RewardService {
     private readonly placeService: PlaceService,
     private readonly userService: UserService,
     private readonly employeeService: EmployeeService,
+    private readonly pointsService: PointsService,
     @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
 
@@ -97,7 +100,10 @@ export class RewardService {
       isFavorite: favoriteLocationIds.includes(location._id.toString()),
     }));
 
-    const usedCount = await this.codeService.countUserRewardUsage(id, userId);
+    const [usedCount, userPoints] = await Promise.all([
+      this.codeService.countUserRewardUsage(id, userId),
+      this.pointsService.getUserPointsAtPlace(userId, reward.place._id.toString()),
+    ]);
 
     return {
       _id: reward._id,
@@ -108,6 +114,9 @@ export class RewardService {
       usedAt: code ? code.usedAt : null,
       usageLimit: reward.usageLimit,
       usedCount,
+      points: reward.points,
+      pointsCost: reward.pointsCost,
+      userPoints,
       locations: locationsWithFavoriteStatus,
       place: {
         _id: reward.place._id,
@@ -173,12 +182,22 @@ export class RewardService {
       }
     }
 
+    // Sprawdź czy użytkownik ma wystarczającą liczbę punktów
+    if (reward.pointsCost && reward.pointsCost > 0) {
+      const placeId = reward.place._id.toString();
+      const userPoints = await this.pointsService.getUserPointsAtPlace(
+        userId,
+        placeId,
+      );
+      if (userPoints < reward.pointsCost) {
+        throw new BadRequestException(`INSUFFICIENT_POINTS`);
+      }
+    }
+
     const existingCode = await this.codeService.findByRewardIdAndUserId(
       rewardId,
       userId,
     );
-
-    console.log(locationId);
 
     if (existingCode && !existingCode.usedAt) {
       if (
@@ -193,6 +212,30 @@ export class RewardService {
       return {
         code: existingCode.value,
       };
+    }
+
+    // Jeśli kupon wymaga punktów — odejmij punkty i wygeneruj kod w transakcji
+    if (reward.pointsCost && reward.pointsCost > 0) {
+      const placeId = reward.place._id.toString();
+      const session = await this.connection.startSession();
+      let codeValue: string;
+      await session.withTransaction(async () => {
+        await this.pointsService.deductPoints(
+          userId,
+          placeId,
+          reward.pointsCost,
+          PointsTransactionType.PRIZE_REDEMPTION,
+          rewardId,
+          session,
+        );
+        const code = await this.codeService.create(
+          { userId, rewardId, locationId },
+          session,
+        );
+        codeValue = code.value;
+      });
+      await session.endSession();
+      return { code: codeValue };
     }
 
     const code = await this.codeService.create({
@@ -240,6 +283,8 @@ export class RewardService {
       userLimit,
       usageLimit,
       lastScanDate,
+      points,
+      pointsCost,
     } = createRewardDto;
 
     const place = await this.placeService.findByLocationId(locationIds[0]);
@@ -318,6 +363,8 @@ export class RewardService {
         userLimit,
         usageLimit,
         lastScanDate,
+        points,
+        pointsCost,
       });
     });
 
@@ -346,8 +393,7 @@ export class RewardService {
     try {
       let receiverIds: string[];
 
-      const hasSelectedUsers =
-        selectedUserIds && selectedUserIds.length > 0;
+      const hasSelectedUsers = selectedUserIds && selectedUserIds.length > 0;
 
       if (hasSelectedUsers) {
         receiverIds = selectedUserIds;
@@ -366,7 +412,6 @@ export class RewardService {
       }
 
       if (receiverIds.length > 0) {
-
         await this.notificationService.createAndSendPersonalizedNotifications(
           NotificationType.REWARD,
           receiverIds,
@@ -390,16 +435,26 @@ export class RewardService {
   }
 
   async search(searchQuery: SearchRewardQuery, userId: string) {
-    const { lat, lng, countryCode, start, limit } = searchQuery;
-
-    const nearbyLocationIds =
-      await this.placeService.findLocationIdsWithinRadius(lat, lng, 30000);
+    const { lat, lng, start, limit, locationId } = searchQuery;
 
     const favoriteLocationIds = await this.userService.getFavoriteLocationIds(
       userId,
     );
 
     const clientPlaceIds = await this.codeService.getPlacesByClientId(userId);
+
+    if (locationId) {
+      return this.rewardRepository.findPaginatedByLocationIds(
+        { start, limit },
+        [locationId],
+        userId,
+        favoriteLocationIds,
+        clientPlaceIds,
+      );
+    }
+
+    const nearbyLocationIds =
+      await this.placeService.findLocationIdsWithinRadius(lat, lng, 30000);
 
     if (nearbyLocationIds.length > 0) {
       return this.rewardRepository.findPaginatedByLocationIds(

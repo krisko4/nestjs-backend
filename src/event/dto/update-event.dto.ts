@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsEnum, IsMongoId, IsOptional, MaxLength } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsMongoId, IsNumber, IsOptional, MaxLength, Min } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { EventStatus } from '../schemas/event.schema';
 
@@ -29,4 +29,10 @@ export class UpdateEventDto {
   @IsOptional()
   @IsEnum(EventStatus)
   status?: EventStatus;
+
+  @IsOptional()
+  @Transform(({ value }) => (value !== undefined ? Number(value) : undefined))
+  @IsNumber()
+  @Min(1)
+  points?: number;
 }

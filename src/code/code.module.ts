@@ -8,11 +8,13 @@ import { CodeRepository } from './code.repository';
 import { UserCodeController } from './code.controller.user';
 import { CodeSseService } from './code-sse.service';
 import { EmployeeModule } from 'src/employee/employee.module';
+import { PointsModule } from 'src/points/points.module';
 
 @Module({
   imports: [
     forwardRef(() => PlaceModule),
     forwardRef(() => EmployeeModule),
+    PointsModule,
     MongooseModule.forFeature([{ name: Code.name, schema: CodeSchema }]),
   ],
   controllers: [CodeController, UserCodeController],

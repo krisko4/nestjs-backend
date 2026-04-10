@@ -94,6 +94,8 @@ export class RewardRepository extends MongoRepository<
     usageLimit,
     userLimit,
     lastScanDate,
+    points,
+    pointsCost,
   }: {
     name: string;
     description: string;
@@ -106,6 +108,8 @@ export class RewardRepository extends MongoRepository<
     userLimit?: number | null;
     usageLimit?: number | null;
     lastScanDate?: string;
+    points?: number;
+    pointsCost?: number;
   }) {
     const reward: any = {
       name,
@@ -117,6 +121,8 @@ export class RewardRepository extends MongoRepository<
       usageLimit: usageLimit ?? null,
       userLimit: userLimit ?? null,
       lastScanDate: lastScanDate ?? undefined,
+      points: points ?? undefined,
+      pointsCost: pointsCost ?? undefined,
     };
 
     if (selectedUserIds) {
